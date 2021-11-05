@@ -3,6 +3,9 @@ import { defineConfig } from 'vite';
 import { prefetch } from './prefetch-plugin';
 import { VitePWA } from 'vite-plugin-pwa';
 import replace from '@rollup/plugin-replace';
+import Unocss from 'unocss/vite';
+import { presetUno, presetAttributify } from 'unocss';
+import presetIcons from '@unocss/preset-icons';
 import { dynamicImport } from 'vite-plugin-dynamic-import';
 import UnpluginIcons from 'unplugin-icons/vite';
 
@@ -18,6 +21,18 @@ const replacePlugin = () => {
 
 export default defineConfig({
   plugins: [
+    Unocss({
+      include: ['**/*.svelte'],
+      presets: [
+        presetIcons({
+          prefix: 'i-',
+        }),
+        presetAttributify({
+          /* preset options */
+        }),
+        presetUno(),
+      ],
+    }),
     UnpluginIcons({ autoInstall: true, compiler: 'svelte' }),
     dynamicImport(),
     svelte(),
