@@ -1,23 +1,32 @@
-> 🛑🛑 Note: This is the new iteration of macOS Web written in Svelte. Previous version written in Preact is available at [PuruVJ/macos-preact](https://github.com/puruvj/macos-preact) 🛑🛑
+> 🛑🛑 Note: This is the just an experiment on top of macOS Web written in Svelte by PuruVijay. That version is available at [PuruVJ/macos-web](https://github.com/puruvj/macos-wev) 🛑🛑
 
-# Mac OS Monterey Web
+# Devinci OS
 
-This open source project aims to replicate some of the Mac OS(Monterey, at the time of writing)'s desktop experience on web, using Svelte!
+This open source project aims to replicate some of the Mac OS(Monterey, at the time of writing)'s desktop experience on web, using WebAssembly.
 
-🔗🔗 [macos.now.sh](https://macos.now.sh)
+## OS for the browser
 
-# Why
+- MacOS like interface
+  - Forked from the awesome PuruVijay's macos-web
+- Full screen experience for apps
+- Cross-tab experience using service worker
+- VSCode inbuilt (real version)
+- Web assembly + WASI based OS
+- Persisted File system
 
-I've always been very fascinated with macOS, and have never owned a Mac/book. So I'm making the most beautiful aspect of macOS, it's desktop, myself. For web. Inspired from [WinXP](https://winxp.now.sh/).
+Apps - Calculator, Calendar, Editor, VS Code, Finder, Desktop
+
+OS:
+Menubar (auto-hide, show current app)
+Windows (multiple windows, full screen)
+Dock (auto-hide)
 
 # Stack
 
-- Framework - Svelte (Earlier Preact)
+- UI Framework - Svelte
 - Bundler - Vite, for super fast development.
 - Component Library - None!!
-- Styling Solution - SCSS.
-
-[Roadmap](https://www.notion.so/MacOS-Web-Roadmap-274d703460564ea3bb5493b39bf8f886)
+- Styling Solution - SCSS and UnoCSS.
 
 # When will it be ready?
 
