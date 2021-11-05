@@ -1,6 +1,8 @@
-import Desktop from './components/Desktop/Desktop.svelte';
+import '@ui/css/global.scss';
+import 'uno.css';
+import OS from 'os/ui/OS/OS.svelte';
 
-const desktop = new Desktop({
+const desktop = new OS({
   target: document.getElementById('root'),
 });
 

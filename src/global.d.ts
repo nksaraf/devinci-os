@@ -1,6 +1,7 @@
 /// <reference types="svelte" />
 /// <reference types="vite/client" />
 /// <reference types="vite-plugin-pwa/client" />
+/// <reference types="unplugin-icons/types/svelte" />
 
 type ObjectKeys<Obj> = Obj extends object
   ? (keyof Obj)[]
@@ -35,4 +36,8 @@ declare namespace svelte.JSX {
 
 interface Array<T> {
   fill<T extends any>(value: T, start?: number | undefined, end?: number | undefined): T[];
+}
+
+declare module 'randomfill' {
+  function randomFillSync<T>(buffer: T, offset: number, size: number): T;
 }

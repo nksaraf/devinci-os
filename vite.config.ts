@@ -133,8 +133,10 @@ export default defineConfig({
 
   resolve: {
     alias: {
-      __: new URL('./src/', import.meta.url).pathname,
+      '__/stores': new URL('./src/stores/', import.meta.url).pathname,
+      __: new URL('./packages/macos-ui/src/', import.meta.url).pathname,
       '@ui': new URL('./packages/macos-ui/src/', import.meta.url).pathname,
+      os: new URL('./src/', import.meta.url).pathname,
     },
   },
   server: {

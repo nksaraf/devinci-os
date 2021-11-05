@@ -9,7 +9,6 @@ import workers from './workers';
 import { createPlugin } from './plugin-api';
 
 import version from './utils/version';
-import { basicLanguagePlugins } from './languages/language-plugins';
 
 type Monaco = typeof monacoApi;
 
@@ -35,8 +34,7 @@ export interface CancellablePromise<T> extends Promise<T> {
 const merge = (target: { [x: string]: any }, source: { [x: string]: any }) => {
   Object.keys(source).forEach((key) => {
     if (source[key] instanceof Object)
-      target[key] &&
-        Object.assign(source[key], merge(target[key], source[key]));
+      target[key] && Object.assign(source[key], merge(target[key], source[key]));
   });
   return { ...target, ...source };
 };
@@ -45,20 +43,14 @@ function cdnPath(root, pkg, version, path) {
   return `${endingSlash(root)}${pkg}@${version}${path}`;
 }
 
-export function loadMonaco(
-  options: Partial<monacoApi.LoaderOptions>
-): CancellablePromise<Monaco> {
+export function loadMonaco(options: Partial<monacoApi.LoaderOptions>): CancellablePromise<Monaco> {
   const {
     monacoVersion = '0.21.2',
     monacoCorePkg = 'monaco-editor-core',
     cdn = 'https://cdn.jsdelivr.net/npm',
     monacoPath = endingSlash(cdnPath(cdn, monacoCorePkg, monacoVersion, '/')),
-    workersPath = endingSlash(
-      cdnPath(cdn, 'use-monaco', version, '/dist/workers/')
-    ),
-    languagesPath = endingSlash(
-      cdnPath(cdn, 'use-monaco', version, '/dist/languages/')
-    ),
+    workersPath = endingSlash(cdnPath(cdn, 'use-monaco', version, '/dist/workers/')),
+    languagesPath = endingSlash(cdnPath(cdn, 'use-monaco', version, '/dist/languages/')),
     plugins = [],
     languages = [],
   } = options;
@@ -96,12 +88,12 @@ export function loadMonaco(
         shortcuts,
         workers,
         ...plugins,
-        ...languages
+        ...languages,
       );
       return monaco;
     })
     .catch((error) =>
-      console.error('An error occurred during initialization of Monaco:', error)
+      console.error('An error occurred during initialization of Monaco:', error),
     ) as any;
 
   promise.cancel = () => {
@@ -112,14 +104,10 @@ export function loadMonaco(
   return promise;
 }
 
-const makeCancelable = function <T>(
-  promise: Promise<T>
-): CancellablePromise<T> {
+const makeCancelable = function <T>(promise: Promise<T>): CancellablePromise<T> {
   let hasCanceled_ = false;
   const wrappedPromise = new Promise<T>((resolve, reject) => {
-    promise.then((val) =>
-      hasCanceled_ ? reject('operation is manually canceled') : resolve(val)
-    );
+    promise.then((val) => (hasCanceled_ ? reject('operation is manually canceled') : resolve(val)));
     promise.catch((error) => reject(error));
   });
   const cancellablePromise = Object.assign(wrappedPromise, {
@@ -147,9 +135,7 @@ export class MonacoLoader {
     return src && (script.src = src), script;
   }
   createMonacoLoaderScript(mainScript: HTMLScriptElement) {
-    const loaderScript = this.createScript(
-      `${noEndingSlash(this.config.paths.vs)}/loader.js`
-    );
+    const loaderScript = this.createScript(`${noEndingSlash(this.config.paths.vs)}/loader.js`);
     loaderScript.onload = () => this.injectScripts(mainScript);
     loaderScript.onerror = this.reject;
     return loaderScript;

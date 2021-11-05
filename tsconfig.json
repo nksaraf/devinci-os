@@ -22,8 +22,13 @@
     "resolveJsonModule": true,
     "baseUrl": "./",
     "paths": {
-      "__/*": ["./src/*"],
-      "@ui/*": ["./packages/macos-ui/src/*"]
+      "__/stores/*": ["./src/stores/*"],
+      "__/actions/*": ["./packages/macos-ui/src/actions/*"],
+      "__/actions": ["./packages/macos-ui/src/actions"],
+      "__/configs/*": ["./packages/macos-ui/src/configs/*"],
+      "__/helpers/*": ["./packages/macos-ui/src/helpers/*"],
+      "@ui/*": ["./packages/macos-ui/src/*"],
+      "os/*": ["./src/*"]
     },
     "types": ["vite-plugin-pwa/client"],
     /**
@@ -41,7 +46,7 @@
     "src/**/*.js",
     "src/**/*.svelte",
     "./*.ts",
-    "packages/macos-ui/src/**/*.{d.ts,svelte,ts}"
+    "packages/macos-ui/src/**/*"
   ],
   "exclude": ["node_modules/**/*"],
   "extends": "@tsconfig/svelte/tsconfig.json"

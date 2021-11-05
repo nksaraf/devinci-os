@@ -1,7 +1,8 @@
-import { writable } from 'svelte/store';
-import calculator from '__/components/apps/Calculator/calculator';
-import calendar from '__/components/apps/Calendar/calendar';
-import finder from '__/components/apps/Finder/finder';
+import { derived, writable } from 'svelte/store';
+import calculator from 'os/apps/calculator/calculator';
+import calendar from 'os/apps/calendar/calendar';
+import finder from 'os/apps/finder/finder';
+import { openWindows } from './window.store';
 import type { WindowConfig } from './window.store';
 
 export type AppID = string;
@@ -34,3 +35,16 @@ installApp(calendar());
 
 /** Which app is currently focused */
 export const activeApp = writable<AppID>('');
+
+// only for macos-web
+export const activeAppZIndex = writable(-2);
+
+export const openApps = derived([openWindows, installedApps], ([windows, apps]) => {
+  return windows.reduce((acc, [id, window]) => {
+    const app = apps[window.app.id];
+    if (app) {
+      acc[app.id] = true;
+    }
+    return acc;
+  }, {} as Record<AppID, boolean>);
+});
