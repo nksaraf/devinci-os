@@ -1,32 +1,36 @@
 import { writable } from 'svelte/store';
-import type { appsConfig } from '__/configs/apps/apps-config';
+import calculator from '__/components/apps/Calculator/calculator';
+import calendar from '__/components/apps/Calendar/calendar';
+import finder from '__/components/apps/Finder/finder';
+import type { WindowConfig } from './window.store';
 
-export type AppID = keyof typeof appsConfig;
+export type AppID = string;
 
-/** Which apps are currently open */
-export const openApps = writable<Record<AppID, boolean>>({
-  finder: false,
-  vscode: false,
-  calculator: false,
-  safari: false,
-  appstore: false,
-  messages: false,
-  mail: false,
-  photos: false,
-  facetime: false,
-  calendar: false,
-  'system-preferences': false,
+export type AppConfig = {
+  id: string;
+  title: string;
+  window?: WindowConfig;
+  dock?: {
+    icon?: string;
+  };
+};
 
-  'purus-twitter': true,
-  'view-source': true,
-  devutils: true,
-});
+export const createAppConfig = (
+  et: Partial<Omit<AppConfig, 'window'>> & { window: Partial<WindowConfig> },
+): AppConfig => et as AppConfig;
+
+export const installedApps = writable<Record<AppID, AppConfig>>({});
+
+export function installApp(config: AppConfig) {
+  installedApps.update((apps) => {
+    const newApps = { ...apps, [config.id]: config };
+    return newApps;
+  });
+}
+
+installApp(finder());
+installApp(calculator());
+installApp(calendar());
 
 /** Which app is currently focused */
-export const activeApp = writable<AppID>('finder');
-
-/**
- * Maximum zIndex for the active app
- * Initialize with -2, so that it becomes 0 when initialised
- */
-export const activeAppZIndex = writable(-2);
+export const activeApp = writable<AppID>('');
