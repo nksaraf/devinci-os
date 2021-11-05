@@ -85,7 +85,7 @@ export default createPlugin({ name: 'core.themes', dependencies: ['core.editors'
 
   monaco.editor.defineThemes = (themes) => {
     Object.keys(themes).forEach((themeName) => {
-      monaco.editor.defineTheme(themeName, themes[themeName as keyof typeof themes]);
+      monaco.editor.defineTheme(themeName as string, themes[themeName as keyof typeof themes]);
     });
   };
 

@@ -5,8 +5,7 @@
   import { onMount } from 'svelte';
   import { createWindow } from 'os/stores/window.store';
   import WindowsArea from './WindowsArea.svelte';
-  import finder from 'os/apps/finder/finder';
-  import BootupScreen from '@ui/components/Desktop/BootupScreen.svelte';
+  import finder from 'os/finder/finderrmport BootupScreen from '@ui/components/Desktop/BootupScreen.svelte';
   import GitCloner from './GitCloner.svelte';
   import Toaster from 'os/lib/toasts';
 
