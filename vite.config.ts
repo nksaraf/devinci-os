@@ -2,7 +2,9 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { defineConfig } from 'vite';
 import { prefetch } from './prefetch-plugin';
 import { VitePWA } from 'vite-plugin-pwa';
-import replace from "@rollup/plugin-replace";
+import replace from '@rollup/plugin-replace';
+import { dynamicImport } from 'vite-plugin-dynamic-import';
+import UnpluginIcons from 'unplugin-icons/vite';
 
 const replacePlugin = () => {
   console.log(`process.env.VITE_LOCAL_BUILD=${process.env.VITE_LOCAL_BUILD === 'true'}`);
@@ -12,10 +14,12 @@ const replacePlugin = () => {
     };
   }
   return {};
-}
+};
 
 export default defineConfig({
   plugins: [
+    UnpluginIcons({ autoInstall: true, compiler: 'svelte' }),
+    dynamicImport(),
     svelte(),
     prefetch(),
     replace({ ...replacePlugin() }),
@@ -30,10 +34,10 @@ export default defineConfig({
         'assets/wallpapers/37-[12].jpg',
       ],
       manifest: {
-        name: 'Mac OS Monterey Svelte Web',
+        name: 'Devinci OS',
         short_name: 'macOS Svelte',
         theme_color: '#ffffff',
-        description: "Mac OS Monterey Web written in Svelte",
+        description: 'Devinci OS',
         icons: [
           {
             src: 'assets/app-icons/finder/128.png',
@@ -72,12 +76,12 @@ export default defineConfig({
               cacheName: 'google-fonts-cache',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
+                maxAgeSeconds: 60 * 60 * 24 * 365, // <== 365 days
               },
               cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
+                statuses: [0, 200],
+              },
+            },
           },
           {
             urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
@@ -86,12 +90,12 @@ export default defineConfig({
               cacheName: 'gstatic-fonts-cache',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
+                maxAgeSeconds: 60 * 60 * 24 * 365, // <== 365 days
               },
               cacheableResponse: {
-                statuses: [0, 200]
+                statuses: [0, 200],
               },
-            }
+            },
           },
           {
             urlPattern: /^https:\/\/github1s.com\/.*/i,
@@ -100,22 +104,31 @@ export default defineConfig({
               cacheName: 'github1s-api-cache',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
+                maxAgeSeconds: 60 * 60 * 24 * 365, // <== 365 days
               },
               cacheableResponse: {
-                statuses: [0, 200]
+                statuses: [0, 200],
               },
-            }
+            },
           },
-        ]
+        ],
       },
     }),
   ],
+
   resolve: {
     alias: {
       __: new URL('./src/', import.meta.url).pathname,
+      '@ui': new URL('./packages/macos-ui/src/', import.meta.url).pathname,
     },
   },
+  server: {
+    fs: {
+      // Allow serving files from one level up to the project root
+      allow: ['./'],
+    },
+  },
+  assetsInclude: ['packages/macos-ui/public'],
   build: {
     minify: 'terser',
   },
