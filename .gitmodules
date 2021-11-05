@@ -1,0 +1,3 @@
+[submodule "packages/macos-ui"]
+	path = packages/macos-ui
+	url = https://github.com/devinci-os/macos-web.git
