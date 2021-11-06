@@ -1,15 +1,23 @@
 <script lang="ts">
   import type * as monaco from 'monaco-editor';
-  import { onMount } from 'svelte';
-  import editorWorker from '../../node_modules/monaco-editor/esm/vs/editor/editor.worker?worker';
-  import jsonWorker from '../../node_modules/monaco-editor/esm/vs/language/json/json.worker?worker';
-  import cssWorker from '../../node_modules/monaco-editor/esm/vs/language/css/css.worker?worker';
-  import htmlWorker from '../../node_modules/monaco-editor/esm/vs/language/html/html.worker?worker';
-  import tsWorker from '../../node_modules/monaco-editor/esm/vs/language/typescript/ts.worker?worker';
+  import { getContext, onMount } from 'svelte';
+  import editorWorker from '../../../node_modules/monaco-editor/esm/vs/editor/editor.worker?worker';
+  import jsonWorker from '../../../node_modules/monaco-editor/esm/vs/language/json/json.worker?worker';
+  import cssWorker from '../../../node_modules/monaco-editor/esm/vs/language/css/css.worker?worker';
+  import htmlWorker from '../../../node_modules/monaco-editor/esm/vs/language/html/html.worker?worker';
+  import tsWorker from '../../../node_modules/monaco-editor/esm/vs/language/typescript/ts.worker?worker';
+  import fs from 'os/lib/fs';
+  import TrafficLights from 'os/ui/Window/TrafficLights.svelte';
+  import type { WindowAPI } from '__/stores/window.store';
+  import ExpandSvg from '@ui/components/SVG/traffic-lights/ExpandSVG.svelte';
 
   let divEl: HTMLDivElement = null;
   let editor: monaco.editor.IStandaloneCodeEditor;
   let Monaco: typeof monaco;
+
+  export let args;
+
+  console.log(args);
 
   onMount(async () => {
     // @ts-ignore
@@ -32,15 +40,64 @@
     };
 
     Monaco = await import('monaco-editor');
-    editor = Monaco.editor.create(divEl, {
-      value: ['function x() {', '\tconsole.log("Hello world!");', '}'].join('\n'),
-      language: 'javascript',
+
+    function writeFile(e) {
+      fs.promises.writeFile(args.path, editor.getValue(), 'utf8');
+    }
+
+    let disposables = [];
+
+    fs.promises.readFile(args.path, 'utf8').then((data) => {
+      editor = Monaco.editor.create(divEl, {
+        value: data as string,
+        fontSize: 14,
+        theme: 'vs-light',
+        language: 'javascript',
+        cursorStyle: 'line-thin',
+      });
+
+      disposables.push(editor.onDidChangeModelContent(writeFile));
     });
 
     return () => {
+      disposables.forEach((d) => d.dispose());
       editor.dispose();
     };
   });
+
+  const win = getContext('windowAPI') as WindowAPI;
 </script>
 
-<div bind:this={divEl} class="h-screen" />
+<div class="h-full flex flex-col overflow-hidden">
+  <div
+    class="h-8 editor-header app-window-drag-handle relative flex flex-row items-center justify-center"
+  >
+    <div class="tl-container vscode">
+      <TrafficLights
+        on:green-light={(e) => {}}
+        on:red-light={(e) => {
+          win.close();
+        }}
+      >
+        <ExpandSvg slot="green-light" />
+      </TrafficLights>
+    </div>
+
+    <div class="i-vscode-icons-file-type-vscode mr-3" />
+    <div class="font-bold">{args.path}</div>
+  </div>
+  <div class="flex-1"><div class="h-full"><div bind:this={divEl} class="h-full" /></div></div>
+</div>
+
+<style lang="scss">
+  .editor-header {
+    background: #ffffff;
+    backdrop-filter: blur(10px);
+  }
+
+  .tl-container.vscode {
+    top: 0.5rem;
+    position: absolute;
+    left: 1rem;
+  }
+</style>

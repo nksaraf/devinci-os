@@ -17,11 +17,13 @@ export interface WindowConfig {
   resizable: boolean;
   title: string;
   frame: boolean;
+  args?: Object;
   transparent: boolean;
   fullScreenable: boolean;
   minimizable: boolean;
   maximizable: boolean;
   fullScreen: boolean;
+  trafficLights: boolean;
   loadComponent?: () => Promise<SvelteComponentDev | typeof SvelteComponentDev>;
 }
 
@@ -39,6 +41,7 @@ export const createWindowConfig = (win: Partial<WindowConfig>): WindowConfig => 
   minimizable: true,
   maximizable: false,
   fullScreen: false,
+  trafficLights: true,
   frame: true,
   title: '',
   ...win,
@@ -77,12 +80,15 @@ export function createWindow(
   windowConfig?: Partial<WindowConfig>,
 ): WindowAPI {
   let windowID = WINDOW_ID++;
+  let winConfig = createWindowConfig({
+    title: appConfig.title,
+    ...(typeof appConfig.window === 'function' ? (appConfig.window as any)() : appConfig.window),
+    ...(windowConfig ?? {}),
+  });
+  console.log('createWindow', windowConfig, windowID, winConfig);
+
   let winData = writable({
-    ...createWindowConfig({
-      title: appConfig.title,
-      ...appConfig.window,
-      ...(windowConfig ?? {}),
-    }),
+    ...winConfig,
     id: windowID,
     app: appConfig,
     zIndex: 0,

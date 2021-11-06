@@ -39,13 +39,16 @@
     minHeight,
     maxHeight,
     resizable,
+    trafficLights,
     transparent,
     fullScreen,
     loadComponent,
+    args: componentArgs,
     zIndex,
   } = windowData;
 
   setContext('window', windowData);
+  setContext('windowAPI', window);
 
   const randX = randint(-600, 600);
   const randY = randint(-100, 100);
@@ -61,7 +64,7 @@
     window.focus();
 
     if (!fullScreen) {
-      windowEl?.focus();
+      // windowEl?.focus();
     }
   }
 
@@ -172,7 +175,7 @@
     <div style="height: 100%; width: 100%; overflow: scroll;">
       {#if loadComponent}
         {#await loadComponent() then Component}
-          <div><svelte:component this={Component} /></div>
+          <div><svelte:component this={Component} args={componentArgs} /></div>
         {/await}
       {:else}
         <Placeholder appID={app.id} />
@@ -206,25 +209,27 @@
     on:click={focusApp}
     out:windowCloseTransition
   >
-    <div class="tl-container {app.id}">
-      <TrafficLights
-        on:green-light={maximizeApp}
-        on:red-light={(e) => {
-          window.close();
-        }}
-      >
-        {#if fullScreenable}
-          <ExpandSvg slot="green-light" />
-        {:else}
-          <StretchSvg slot="green-light" />
-        {/if}
-      </TrafficLights>
-    </div>
+    {#if trafficLights}
+      <div class="tl-container {app.id}">
+        <TrafficLights
+          on:green-light={maximizeApp}
+          on:red-light={(e) => {
+            window.close();
+          }}
+        >
+          {#if fullScreenable}
+            <ExpandSvg slot="green-light" />
+          {:else}
+            <StretchSvg slot="green-light" />
+          {/if}
+        </TrafficLights>
+      </div>
+    {/if}
 
     <div style="height: 100%; width: 100%; overflow: scroll; border-radius: inherit;">
       {#if loadComponent}
         {#await loadComponent() then Component}
-          <svelte:component this={Component} />
+          <svelte:component this={Component} args={componentArgs} />
         {/await}
       {:else}
         <Placeholder appID={app.id} />

@@ -18,12 +18,23 @@
   let items = [];
 
   async function readFiles() {
-    items = await fs.promises.readdir(path);
+    items = await Promise.all(
+      (
+        await fs.promises.readdir(path)
+      ).map(async (file) => {
+        let stats = await fs.promises.stat(`${path}/${file}`);
+        return {
+          name: file,
+          path: `${path}/${file}`,
+          type: stats.isDirectory() ? 'folder' : 'file',
+          size: stats.size,
+        };
+      }),
+    );
   }
 
   onMount(() => {
     readFiles();
-    // handleResize(null);
     fs.events.on('writeFile', readFiles);
   });
 
@@ -57,7 +68,7 @@
           ? Math.floor(index / cols) + 1
           : Math.floor(index / cols) + 1}"
       >
-        <FinderItem {onDesktop} path={item} />
+        <FinderItem {onDesktop} {item} />
       </div>
     {/each}
   </div>

@@ -4,20 +4,23 @@ import calendar from 'os/apps/calendar/calendar';
 import finder from 'os/apps/finder/finder';
 import { openWindows } from './window.store';
 import type { WindowConfig } from './window.store';
+import editor from 'os/apps/editor/editor';
 
 export type AppID = string;
 
 export type AppConfig = {
   id: string;
   title: string;
-  window?: WindowConfig;
+  window: WindowConfig | (() => WindowConfig);
   dock?: {
     icon?: string;
   };
 };
 
 export const createAppConfig = (
-  et: Partial<Omit<AppConfig, 'window'>> & { window: Partial<WindowConfig> },
+  et: Partial<Omit<AppConfig, 'window'>> & {
+    window: Partial<WindowConfig> | (() => Partial<WindowConfig>);
+  },
 ): AppConfig => et as AppConfig;
 
 export const installedApps = writable<Record<AppID, AppConfig>>({});
@@ -32,6 +35,7 @@ export function installApp(config: AppConfig) {
 installApp(finder());
 installApp(calculator());
 installApp(calendar());
+installApp(editor());
 
 /** Which app is currently focused */
 export const activeApp = writable<AppID>('');

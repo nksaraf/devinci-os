@@ -5,6 +5,7 @@
 
   import { fadeIn, fadeOut } from '__/helpers/fade';
   import { theme } from '__/stores/theme.store';
+  import { selection } from '__/stores/fs.store';
 
   let targetElement: HTMLElement;
 
@@ -34,6 +35,7 @@
 
   function hideMenu() {
     isMenuVisible = false;
+    $selection = [];
   }
 </script>
 
