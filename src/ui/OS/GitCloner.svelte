@@ -13,7 +13,6 @@
       dir: '/home',
       url: 'https://github.com/streamich/spyfs',
       onProgress: (e) => {
-        console.log(e);
         progress = e;
       },
     }),
@@ -23,15 +22,15 @@
 
   $: {
     if (progress.phase != oldPhase) {
-      toast.loading(progress.phase, {
-        duration: null,
-      });
+      // toast.loading(progress.phase, {
+      //   duration: null,
+      // });
       oldPhase = progress.phase;
     }
   }
 </script>
 
-<div
+<!-- <div
   p-4
   bg-white
   shadow-lg
@@ -54,4 +53,4 @@
   </div>
   {progress.phase}
   {progress.loaded}/{progress.total ? progress.total : progress.loaded}
-</div>
+</div> -->

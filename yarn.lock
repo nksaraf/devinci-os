@@ -932,6 +932,11 @@
     just-debounce-it "1.1.0"
     just-once "1.1.0"
 
+"@juggle/resize-observer@^3.1.1":
+  version "3.3.1"
+  resolved "https://registry.yarnpkg.com/@juggle/resize-observer/-/resize-observer-3.3.1.tgz#b50a781709c81e10701004214340f25475a171a0"
+  integrity sha512-zMM9Ds+SawiUkakS7y94Ymqx+S0ORzpG3frZirN3l+UlXUmSUR7hF4wxCVqW+ei94JzV5kt0uXBcoOEAuiydrw==
+
 "@mdi/js@^5.9.55":
   version "5.9.55"
   resolved "https://registry.yarnpkg.com/@mdi/js/-/js-5.9.55.tgz#8f5bc4d924c23f30dab20545ddc768e778bbc882"
@@ -1080,12 +1085,12 @@
   resolved "https://registry.yarnpkg.com/@types/trusted-types/-/trusted-types-2.0.2.tgz#fc25ad9943bcac11cceb8168db4f275e0e72e756"
   integrity sha512-F5DIZ36YVLE+PN+Zwws4kJogq47hNgX3Nx6WyDJ3kcplxyke3XIzB8uK5n/Lpm1HBsbGzd6nmGehL8cPekP+Tg==
 
-"@unocss/config@0.4.7":
-  version "0.4.7"
-  resolved "https://registry.yarnpkg.com/@unocss/config/-/config-0.4.7.tgz#7e0a319254fdb4642919a13f3ae884ebd549f437"
-  integrity sha512-JzHVWNR5CTnvGHgCBhmJS9qEkP4i7Q6Oo6TEyTLEiwBZFvVI4zOepQ1JEJ8LlZVrEsinqIQxglH6bZ4bMI6Jfw==
+"@unocss/config@0.6.4":
+  version "0.6.4"
+  resolved "https://registry.yarnpkg.com/@unocss/config/-/config-0.6.4.tgz#365c428022a50b595f0df6ec677790f2c27b595b"
+  integrity sha512-d/qw3kp3+Ee0ss+2CbKM9ScUy9Zdr9nQ7bG6q6kgw13EK4zc5aEmqTHXCCU17EeL0VpGa11CGSP28v7lsEqCXQ==
   dependencies:
-    "@unocss/core" "0.4.7"
+    "@unocss/core" "0.6.4"
     sucrase "^3.20.3"
 
 "@unocss/core@0.4.7":
@@ -1093,12 +1098,26 @@
   resolved "https://registry.yarnpkg.com/@unocss/core/-/core-0.4.7.tgz#8cbf5328ec10dcc8c135d58b4063022e9d54e05f"
   integrity sha512-/bw5kH9/T+KL192EuM9+axPDRHHuBUGWvsWXsDYIscgUISyIhalOfTf11DXfIqzPwg4JSoCexRQzP3mKeXaxMw==
 
-"@unocss/preset-attributify@0.4.7":
-  version "0.4.7"
-  resolved "https://registry.yarnpkg.com/@unocss/preset-attributify/-/preset-attributify-0.4.7.tgz#86e77a2d4d6d651b78fa007897c1a3077326512e"
-  integrity sha512-Rc5eSayuoWNtyq0m+FOjKJ/vxACEIcOITSjh0L4Lt3FkKDuR1iIycd5WQ8h1quwEi2Fji7PzxCJjU1zt8usRmw==
+"@unocss/core@0.6.4":
+  version "0.6.4"
+  resolved "https://registry.yarnpkg.com/@unocss/core/-/core-0.6.4.tgz#67c504e227953e17e31cbc756b8be6e9d6a933c5"
+  integrity sha512-CTFADrYZMizXNhxTyPkZO+8deisHTB2tnWbCp7HhzO6rJnUZAbj37NOIj7MzMrSSxjitxI9otdq1izGQF+qXYQ==
+
+"@unocss/preset-attributify@0.6.4":
+  version "0.6.4"
+  resolved "https://registry.yarnpkg.com/@unocss/preset-attributify/-/preset-attributify-0.6.4.tgz#824795de1234f33f883ed2cacc77a229168dd54c"
+  integrity sha512-XNzA8fkR0LLR6cpdn4RB3qOYBnWP1gb+HomBFalsP3p37V/4G4yXBadkcXYqy7ccOoX8NoZBDbOaK68NaKn5AA==
   dependencies:
-    "@unocss/core" "0.4.7"
+    "@unocss/core" "0.6.4"
+
+"@unocss/preset-icons@0.6.4":
+  version "0.6.4"
+  resolved "https://registry.yarnpkg.com/@unocss/preset-icons/-/preset-icons-0.6.4.tgz#70d30c13ced5ebb0ad33f2ebaa1ca1ec96a47ea1"
+  integrity sha512-0VO1u2YJl8u3pME6oGJSsGoWqYw9px+PdiHHgcSy6PsLLBK88qS2nm6+D7PV1DwpUvyE9aQPPPWVlknL6JYzDg==
+  dependencies:
+    "@iconify/utils" "^1.0.18"
+    "@unocss/core" "0.6.4"
+    local-pkg "^0.4.0"
 
 "@unocss/preset-icons@^0.4.7":
   version "0.4.7"
@@ -1109,28 +1128,32 @@
     "@unocss/core" "0.4.7"
     local-pkg "^0.4.0"
 
-"@unocss/preset-uno@0.4.7":
-  version "0.4.7"
-  resolved "https://registry.yarnpkg.com/@unocss/preset-uno/-/preset-uno-0.4.7.tgz#a8892a555daa812f8dc31a8ada32e9c373cf22bb"
-  integrity sha512-THQpcmgOgUFJpMuCPzfnH5RHOg0FgYwVeEcpqq3u81e7D8HWcT9bLfuGIO3QAFaWEdMKwgJJp1u2KDnuZVpNpQ==
+"@unocss/preset-uno@0.6.4":
+  version "0.6.4"
+  resolved "https://registry.yarnpkg.com/@unocss/preset-uno/-/preset-uno-0.6.4.tgz#bf2e4ebb829f2dbf5440e43b988dcc165d67bafc"
+  integrity sha512-OehXJS/1Dk7slo1fAbhPOIB4QxTK2UdtZ+PCKlUOS+DUhjyhefQ9atjn04EynR2poXaotBxaHGp+yFabJe777w==
   dependencies:
-    "@unocss/core" "0.4.7"
+    "@unocss/core" "0.6.4"
 
-"@unocss/scope@0.4.7":
-  version "0.4.7"
-  resolved "https://registry.yarnpkg.com/@unocss/scope/-/scope-0.4.7.tgz#b3d274ae8dc4b0df2e88b0cdffeb0bb30c61c706"
-  integrity sha512-D9mHnH5klIV/0jF9B4LRMSbHeYgcZpTJKzlp3wRhN5K75ocTft1ZO06hyd9mholv1aCGXB8wUuABCGBH+PZFWA==
+"@unocss/reset@0.6.4":
+  version "0.6.4"
+  resolved "https://registry.yarnpkg.com/@unocss/reset/-/reset-0.6.4.tgz#711426592fdcb4950d68e00b29863fe59c10a1f0"
+  integrity sha512-U83m+DlDPQ1Gexq/cf5rsh9aVDZ3pmctzAmkB44GTawmbmE5TblVyEKkCGChD9WBqHZV2vQvSu5C20GFtMrzcA==
 
-"@unocss/vite@0.4.7":
-  version "0.4.7"
-  resolved "https://registry.yarnpkg.com/@unocss/vite/-/vite-0.4.7.tgz#14411e473d5285ee43b216eef90b3550be07c4d2"
-  integrity sha512-IeliGhjm61AbTqovbLBdEiYc5iD/Fluy91wImdlpIB+LZwT4x7HWTYsajoRPOOUHbX89MEw3RBus6lCyVgh11A==
+"@unocss/scope@0.6.4":
+  version "0.6.4"
+  resolved "https://registry.yarnpkg.com/@unocss/scope/-/scope-0.6.4.tgz#98f25e61ce46478555dba41db3fc09dc2bc2a46d"
+  integrity sha512-RIM23mQN9CgIpYkzt76anekqRWqD7swhfSX6gFSCsfhY8ouHnM41b6uXkcPhUIQ88pOFJoh2n+M5ps9jTMdPWg==
+
+"@unocss/vite@0.6.4":
+  version "0.6.4"
+  resolved "https://registry.yarnpkg.com/@unocss/vite/-/vite-0.6.4.tgz#c029148f1d04adf7e180ea53c64b9ebc5e82fe99"
+  integrity sha512-5FKRL0tSK2z1I0gF2O19kiyurjfJhwwWPBF3WUlvpWaU8P4uh4aH4eLqoMgad/BDLelOhakiOj5HavziHZaI3w==
   dependencies:
     "@rollup/pluginutils" "^4.1.1"
-    "@unocss/config" "0.4.7"
-    "@unocss/core" "0.4.7"
-    "@unocss/scope" "0.4.7"
-    nanoevents "^6.0.2"
+    "@unocss/config" "0.6.4"
+    "@unocss/core" "0.6.4"
+    "@unocss/scope" "0.6.4"
 
 "@wasmer/io-devices@^0.12.0":
   version "0.12.0"
@@ -1323,6 +1346,11 @@ base64-js@^1.3.1:
   version "1.5.1"
   resolved "https://registry.yarnpkg.com/base64-js/-/base64-js-1.5.1.tgz#1b1b440160a5bf7ad40b650f095963481903930a"
   integrity sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==
+
+batch-processor@1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/batch-processor/-/batch-processor-1.0.0.tgz#75c95c32b748e0850d10c2b168f6bdbe9891ace8"
+  integrity sha1-dclcMrdI4IUNEMKxaPa9vpiRrOg=
 
 binary-extensions@^2.0.0:
   version "2.2.0"
@@ -1749,6 +1777,13 @@ electron-to-chromium@^1.3.878:
   version "1.3.885"
   resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.3.885.tgz#c8cec32fbc61364127849ae00f2395a1bae7c454"
   integrity sha512-JXKFJcVWrdHa09n4CNZYfYaK6EW5aAew7/wr3L1OnsD1L+JHL+RCtd7QgIsxUbFPeTwPlvnpqNNTOLkoefmtXg==
+
+element-resize-detector@^1.1:
+  version "1.2.3"
+  resolved "https://registry.yarnpkg.com/element-resize-detector/-/element-resize-detector-1.2.3.tgz#5078d9b99398fe4c589f8c8df94ff99e5d413ff3"
+  integrity sha512-+dhNzUgLpq9ol5tyhoG7YLoXL3ssjfFW+0gpszXPwRU6NjGr1fVHMEAF8fVzIiRJq57Nre0RFeIjJwI8Nh2NmQ==
+  dependencies:
+    batch-processor "1.0.0"
 
 encodeurl@~1.0.2:
   version "1.0.2"
@@ -2730,11 +2765,6 @@ mz@^2.7.0:
     object-assign "^4.0.1"
     thenify-all "^1.0.0"
 
-nanoevents@^6.0.2:
-  version "6.0.2"
-  resolved "https://registry.yarnpkg.com/nanoevents/-/nanoevents-6.0.2.tgz#3824031c7beab754b04ae5a17936c0fc7b6a183c"
-  integrity sha512-FRS2otuFcPPYDPYViNWQ42+1iZqbXydinkRHTHFxrF4a1CpBfmydR9zkI44WSXAXCyPrkcGtPk5CnpW6Y3lFKQ==
-
 nanoid@^3.1.30:
   version "3.1.30"
   resolved "https://registry.yarnpkg.com/nanoid/-/nanoid-3.1.30.tgz#63f93cc548d2a113dc5dfbc63bfa09e2b9b64362"
@@ -3518,6 +3548,13 @@ supports-color@^7.0.0, supports-color@^7.1.0:
   dependencies:
     has-flag "^4.0.0"
 
+svelte-actions-resize@^0.1.1:
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/svelte-actions-resize/-/svelte-actions-resize-0.1.1.tgz#ea4c3a22735658da2f6b4d9ce1250f1078732b86"
+  integrity sha512-migmW/wl3xNLPaLr0O0UMytQr1R8Xkte9vxL1Vbws9h0UlWC5IKszs+6C2dXacGl+4VlDNK1IYbw3y1UYHM7lg==
+  dependencies:
+    "@juggle/resize-observer" "^3.1.1"
+
 svelte-drag@^1.4.0:
   version "1.5.1"
   resolved "https://registry.yarnpkg.com/svelte-drag/-/svelte-drag-1.5.1.tgz#d2f401fb39299ced1f96ed7b8e9ebe5c1eb3e133"
@@ -3556,6 +3593,13 @@ svelte-routing@^1.6.0:
   integrity sha512-+DbrSGttLA6lan7oWFz1MjyGabdn3tPRqn8Osyc471ut2UgCrzM5x1qViNMc2gahOP6fKbKK1aNtZMJEQP2vHQ==
   dependencies:
     svelte2tsx "^0.1.157"
+
+svelte-watch-resize@^1.0.3:
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/svelte-watch-resize/-/svelte-watch-resize-1.0.3.tgz#8cf78ac2e3142ec5f1e88cc06aea13a6bc07b1b3"
+  integrity sha512-ktqTnkdqfx4YRqeMJcX1jeSnQ2kJUVlj4/rLdaLbhM+RrxN87vS2EZ0cxlGZ7eXV86Ef05Q3dVqEiR+12PeoIw==
+  dependencies:
+    element-resize-detector "^1.1"
 
 svelte2tsx@^0.1.157:
   version "0.1.193"
@@ -3723,15 +3767,17 @@ universalify@^2.0.0:
   resolved "https://registry.yarnpkg.com/universalify/-/universalify-2.0.0.tgz#75a4984efedc4b08975c5aeb73f530d02df25717"
   integrity sha512-hAZsKq7Yy11Zu1DE0OzWjw7nnLZmJZYTDZZyEFHZdUhV8FkH5MCfoU1XMaxXovpyW5nq5scPqq0ZDP9Zyl04oQ==
 
-unocss@^0.4.7:
-  version "0.4.7"
-  resolved "https://registry.yarnpkg.com/unocss/-/unocss-0.4.7.tgz#c390d6d9d4c496b10496571284fdbebbc1c2e84f"
-  integrity sha512-MtjNc7ID2DFgfGjJFtdQzzW8qG2nx+M1aevxHCXo0Ghdo3icHy/bMfDb2A0IkI2MeVpI3PCoy+furqsKeGMh2Q==
+unocss@^0.6.4:
+  version "0.6.4"
+  resolved "https://registry.yarnpkg.com/unocss/-/unocss-0.6.4.tgz#6e9aa100e06d4e4f400de0168d9bc00953f434e6"
+  integrity sha512-sA98fxvriTnFnrkWOfV7FvqyF45ByOPGqmyFPvWVoGQ6eGR4Ozz8EvcEAS9TMtdMKsZJAlkO7vwEtG17g0YEuQ==
   dependencies:
-    "@unocss/core" "0.4.7"
-    "@unocss/preset-attributify" "0.4.7"
-    "@unocss/preset-uno" "0.4.7"
-    "@unocss/vite" "0.4.7"
+    "@unocss/core" "0.6.4"
+    "@unocss/preset-attributify" "0.6.4"
+    "@unocss/preset-icons" "0.6.4"
+    "@unocss/preset-uno" "0.6.4"
+    "@unocss/reset" "0.6.4"
+    "@unocss/vite" "0.6.4"
 
 unpipe@1.0.0, unpipe@~1.0.0:
   version "1.0.0"

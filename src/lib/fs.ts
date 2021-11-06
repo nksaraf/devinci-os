@@ -4,8 +4,6 @@ import mitt from 'mitt';
 
 let fsEvents = mitt();
 
-fsEvents.on('*', console.log);
-
 let internalFs = new FS('fs', {
   wipe: true,
 });

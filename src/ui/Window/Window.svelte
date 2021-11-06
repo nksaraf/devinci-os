@@ -59,7 +59,10 @@
     zIndex = $lastFocusedIndex + 1;
     lastFocusedIndex.set(zIndex);
     window.focus();
-    windowEl?.focus();
+
+    if (!fullScreen) {
+      windowEl?.focus();
+    }
   }
 
   // function windowOpenTransition(
@@ -166,7 +169,7 @@
         <div>{title}</div>
       </div>
     {/if}
-    <div style="height: 100; overflow: scroll;">
+    <div style="height: 100%; width: 100%; overflow: scroll;">
       {#if loadComponent}
         {#await loadComponent() then Component}
           <div><svelte:component this={Component} /></div>
@@ -218,7 +221,7 @@
       </TrafficLights>
     </div>
 
-    <div style="height: 100%; overflow: scroll; border-radius: inherit;">
+    <div style="height: 100%; width: 100%; overflow: scroll; border-radius: inherit;">
       {#if loadComponent}
         {#await loadComponent() then Component}
           <svelte:component this={Component} />

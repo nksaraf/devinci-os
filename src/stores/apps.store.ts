@@ -1,7 +1,7 @@
 import { derived, writable } from 'svelte/store';
 import calculator from 'os/apps/calculator/calculator';
 import calendar from 'os/apps/calendar/calendar';
-import finder from 'os/finder/finder
+import finder from 'os/apps/finder/finder';
 import { openWindows } from './window.store';
 import type { WindowConfig } from './window.store';
 
