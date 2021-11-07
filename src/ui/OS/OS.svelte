@@ -22,11 +22,10 @@
   });
 </script>
 
-<BootupScreen />
-
 <GitCloner />
 
 <main>
+  <BootupScreen />
   <TopBar />
   <Wallpaper />
   <WindowsArea />

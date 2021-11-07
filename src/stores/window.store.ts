@@ -57,6 +57,7 @@ export interface WindowAPI extends Writable<IWindow> {
   close: () => void;
   open: () => void;
   focus: () => void;
+  maximize?: () => void;
   app: AppConfig;
   // minimize: () => void;
   // maximize: () => void;

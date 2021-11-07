@@ -136,6 +136,8 @@ export default defineConfig({
       '__/stores': new URL('./src/stores/', import.meta.url).pathname,
       __: new URL('./packages/macos-ui/src/', import.meta.url).pathname,
       '@ui': new URL('./packages/macos-ui/src/', import.meta.url).pathname,
+      browserfs: new URL('./packages/browserfs/', import.meta.url).pathname,
+      path: new URL('./src/lib/path/path.ts', import.meta.url).pathname,
       os: new URL('./src/', import.meta.url).pathname,
     },
   },
@@ -145,7 +147,7 @@ export default defineConfig({
       allow: ['./'],
     },
   },
-  assetsInclude: ['packages/macos-ui/public'],
+  assetsInclude: ['packages/macos-ui/public/**/*'],
   build: {
     minify: 'terser',
   },

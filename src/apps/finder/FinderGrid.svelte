@@ -18,24 +18,22 @@
   let items = [];
 
   async function readFiles() {
-    items = await Promise.all(
-      (
-        await fs.promises.readdir(path)
-      ).map(async (file) => {
-        let stats = await fs.promises.stat(`${path}/${file}`);
-        return {
-          name: file,
-          path: `${path}/${file}`,
-          type: stats.isDirectory() ? 'folder' : 'file',
-          size: stats.size,
-        };
-      }),
-    );
+    items = fs.readdirSync(path).map((file) => {
+      let stats = fs.statSync(`${path}/${file}`);
+      return {
+        name: file,
+        path: `${path}/${file}`,
+        type: stats.isDirectory() ? 'folder' : 'file',
+        size: stats.size,
+      };
+    });
   }
 
   onMount(() => {
     readFiles();
-    fs.events.on('writeFile', readFiles);
+    fs.watch(path, () => {
+      readFiles();
+    });
   });
 
   onDestroy(() => {

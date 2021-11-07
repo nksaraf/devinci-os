@@ -1,7 +1,7 @@
-import { MonacoWorker, IWorkerContext } from './monaco-worker';
+import { MonacoWorker } from './monaco-worker';
 
-import { SimpleWorkerServer } from '../../node_modules/monaco-editor/esm/vs/base/common/worker/simpleWorker';
-import { EditorSimpleWorker } from '../../node_modules/monaco-editor/esm/vs/editor/common/services/editorSimpleWorker';
+import { SimpleWorkerServer } from 'monaco-editor/esm/vs/base/common/worker/simpleWorker';
+import { EditorSimpleWorker } from 'monaco-editor/esm/vs/editor/common/services/editorSimpleWorker';
 
 const hashCode = function (s: string) {
   var hash = 0;
@@ -17,10 +17,6 @@ const hashCode = function (s: string) {
 };
 
 export * from './monaco-worker';
-
-declare global {
-  const importScripts: any;
-}
 
 export const importScript = async (src: string) => {
   const _this = self as any;
@@ -52,7 +48,7 @@ export function initialize(name: string, WorkerClass: typeof MonacoWorker) {
       return new EditorSimpleWorker(host, (ctx, options) => {
         return new WorkerClass(ctx, options);
       });
-    }
+    },
   );
   self.onmessage = function (e) {
     simpleWorker.onmessage(e.data);

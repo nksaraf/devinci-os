@@ -105,8 +105,9 @@
   }
 
   .finder-icon-container.selected.desktop {
-    border: 0.15rem solid var(--system-color-grey-700);
+    border: 0.15rem solid var(--system-color-grey-400);
     border-radius: 8px;
+    background-color: #00000055;
   }
 
   .finder-icon-container.selected:not(.desktop) {

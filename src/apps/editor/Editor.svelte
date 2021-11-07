@@ -54,6 +54,7 @@
         theme: 'vs-light',
         language: 'javascript',
         cursorStyle: 'line-thin',
+        automaticLayout: true,
       });
 
       disposables.push(editor.onDidChangeModelContent(writeFile));
@@ -69,12 +70,16 @@
 </script>
 
 <div class="h-full flex flex-col overflow-hidden">
-  <div
-    class="h-8 editor-header app-window-drag-handle relative flex flex-row items-center justify-center"
-  >
-    <div class="tl-container vscode">
+  <div class="editor-header relative app-window-drag-handle">
+    <div class="file-header flex flex-row items-center justify-center w-full">
+      <div class="i-vscode-icons-file-type-vscode mr-3" />
+      <div class="font-bold">{args.path}</div>
+    </div>
+    <div class="vscode-tl">
       <TrafficLights
-        on:green-light={(e) => {}}
+        on:green-light={(e) => {
+          win.maximize();
+        }}
         on:red-light={(e) => {
           win.close();
         }}
@@ -82,20 +87,26 @@
         <ExpandSvg slot="green-light" />
       </TrafficLights>
     </div>
-
-    <div class="i-vscode-icons-file-type-vscode mr-3" />
-    <div class="font-bold">{args.path}</div>
   </div>
-  <div class="flex-1"><div class="h-full"><div bind:this={divEl} class="h-full" /></div></div>
+  <div class="flex-1">
+    <div class="h-full bg-white"><div bind:this={divEl} class="h-full" /></div>
+  </div>
 </div>
 
 <style lang="scss">
   .editor-header {
     background: #ffffff;
     backdrop-filter: blur(10px);
+    height: 32px;
   }
 
-  .tl-container.vscode {
+  .file-header {
+    background: #ffffff;
+    backdrop-filter: blur(10px);
+    height: 32px;
+  }
+
+  .vscode-tl {
     top: 0.5rem;
     position: absolute;
     left: 1rem;

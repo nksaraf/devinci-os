@@ -47,9 +47,6 @@
     zIndex,
   } = windowData;
 
-  setContext('window', windowData);
-  setContext('windowAPI', window);
-
   const randX = randint(-600, 600);
   const randY = randint(-100, 100);
 
@@ -98,7 +95,7 @@
     };
   }
 
-  async function maximizeApp() {
+  async function maximize() {
     if (!$prefersReducedMotion) {
       windowEl.style.transition = 'height 0.3s ease, width 0.3s ease, transform 0.3s ease';
     }
@@ -129,6 +126,9 @@
   onMount(() => {
     focusApp();
   });
+
+  setContext('window', windowData);
+  setContext('windowAPI', Object.assign({}, window, { maximize }));
 </script>
 
 {#if fullScreen}
@@ -158,7 +158,7 @@
         on:click={focusApp}
       >
         <TrafficLights
-          on:green-light={maximizeApp}
+          on:green-light={maximize}
           on:red-light={(e) => {
             window.close();
           }}
@@ -175,7 +175,15 @@
     <div style="height: 100%; width: 100%; overflow: scroll;">
       {#if loadComponent}
         {#await loadComponent() then Component}
-          <div><svelte:component this={Component} args={componentArgs} /></div>
+          <div>
+            <svelte:component
+              this={Component}
+              args={componentArgs}
+              api={{
+                maximizeApp: maximize,
+              }}
+            />
+          </div>
         {/await}
       {:else}
         <Placeholder appID={app.id} />
@@ -212,7 +220,7 @@
     {#if trafficLights}
       <div class="tl-container {app.id}">
         <TrafficLights
-          on:green-light={maximizeApp}
+          on:green-light={maximize}
           on:red-light={(e) => {
             window.close();
           }}

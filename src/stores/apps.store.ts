@@ -5,6 +5,7 @@ import finder from 'os/apps/finder/finder';
 import { openWindows } from './window.store';
 import type { WindowConfig } from './window.store';
 import editor from 'os/apps/editor/editor';
+import terminal from 'os/apps/terminal/terminal';
 
 export type AppID = string;
 
@@ -36,6 +37,7 @@ installApp(finder());
 installApp(calculator());
 installApp(calendar());
 installApp(editor());
+installApp(terminal());
 
 /** Which app is currently focused */
 export const activeApp = writable<AppID>('');
