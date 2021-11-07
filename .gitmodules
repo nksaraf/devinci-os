@@ -1,3 +1,9 @@
 [submodule "packages/macos-ui"]
 	path = packages/macos-ui
 	url = https://github.com/devinci-os/macos-web.git
+[submodule "packages/browserfs"]
+	path = packages/browserfs
+	url = https://github.com/devinci-os/BrowserFS.git
+[submodule "packages/node"]
+	path = packages/node
+	url = https://github.com/devinci-os/node.git
