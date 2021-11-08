@@ -48,4 +48,4 @@ if (typeof ArrayBuffer !== 'undefined' && typeof Uint8Array !== 'undefined') {
   }
 }
 
-export * from './fs';
+export * from './create-fs';

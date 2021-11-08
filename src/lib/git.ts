@@ -5,9 +5,7 @@ import type { PromiseFsClient } from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
 import type { HttpClient } from 'isomorphic-git/http/web';
 import nodeFS from 'os/lib/node/fs';
-import FSWorker from './worker?worker';
 
-new FSWorker();
 export function withGitConfig<T>(data: Partial<T>): T & {
   fs: PromiseFsClient;
   http: HttpClient;

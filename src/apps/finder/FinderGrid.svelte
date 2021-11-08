@@ -1,6 +1,5 @@
 <script lang="ts">
-  import fs from 'os/lib/fs/fs';
-  import { onDestroy, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import FinderItem from './FinderItem.svelte';
 
   export let cellWidth = 128,
@@ -18,27 +17,27 @@
   let items = [];
 
   async function readFiles() {
-    items = fs.readdirSync(path).map((file) => {
-      let stats = fs.statSync(`${path}/${file}`);
-      return {
-        name: file,
-        path: `${path}/${file}`,
-        type: stats.isDirectory() ? 'folder' : 'file',
-        size: stats.size,
-      };
-    });
+    // items = fs.readdirSync(path).map((file) => {
+    //   let stats = fs.statSync(`${path}/${file}`);
+    //   return {
+    //     name: file,
+    //     path: `${path}/${file}`,
+    //     type: stats.isDirectory() ? 'folder' : 'file',
+    //     size: stats.size,
+    //   };
+    // });
   }
 
   onMount(() => {
     readFiles();
-    fs.watch(path, () => {
-      readFiles();
-    });
+    // fs.watch(path, () => {
+    //   readFiles();
+    // });
   });
 
-  onDestroy(() => {
-    fs.events.off('writeFile', readFiles);
-  });
+  // onDestroy(() => {
+  //   fs.events.off('writeFile', readFiles);
+  // });
 </script>
 
 <div class="grid-container">

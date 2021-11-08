@@ -8,7 +8,7 @@ import {
 } from '../core/file_system';
 import { ApiError, ErrorCode } from '../core/api_error';
 import { FileFlag, ActionType } from '../core/file_flag';
-import { default as Stats, FileType } from '../../node/fs/node_fs_statsfs_stats';
+import { default as Stats, FileType } from '../core/stats';
 import type { File as IFile } from '../core/file';
 import * as path from 'path';
 import global from '../../global';

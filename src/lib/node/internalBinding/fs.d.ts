@@ -56,7 +56,11 @@ declare namespace InternalFSBinding {
 
   function access(path: StringOrBuffer, mode: number, req: FSReqCallback): void;
   function access(path: StringOrBuffer, mode: number, req: undefined, ctx: FSSyncContext): void;
-  function access(path: StringOrBuffer, mode: number, usePromises: typeof kUsePromises): Promise<void>;
+  function access(
+    path: StringOrBuffer,
+    mode: number,
+    usePromises: typeof kUsePromises,
+  ): Promise<void>;
 
   function chmod(path: string, mode: number, req: FSReqCallback): void;
   function chmod(path: string, mode: number, req: undefined, ctx: FSSyncContext): void;
@@ -64,14 +68,35 @@ declare namespace InternalFSBinding {
 
   function chown(path: string, uid: number, gid: number, req: FSReqCallback): void;
   function chown(path: string, uid: number, gid: number, req: undefined, ctx: FSSyncContext): void;
-  function chown(path: string, uid: number, gid: number, usePromises: typeof kUsePromises): Promise<void>;
+  function chown(
+    path: string,
+    uid: number,
+    gid: number,
+    usePromises: typeof kUsePromises,
+  ): Promise<void>;
 
   function close(fd: number, req: FSReqCallback): void;
   function close(fd: number, req: undefined, ctx: FSSyncContext): void;
 
-  function copyFile(src: StringOrBuffer, dest: StringOrBuffer, mode: number, req: FSReqCallback): void;
-  function copyFile(src: StringOrBuffer, dest: StringOrBuffer, mode: number, req: undefined, ctx: FSSyncContext): void;
-  function copyFile(src: StringOrBuffer, dest: StringOrBuffer, mode: number, usePromises: typeof kUsePromises): Promise<void>;
+  function copyFile(
+    src: StringOrBuffer,
+    dest: StringOrBuffer,
+    mode: number,
+    req: FSReqCallback,
+  ): void;
+  function copyFile(
+    src: StringOrBuffer,
+    dest: StringOrBuffer,
+    mode: number,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): void;
+  function copyFile(
+    src: StringOrBuffer,
+    dest: StringOrBuffer,
+    mode: number,
+    usePromises: typeof kUsePromises,
+  ): Promise<void>;
 
   function fchmod(fd: number, mode: number, req: FSReqCallback): void;
   function fchmod(fd: number, mode: number, req: undefined, ctx: FSSyncContext): void;
@@ -79,21 +104,47 @@ declare namespace InternalFSBinding {
 
   function fchown(fd: number, uid: number, gid: number, req: FSReqCallback): void;
   function fchown(fd: number, uid: number, gid: number, req: undefined, ctx: FSSyncContext): void;
-  function fchown(fd: number, uid: number, gid: number, usePromises: typeof kUsePromises): Promise<void>;
+  function fchown(
+    fd: number,
+    uid: number,
+    gid: number,
+    usePromises: typeof kUsePromises,
+  ): Promise<void>;
 
   function fdatasync(fd: number, req: FSReqCallback): void;
   function fdatasync(fd: number, req: undefined, ctx: FSSyncContext): void;
   function fdatasync(fd: number, usePromises: typeof kUsePromises): Promise<void>;
 
-  function fstat(fd: number, useBigint: boolean, req: FSReqCallback<Float64Array | BigUint64Array>): void;
+  function fstat(
+    fd: number,
+    useBigint: boolean,
+    req: FSReqCallback<Float64Array | BigUint64Array>,
+  ): void;
   function fstat(fd: number, useBigint: true, req: FSReqCallback<BigUint64Array>): void;
   function fstat(fd: number, useBigint: false, req: FSReqCallback<Float64Array>): void;
-  function fstat(fd: number, useBigint: boolean, req: undefined, ctx: FSSyncContext): Float64Array | BigUint64Array;
+  function fstat(
+    fd: number,
+    useBigint: boolean,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): Float64Array | BigUint64Array;
   function fstat(fd: number, useBigint: true, req: undefined, ctx: FSSyncContext): BigUint64Array;
   function fstat(fd: number, useBigint: false, req: undefined, ctx: FSSyncContext): Float64Array;
-  function fstat(fd: number, useBigint: boolean, usePromises: typeof kUsePromises): Promise<Float64Array | BigUint64Array>;
-  function fstat(fd: number, useBigint: true, usePromises: typeof kUsePromises): Promise<BigUint64Array>;
-  function fstat(fd: number, useBigint: false, usePromises: typeof kUsePromises): Promise<Float64Array>;
+  function fstat(
+    fd: number,
+    useBigint: boolean,
+    usePromises: typeof kUsePromises,
+  ): Promise<Float64Array | BigUint64Array>;
+  function fstat(
+    fd: number,
+    useBigint: true,
+    usePromises: typeof kUsePromises,
+  ): Promise<BigUint64Array>;
+  function fstat(
+    fd: number,
+    useBigint: false,
+    usePromises: typeof kUsePromises,
+  ): Promise<Float64Array>;
 
   function fsync(fd: number, req: FSReqCallback): void;
   function fsync(fd: number, req: undefined, ctx: FSSyncContext): void;
@@ -104,123 +155,474 @@ declare namespace InternalFSBinding {
   function ftruncate(fd: number, len: number, usePromises: typeof kUsePromises): Promise<void>;
 
   function futimes(fd: number, atime: number, mtime: number, req: FSReqCallback): void;
-  function futimes(fd: number, atime: number, mtime: number, req: undefined, ctx: FSSyncContext): void;
-  function futimes(fd: number, atime: number, mtime: number, usePromises: typeof kUsePromises): Promise<void>;
+  function futimes(
+    fd: number,
+    atime: number,
+    mtime: number,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): void;
+  function futimes(
+    fd: number,
+    atime: number,
+    mtime: number,
+    usePromises: typeof kUsePromises,
+  ): Promise<void>;
 
   function internalModuleReadJSON(path: string): [] | [string, boolean];
   function internalModuleStat(path: string): number;
-  
+
   function lchown(path: string, uid: number, gid: number, req: FSReqCallback): void;
   function lchown(path: string, uid: number, gid: number, req: undefined, ctx: FSSyncContext): void;
-  function lchown(path: string, uid: number, gid: number, usePromises: typeof kUsePromises): Promise<void>;
+  function lchown(
+    path: string,
+    uid: number,
+    gid: number,
+    usePromises: typeof kUsePromises,
+  ): Promise<void>;
 
   function link(existingPath: string, newPath: string, req: FSReqCallback): void;
   function link(existingPath: string, newPath: string, req: undefined, ctx: FSSyncContext): void;
-  function link(existingPath: string, newPath: string, usePromises: typeof kUsePromises): Promise<void>;
+  function link(
+    existingPath: string,
+    newPath: string,
+    usePromises: typeof kUsePromises,
+  ): Promise<void>;
 
-  function lstat(path: StringOrBuffer, useBigint: boolean, req: FSReqCallback<Float64Array | BigUint64Array>): void;
+  function lstat(
+    path: StringOrBuffer,
+    useBigint: boolean,
+    req: FSReqCallback<Float64Array | BigUint64Array>,
+  ): void;
   function lstat(path: StringOrBuffer, useBigint: true, req: FSReqCallback<BigUint64Array>): void;
   function lstat(path: StringOrBuffer, useBigint: false, req: FSReqCallback<Float64Array>): void;
-  function lstat(path: StringOrBuffer, useBigint: boolean, req: undefined, ctx: FSSyncContext): Float64Array | BigUint64Array;
-  function lstat(path: StringOrBuffer, useBigint: true, req: undefined, ctx: FSSyncContext): BigUint64Array;
-  function lstat(path: StringOrBuffer, useBigint: false, req: undefined, ctx: FSSyncContext): Float64Array;
-  function lstat(path: StringOrBuffer, useBigint: boolean, usePromises: typeof kUsePromises): Promise<Float64Array | BigUint64Array>;
-  function lstat(path: StringOrBuffer, useBigint: true, usePromises: typeof kUsePromises): Promise<BigUint64Array>;
-  function lstat(path: StringOrBuffer, useBigint: false, usePromises: typeof kUsePromises): Promise<Float64Array>;
+  function lstat(
+    path: StringOrBuffer,
+    useBigint: boolean,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): Float64Array | BigUint64Array;
+  function lstat(
+    path: StringOrBuffer,
+    useBigint: true,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): BigUint64Array;
+  function lstat(
+    path: StringOrBuffer,
+    useBigint: false,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): Float64Array;
+  function lstat(
+    path: StringOrBuffer,
+    useBigint: boolean,
+    usePromises: typeof kUsePromises,
+  ): Promise<Float64Array | BigUint64Array>;
+  function lstat(
+    path: StringOrBuffer,
+    useBigint: true,
+    usePromises: typeof kUsePromises,
+  ): Promise<BigUint64Array>;
+  function lstat(
+    path: StringOrBuffer,
+    useBigint: false,
+    usePromises: typeof kUsePromises,
+  ): Promise<Float64Array>;
 
   function lutimes(path: string, atime: number, mtime: number, req: FSReqCallback): void;
-  function lutimes(path: string, atime: number, mtime: number, req: undefined, ctx: FSSyncContext): void;
-  function lutimes(path: string, atime: number, mtime: number, usePromises: typeof kUsePromises): Promise<void>;
+  function lutimes(
+    path: string,
+    atime: number,
+    mtime: number,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): void;
+  function lutimes(
+    path: string,
+    atime: number,
+    mtime: number,
+    usePromises: typeof kUsePromises,
+  ): Promise<void>;
 
   function mkdtemp(prefix: string, encoding: unknown, req: FSReqCallback<string>): void;
   function mkdtemp(prefix: string, encoding: unknown, req: undefined, ctx: FSSyncContext): string;
-  function mkdtemp(prefix: string, encoding: unknown, usePromises: typeof kUsePromises): Promise<string>;
+  function mkdtemp(
+    prefix: string,
+    encoding: unknown,
+    usePromises: typeof kUsePromises,
+  ): Promise<string>;
 
-  function mkdir(path: string, mode: number, recursive: boolean, req: FSReqCallback<void | string>): void;
+  function mkdir(
+    path: string,
+    mode: number,
+    recursive: boolean,
+    req: FSReqCallback<void | string>,
+  ): void;
   function mkdir(path: string, mode: number, recursive: true, req: FSReqCallback<string>): void;
   function mkdir(path: string, mode: number, recursive: false, req: FSReqCallback<void>): void;
-  function mkdir(path: string, mode: number, recursive: boolean, req: undefined, ctx: FSSyncContext): void | string;
-  function mkdir(path: string, mode: number, recursive: true, req: undefined, ctx: FSSyncContext): string;
-  function mkdir(path: string, mode: number, recursive: false, req: undefined, ctx: FSSyncContext): void;
-  function mkdir(path: string, mode: number, recursive: boolean, usePromises: typeof kUsePromises): Promise<void | string>;
-  function mkdir(path: string, mode: number, recursive: true, usePromises: typeof kUsePromises): Promise<string>;
-  function mkdir(path: string, mode: number, recursive: false, usePromises: typeof kUsePromises): Promise<void>;
+  function mkdir(
+    path: string,
+    mode: number,
+    recursive: boolean,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): void | string;
+  function mkdir(
+    path: string,
+    mode: number,
+    recursive: true,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): string;
+  function mkdir(
+    path: string,
+    mode: number,
+    recursive: false,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): void;
+  function mkdir(
+    path: string,
+    mode: number,
+    recursive: boolean,
+    usePromises: typeof kUsePromises,
+  ): Promise<void | string>;
+  function mkdir(
+    path: string,
+    mode: number,
+    recursive: true,
+    usePromises: typeof kUsePromises,
+  ): Promise<string>;
+  function mkdir(
+    path: string,
+    mode: number,
+    recursive: false,
+    usePromises: typeof kUsePromises,
+  ): Promise<void>;
 
-  function open(path: StringOrBuffer, flags: number, mode: number, req: FSReqCallback<number>): void;
-  function open(path: StringOrBuffer, flags: number, mode: number, req: undefined, ctx: FSSyncContext): number;
+  function open(
+    path: StringOrBuffer,
+    flags: number,
+    mode: number,
+    req: FSReqCallback<number>,
+  ): void;
+  function open(
+    path: StringOrBuffer,
+    flags: number,
+    mode: number,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): number;
 
-  function openFileHandle(path: StringOrBuffer, flags: number, mode: number, usePromises: typeof kUsePromises): Promise<FileHandle>;
+  function openFileHandle(
+    path: StringOrBuffer,
+    flags: number,
+    mode: number,
+    usePromises: typeof kUsePromises,
+  ): Promise<FileHandle>;
 
-  function read(fd: number, buffer: ArrayBufferView, offset: number, length: number, position: number, req: FSReqCallback<number>): void;
-  function read(fd: number, buffer: ArrayBufferView, offset: number, length: number, position: number, req: undefined, ctx: FSSyncContext): number;
-  function read(fd: number, buffer: ArrayBufferView, offset: number, length: number, position: number, usePromises: typeof kUsePromises): Promise<number>;
+  function read(
+    fd: number,
+    buffer: ArrayBufferView,
+    offset: number,
+    length: number,
+    position: number,
+    req: FSReqCallback<number>,
+  ): void;
+  function read(
+    fd: number,
+    buffer: ArrayBufferView,
+    offset: number,
+    length: number,
+    position: number,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): number;
+  function read(
+    fd: number,
+    buffer: ArrayBufferView,
+    offset: number,
+    length: number,
+    position: number,
+    usePromises: typeof kUsePromises,
+  ): Promise<number>;
 
-  function readBuffers(fd: number, buffers: ArrayBufferView[], position: number, req: FSReqCallback<number>): void;
-  function readBuffers(fd: number, buffers: ArrayBufferView[], position: number, req: undefined, ctx: FSSyncContext): number;
-  function readBuffers(fd: number, buffers: ArrayBufferView[], position: number, usePromises: typeof kUsePromises): Promise<number>;
+  function readBuffers(
+    fd: number,
+    buffers: ArrayBufferView[],
+    position: number,
+    req: FSReqCallback<number>,
+  ): void;
+  function readBuffers(
+    fd: number,
+    buffers: ArrayBufferView[],
+    position: number,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): number;
+  function readBuffers(
+    fd: number,
+    buffers: ArrayBufferView[],
+    position: number,
+    usePromises: typeof kUsePromises,
+  ): Promise<number>;
 
-  function readdir(path: StringOrBuffer, encoding: unknown, withFileTypes: boolean, req: FSReqCallback<string[] | [string[], number[]]>): void;
-  function readdir(path: StringOrBuffer, encoding: unknown, withFileTypes: true, req: FSReqCallback<[string[], number[]]>): void;
-  function readdir(path: StringOrBuffer, encoding: unknown, withFileTypes: false, req: FSReqCallback<string[]>): void;
-  function readdir(path: StringOrBuffer, encoding: unknown, withFileTypes: boolean, req: undefined, ctx: FSSyncContext): string[] | [string[], number[]];
-  function readdir(path: StringOrBuffer, encoding: unknown, withFileTypes: true, req: undefined, ctx: FSSyncContext): [string[], number[]];
-  function readdir(path: StringOrBuffer, encoding: unknown, withFileTypes: false, req: undefined, ctx: FSSyncContext): string[];
-  function readdir(path: StringOrBuffer, encoding: unknown, withFileTypes: boolean, usePromises: typeof kUsePromises): Promise<string[] | [string[], number[]]>;
-  function readdir(path: StringOrBuffer, encoding: unknown, withFileTypes: true, usePromises: typeof kUsePromises): Promise<[string[], number[]]>;
-  function readdir(path: StringOrBuffer, encoding: unknown, withFileTypes: false, usePromises: typeof kUsePromises): Promise<string[]>;
+  function readdir(
+    path: StringOrBuffer,
+    encoding: unknown,
+    withFileTypes: boolean,
+    req: FSReqCallback<string[] | [string[], number[]]>,
+  ): void;
+  function readdir(
+    path: StringOrBuffer,
+    encoding: unknown,
+    withFileTypes: true,
+    req: FSReqCallback<[string[], number[]]>,
+  ): void;
+  function readdir(
+    path: StringOrBuffer,
+    encoding: unknown,
+    withFileTypes: false,
+    req: FSReqCallback<string[]>,
+  ): void;
+  function readdir(
+    path: StringOrBuffer,
+    encoding: unknown,
+    withFileTypes: boolean,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): string[] | [string[], number[]];
+  function readdir(
+    path: StringOrBuffer,
+    encoding: unknown,
+    withFileTypes: true,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): [string[], number[]];
+  function readdir(
+    path: StringOrBuffer,
+    encoding: unknown,
+    withFileTypes: false,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): string[];
+  function readdir(
+    path: StringOrBuffer,
+    encoding: unknown,
+    withFileTypes: boolean,
+    usePromises: typeof kUsePromises,
+  ): Promise<string[] | [string[], number[]]>;
+  function readdir(
+    path: StringOrBuffer,
+    encoding: unknown,
+    withFileTypes: true,
+    usePromises: typeof kUsePromises,
+  ): Promise<[string[], number[]]>;
+  function readdir(
+    path: StringOrBuffer,
+    encoding: unknown,
+    withFileTypes: false,
+    usePromises: typeof kUsePromises,
+  ): Promise<string[]>;
 
-  function readlink(path: StringOrBuffer, encoding: unknown, req: FSReqCallback<string | Buffer>): void;
-  function readlink(path: StringOrBuffer, encoding: unknown, req: undefined, ctx: FSSyncContext): string | Buffer;
-  function readlink(path: StringOrBuffer, encoding: unknown, usePromises: typeof kUsePromises): Promise<string | Buffer>;
+  function readlink(
+    path: StringOrBuffer,
+    encoding: unknown,
+    req: FSReqCallback<string | Buffer>,
+  ): void;
+  function readlink(
+    path: StringOrBuffer,
+    encoding: unknown,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): string | Buffer;
+  function readlink(
+    path: StringOrBuffer,
+    encoding: unknown,
+    usePromises: typeof kUsePromises,
+  ): Promise<string | Buffer>;
 
-  function realpath(path: StringOrBuffer, encoding: unknown, req: FSReqCallback<string | Buffer>): void;
-  function realpath(path: StringOrBuffer, encoding: unknown, req: undefined, ctx: FSSyncContext): string | Buffer;
-  function realpath(path: StringOrBuffer, encoding: unknown, usePromises: typeof kUsePromises): Promise<string | Buffer>;
+  function realpath(
+    path: StringOrBuffer,
+    encoding: unknown,
+    req: FSReqCallback<string | Buffer>,
+  ): void;
+  function realpath(
+    path: StringOrBuffer,
+    encoding: unknown,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): string | Buffer;
+  function realpath(
+    path: StringOrBuffer,
+    encoding: unknown,
+    usePromises: typeof kUsePromises,
+  ): Promise<string | Buffer>;
 
   function rename(oldPath: string, newPath: string, req: FSReqCallback): void;
   function rename(oldPath: string, newPath: string, req: undefined, ctx: FSSyncContext): void;
-  function rename(oldPath: string, newPath: string, usePromises: typeof kUsePromises): Promise<void>;
+  function rename(
+    oldPath: string,
+    newPath: string,
+    usePromises: typeof kUsePromises,
+  ): Promise<void>;
 
   function rmdir(path: string, req: FSReqCallback): void;
   function rmdir(path: string, req: undefined, ctx: FSSyncContext): void;
   function rmdir(path: string, usePromises: typeof kUsePromises): Promise<void>;
 
-  function stat(path: StringOrBuffer, useBigint: boolean, req: FSReqCallback<Float64Array | BigUint64Array>): void;
+  function stat(
+    path: StringOrBuffer,
+    useBigint: boolean,
+    req: FSReqCallback<Float64Array | BigUint64Array>,
+  ): void;
   function stat(path: StringOrBuffer, useBigint: true, req: FSReqCallback<BigUint64Array>): void;
   function stat(path: StringOrBuffer, useBigint: false, req: FSReqCallback<Float64Array>): void;
-  function stat(path: StringOrBuffer, useBigint: boolean, req: undefined, ctx: FSSyncContext): Float64Array | BigUint64Array;
-  function stat(path: StringOrBuffer, useBigint: true, req: undefined, ctx: FSSyncContext): BigUint64Array;
-  function stat(path: StringOrBuffer, useBigint: false, req: undefined, ctx: FSSyncContext): Float64Array;
-  function stat(path: StringOrBuffer, useBigint: boolean, usePromises: typeof kUsePromises): Promise<Float64Array | BigUint64Array>;
-  function stat(path: StringOrBuffer, useBigint: true, usePromises: typeof kUsePromises): Promise<BigUint64Array>;
-  function stat(path: StringOrBuffer, useBigint: false, usePromises: typeof kUsePromises): Promise<Float64Array>;
+  function stat(
+    path: StringOrBuffer,
+    useBigint: boolean,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): Float64Array | BigUint64Array;
+  function stat(
+    path: StringOrBuffer,
+    useBigint: true,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): BigUint64Array;
+  function stat(
+    path: StringOrBuffer,
+    useBigint: false,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): Float64Array;
+  function stat(
+    path: StringOrBuffer,
+    useBigint: boolean,
+    usePromises: typeof kUsePromises,
+  ): Promise<Float64Array | BigUint64Array>;
+  function stat(
+    path: StringOrBuffer,
+    useBigint: true,
+    usePromises: typeof kUsePromises,
+  ): Promise<BigUint64Array>;
+  function stat(
+    path: StringOrBuffer,
+    useBigint: false,
+    usePromises: typeof kUsePromises,
+  ): Promise<Float64Array>;
 
-  function symlink(target: StringOrBuffer, path: StringOrBuffer, type: number, req: FSReqCallback): void;
-  function symlink(target: StringOrBuffer, path: StringOrBuffer, type: number, req: undefined, ctx: FSSyncContext): void;
-  function symlink(target: StringOrBuffer, path: StringOrBuffer, type: number, usePromises: typeof kUsePromises): Promise<void>;
-  
+  function symlink(
+    target: StringOrBuffer,
+    path: StringOrBuffer,
+    type: number,
+    req: FSReqCallback,
+  ): void;
+  function symlink(
+    target: StringOrBuffer,
+    path: StringOrBuffer,
+    type: number,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): void;
+  function symlink(
+    target: StringOrBuffer,
+    path: StringOrBuffer,
+    type: number,
+    usePromises: typeof kUsePromises,
+  ): Promise<void>;
+
   function unlink(path: string, req: FSReqCallback): void;
   function unlink(path: string, req: undefined, ctx: FSSyncContext): void;
   function unlink(path: string, usePromises: typeof kUsePromises): Promise<void>;
 
   function utimes(path: string, atime: number, mtime: number, req: FSReqCallback): void;
-  function utimes(path: string, atime: number, mtime: number, req: undefined, ctx: FSSyncContext): void;
-  function utimes(path: string, atime: number, mtime: number, usePromises: typeof kUsePromises): Promise<void>;
+  function utimes(
+    path: string,
+    atime: number,
+    mtime: number,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): void;
+  function utimes(
+    path: string,
+    atime: number,
+    mtime: number,
+    usePromises: typeof kUsePromises,
+  ): Promise<void>;
 
-  function writeBuffer(fd: number, buffer: ArrayBufferView, offset: number, length: number, position: number | null, req: FSReqCallback<number>): void;
-  function writeBuffer(fd: number, buffer: ArrayBufferView, offset: number, length: number, position: number | null, req: undefined, ctx: FSSyncContext): number;
-  function writeBuffer(fd: number, buffer: ArrayBufferView, offset: number, length: number, position: number | null, usePromises: typeof kUsePromises): Promise<number>;
+  function writeBuffer(
+    fd: number,
+    buffer: ArrayBufferView,
+    offset: number,
+    length: number,
+    position: number | null,
+    req: FSReqCallback<number>,
+  ): void;
+  function writeBuffer(
+    fd: number,
+    buffer: ArrayBufferView,
+    offset: number,
+    length: number,
+    position: number | null,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): number;
+  function writeBuffer(
+    fd: number,
+    buffer: ArrayBufferView,
+    offset: number,
+    length: number,
+    position: number | null,
+    usePromises: typeof kUsePromises,
+  ): Promise<number>;
 
-  function writeBuffers(fd: number, buffers: ArrayBufferView[], position: number, req: FSReqCallback<number>): void;
-  function writeBuffers(fd: number, buffers: ArrayBufferView[], position: number, req: undefined, ctx: FSSyncContext): number;
-  function writeBuffers(fd: number, buffers: ArrayBufferView[], position: number, usePromises: typeof kUsePromises): Promise<number>;
+  function writeBuffers(
+    fd: number,
+    buffers: ArrayBufferView[],
+    position: number,
+    req: FSReqCallback<number>,
+  ): void;
+  function writeBuffers(
+    fd: number,
+    buffers: ArrayBufferView[],
+    position: number,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): number;
+  function writeBuffers(
+    fd: number,
+    buffers: ArrayBufferView[],
+    position: number,
+    usePromises: typeof kUsePromises,
+  ): Promise<number>;
 
-  function writeString(fd: number, value: string, pos: unknown, encoding: unknown, req: FSReqCallback<number>): void;
-  function writeString(fd: number, value: string, pos: unknown, encoding: unknown, req: undefined, ctx: FSSyncContext): number;
-  function writeString(fd: number, value: string, pos: unknown, encoding: unknown, usePromises: typeof kUsePromises): Promise<number>;
+  function writeString(
+    fd: number,
+    value: string,
+    pos: unknown,
+    encoding: unknown,
+    req: FSReqCallback<number>,
+  ): void;
+  function writeString(
+    fd: number,
+    value: string,
+    pos: unknown,
+    encoding: unknown,
+    req: undefined,
+    ctx: FSSyncContext,
+  ): number;
+  function writeString(
+    fd: number,
+    value: string,
+    pos: unknown,
+    encoding: unknown,
+    usePromises: typeof kUsePromises,
+  ): Promise<number>;
 }
 
-declare function InternalBinding(binding: 'fs'): {
+export type InternalFS = {
   FSReqCallback: typeof InternalFSBinding.FSReqCallback;
 
   FileHandle: typeof InternalFSBinding.FileHandle;

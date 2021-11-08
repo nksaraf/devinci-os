@@ -1,5 +1,10 @@
+import toExport from '../global';
 import { constants } from './constants';
 import type { InternalAsyncWrapBinding } from './internalBinding/async_wrap';
+import * as fs from './internalBinding/fs';
+
+class FSEvent {}
+
 export const getInternalBinding = (name) =>
   ({
     constants,
@@ -27,13 +32,19 @@ export const getInternalBinding = (name) =>
           cb: (cb: (...args: any[]) => boolean | undefined, ...args: any[]) => boolean | undefined,
           ...args: any[]
         ) => boolean | undefined,
-      ): void {
-        
-      },
+      ): void {},
+      setupHooks() {},
     },
     blob: {},
     block_list: {},
-    buffer: {},
+    buffer: {
+      setBufferPrototype(proto): void {
+        toExport.Buffer.prototype = proto;
+      },
+      getZeroFillToggle() {
+        return true;
+      },
+    },
     cares_wrap: {},
     config: {
       isDebugBuild: false,
@@ -49,27 +60,55 @@ export const getInternalBinding = (name) =>
     },
     contextify: {},
     credentials: {},
-    errors: {},
-    fs: {},
+    errors: {
+      setPrepareStackTraceCallback(
+        prepareStackTrace: (
+          error: Error,
+          structuredStackTrace: NodeJS.CallSite[],
+        ) => NodeJS.CallSite[],
+      ): void {},
+      setEnhanceStackForFatalException(
+        enhanceStackForFatalException: (error: Error, message: string) => string,
+      ): void {},
+    },
+    fs: fs,
     fs_dir: {},
-    fs_event_wrap: {},
+    fs_event_wrap: {
+      FSEvent,
+    },
     heap_utils: {},
     http2: {},
     http_parser: {},
     inspector: {},
     js_stream: {},
     js_udp_wrap: {},
-    messaging: {},
+    messaging: {
+      setDeserializerCreateObjectFunction: (
+        createObjectFunction: (data: Buffer, type: string, subtype: string) => any,
+      ): void => {},
+      MessagePort,
+      JSTransferable: class JSTrasnferable {},
+    },
     module_wrap: {},
     native_module: {
       moduleIds: [],
       compileFunction: () => {
         throw new Error('Not implemented');
       },
+      config: '{}',
     },
     options: {},
     os: {},
-    performance: {},
+    performance: {
+      getTimeOrigin: () => 0,
+      getTimeOriginTimestamp: () => 0,
+      constants: {
+        NODE_PERFORMANCE_ENTRY_TYPE_GC: 0,
+        NODE_PERFORMANCE_ENTRY_TYPE_HTTP2: 1,
+        NODE_PERFORMANCE_ENTRY_TYPE_HTTP: 2,
+      },
+      setupObservers() {},
+    },
     pipe_wrap: {},
     process_wrap: {},
     process_methods: {},
@@ -79,17 +118,66 @@ export const getInternalBinding = (name) =>
     spawn_sync: {},
     stream_pipe: {},
     stream_wrap: {},
-    string_decoder: {},
-    symbols: {},
-    task_queue: {},
+    string_decoder: {
+      encodings: [],
+    },
+    symbols: {
+      handle_onclose: Symbol('handle_onclose'),
+      messaging_deserialize_symbol: Symbol('messaging_deserialize_symbol'),
+      messaging_transfer_symbol: Symbol('messaging_transfer_symbol'),
+      messaging_clone_symbol: Symbol('messaging_clone_symbol'),
+      messaging_transfer_list_symbol: Symbol('messaging_transfer_list_symbol'),
+    },
+    task_queue: {
+      tickInfo: {},
+      promiseRejectEvents: {
+        kPromiseRejectWithNoHandler: Symbol('kPromiseRejectWithNoHandler'),
+        kPromiseHandlerAddedAfterReject: Symbol('kPromiseHandlerAddedAfterReject'),
+        kPromiseResolveAfterResolved: Symbol('kPromiseResolveAfterResolved'),
+        kPromiseRejectAfterResolved: Symbol('kPromiseRejectAfterResolved'),
+      },
+      setPromiseRejectCallback: (
+        callback: (promise: Promise<any>, reason: any) => void,
+      ): void => {},
+      setTickCallback(callback: (...args: any[]) => void): void {},
+    },
     tcp_wrap: {},
-    timers: {},
-    trace_events: {},
+    timers: {
+      setupTimers() {},
+    },
+    trace_events: {
+      setTraceCategoryStateUpdateHandler(
+        callback: (categoryGroupEnabled: string, state: number) => void,
+      ): void {},
+    },
     tty_wrap: {},
     types: {
-      isNativeError: (value: unknown) => {
-        return value instanceof Error;
-      },
+      isNativeError: (value: unknown) => value instanceof Error,
+      isSet: (x: any) => x instanceof Set,
+      isWeakSet: (x: any) => x instanceof WeakSet,
+      isAnyArrayBuffer: (x: any) => x instanceof ArrayBuffer,
+      isUint8Array: (x: any) => x instanceof Uint8Array,
+      isDataView: (x: any) => x instanceof DataView,
+      isExternal: (x: any) => false,
+      isMap: (x: any) => x instanceof Map,
+      isWeakMap: (x: any) => x instanceof WeakMap,
+      isMapIterator: (x: any) => (x || {}).constructor === new Map().entries().constructor,
+      isPromise: (x: any) => x instanceof Promise,
+      isSetIterator: (x: any) => (x || {}).constructor === new Set().entries().constructor,
+      isTypedArray: (x: any) =>
+        x instanceof Int8Array ||
+        x instanceof Uint8Array ||
+        x instanceof Uint8ClampedArray ||
+        x instanceof Int16Array ||
+        x instanceof Uint16Array ||
+        x instanceof Int32Array ||
+        x instanceof Uint32Array ||
+        x instanceof Float32Array ||
+        x instanceof Float64Array,
+      isRegExp: (x: any) => x instanceof RegExp,
+      isDate: (x: any) => x instanceof Date,
+      isModuleNamespaceObject: (x: any) => false,
+      isBoxedPrimitive: (x: any) => false,
     },
     udp_wrap: {},
     url: {
@@ -119,6 +207,7 @@ export const getInternalBinding = (name) =>
         x instanceof Float64Array,
       isRegExp: (x: any) => x instanceof RegExp,
       isDate: (x: any) => x instanceof Date,
+      getConstructorName: (x: any) => x && x.constructor && x.constructor.name,
       // kPending,
       // kRejected,
       startSigintWatchdog: () => {},

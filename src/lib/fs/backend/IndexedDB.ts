@@ -1,34 +1,40 @@
-import {CallbackOneArg, CallbackTwoArgs, FileSystemOptions} from '../core/file_system';
-import {AsyncKeyValueROTransaction, AsyncKeyValueRWTransaction, AsyncKeyValueStore, AsyncKeyValueFileSystem} from '../generic/key_value_filesystem';
-import {ApiError, ErrorCode} from '../core/api_error';
-import global from '../../global
-import {arrayBuffer2Buffer, buffer2ArrayBuffer} from '../core/util';
+import type { CallbackOneArg, CallbackTwoArgs, FileSystemOptions } from '../core/file_system';
+import {
+  AsyncKeyValueROTransaction,
+  AsyncKeyValueRWTransaction,
+  AsyncKeyValueStore,
+  AsyncKeyValueFileSystem,
+} from '../generic/key_value_filesystem';
+import { ApiError, ErrorCode } from '../core/api_error';
+import global from '../../global';
+import { arrayBuffer2Buffer, buffer2ArrayBuffer } from '../core/util';
 /**
  * Get the indexedDB constructor for the current browser.
  * @hidden
  */
-const indexedDB: IDBFactory =
-    (() =>  {
-        try {
-            return global.indexedDB ||
-                (<any> global).mozIndexedDB ||
-                (<any> global).webkitIndexedDB ||
-                global.msIndexedDB;
-        } catch {
-            return null;
-        }
-    })();
+const indexedDB: IDBFactory = (() => {
+  try {
+    return (
+      global.indexedDB ||
+      (<any>global).mozIndexedDB ||
+      (<any>global).webkitIndexedDB ||
+      global.msIndexedDB
+    );
+  } catch {
+    return null;
+  }
+})();
 
 /**
  * Converts a DOMException or a DOMError from an IndexedDB event into a
  * standardized BrowserFS API error.
  * @hidden
  */
-function convertError(e: {name: string}, message: string = e.toString()): ApiError {
+function convertError(e: { name: string }, message: string = e.toString()): ApiError {
   switch (e.name) {
-    case "NotFoundError":
+    case 'NotFoundError':
       return new ApiError(ErrorCode.ENOENT, message);
-    case "QuotaExceededError":
+    case 'QuotaExceededError':
       return new ApiError(ErrorCode.ENOSPC, message);
     default:
       // The rest do not seem to map cleanly to standard error codes.
@@ -42,8 +48,12 @@ function convertError(e: {name: string}, message: string = e.toString()): ApiErr
  * version of the error, and let the error bubble up.
  * @hidden
  */
-function onErrorHandler(cb: (e: ApiError) => void, code: ErrorCode = ErrorCode.EIO, message: string | null = null): (e?: any) => void {
-  return function(e?: any): void {
+function onErrorHandler(
+  cb: (e: ApiError) => void,
+  code: ErrorCode = ErrorCode.EIO,
+  message: string | null = null,
+): (e?: any) => void {
+  return function (e?: any): void {
     // Prevent the error from canceling the transaction.
     e.preventDefault();
     cb(new ApiError(code, message !== null ? message : undefined));
@@ -54,7 +64,7 @@ function onErrorHandler(cb: (e: ApiError) => void, code: ErrorCode = ErrorCode.E
  * @hidden
  */
 export class IndexedDBROTransaction implements AsyncKeyValueROTransaction {
-  constructor(public tx: IDBTransaction, public store: IDBObjectStore) { }
+  constructor(public tx: IDBTransaction, public store: IDBObjectStore) {}
 
   public get(key: string, cb: CallbackTwoArgs<Buffer>): void {
     try {
@@ -63,7 +73,7 @@ export class IndexedDBROTransaction implements AsyncKeyValueROTransaction {
       r.onsuccess = (event) => {
         // IDB returns the value 'undefined' when you try to get keys that
         // don't exist. The caller expects this behavior.
-        const result: any = (<any> event.target).result;
+        const result: any = (<any>event.target).result;
         if (result === undefined) {
           cb(null, result);
         } else {
@@ -80,7 +90,10 @@ export class IndexedDBROTransaction implements AsyncKeyValueROTransaction {
 /**
  * @hidden
  */
-export class IndexedDBRWTransaction extends IndexedDBROTransaction implements AsyncKeyValueRWTransaction, AsyncKeyValueROTransaction {
+export class IndexedDBRWTransaction
+  extends IndexedDBROTransaction
+  implements AsyncKeyValueRWTransaction, AsyncKeyValueROTransaction
+{
   constructor(tx: IDBTransaction, store: IDBObjectStore) {
     super(tx, store);
   }
@@ -138,7 +151,7 @@ export class IndexedDBStore implements AsyncKeyValueStore {
     const openReq: IDBOpenDBRequest = indexedDB.open(storeName, 1);
 
     openReq.onupgradeneeded = (event) => {
-      const db: IDBDatabase = (<any> event.target).result;
+      const db: IDBDatabase = (<any>event.target).result;
       // Huh. This should never happen; we're at version 1. Why does another
       // database exist?
       if (db.objectStoreNames.contains(storeName)) {
@@ -148,18 +161,16 @@ export class IndexedDBStore implements AsyncKeyValueStore {
     };
 
     openReq.onsuccess = (event) => {
-      cb(null, new IndexedDBStore((<any> event.target).result, storeName));
+      cb(null, new IndexedDBStore((<any>event.target).result, storeName));
     };
 
     openReq.onerror = onErrorHandler(cb, ErrorCode.EACCES);
   }
 
-  constructor(private db: IDBDatabase, private storeName: string) {
-
-  }
+  constructor(private db: IDBDatabase, private storeName: string) {}
 
   public name(): string {
-    return IndexedDBFileSystem.Name + " - " + this.storeName;
+    return IndexedDBFileSystem.Name + ' - ' + this.storeName;
   }
 
   public clear(cb: CallbackOneArg): void {
@@ -207,28 +218,35 @@ export interface IndexedDBFileSystemOptions {
  * A file system that uses the IndexedDB key value file system.
  */
 export default class IndexedDBFileSystem extends AsyncKeyValueFileSystem {
-  public static readonly Name = "IndexedDB";
+  public static readonly Name = 'IndexedDB';
 
   public static readonly Options: FileSystemOptions = {
     storeName: {
-      type: "string",
+      type: 'string',
       optional: true,
-      description: "The name of this file system. You can have multiple IndexedDB file systems operating at once, but each must have a different name."
+      description:
+        'The name of this file system. You can have multiple IndexedDB file systems operating at once, but each must have a different name.',
     },
     cacheSize: {
-      type: "number",
+      type: 'number',
       optional: true,
-      description: "The size of the inode cache. Defaults to 100. A size of 0 or below disables caching."
-    }
+      description:
+        'The size of the inode cache. Defaults to 100. A size of 0 or below disables caching.',
+    },
   };
 
   /**
    * Constructs an IndexedDB file system with the given options.
    */
-  public static Create(opts: IndexedDBFileSystemOptions = {}, cb: CallbackTwoArgs<IndexedDBFileSystem>): void {
+  public static Create(
+    opts: IndexedDBFileSystemOptions = {},
+    cb: CallbackTwoArgs<IndexedDBFileSystem>,
+  ): void {
     IndexedDBStore.Create(opts.storeName ? opts.storeName : 'browserfs', (e, store?) => {
       if (store) {
-        const idbfs = new IndexedDBFileSystem(typeof(opts.cacheSize) === 'number' ? opts.cacheSize : 100);
+        const idbfs = new IndexedDBFileSystem(
+          typeof opts.cacheSize === 'number' ? opts.cacheSize : 100,
+        );
         idbfs.init(store, (e) => {
           if (e) {
             cb(e);
@@ -247,7 +265,7 @@ export default class IndexedDBFileSystem extends AsyncKeyValueFileSystem {
     // In Chrome, it "just works", and clears the database when you leave the page.
     // Untested: Opera, IE.
     try {
-      return typeof indexedDB !== 'undefined' && null !== indexedDB.open("__browserfs_test__");
+      return typeof indexedDB !== 'undefined' && null !== indexedDB.open('__browserfs_test__');
     } catch (e) {
       return false;
     }

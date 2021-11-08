@@ -1,1 +1,1 @@
-import './node/main';
+'./node/main';

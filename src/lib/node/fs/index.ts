@@ -6,35 +6,32 @@ import type { FSModule } from './fs';
 // let writeFile = fs.writeFile;
 // writeFile(...)
 
-/**
- * @hidden
- */
-let fs: any = new NodeFileSystem();
-/**
- * @hidden
- */
-const _fsMock: FSModule = <any>{};
-/**
- * @hidden
- */
-const fsProto = NodeFileSystem.prototype;
-Object.keys(fsProto).forEach((key) => {
-  if (typeof fs[key] === 'function') {
-    (<any>_fsMock)[key] = function () {
-      return (<Function>fs[key]).apply(fs, arguments);
-    };
-  } else {
-    (<any>_fsMock)[key] = fs[key];
-  }
-});
+let fs = new NodeFileSystem();
+// /**
+//  * @hidden
+//  */
+// const _fsMock: FSModule = <any>{};
+// /**
+//  * @hidden
+//  */
+// const fsProto = NodeFileSystem.prototype;
+// Object.keys(fsProto).forEach((key) => {
+//   if (typeof fs[key] === 'function') {
+//     (<any>_fsMock)[key] = function () {
+//       return (<Function>fs[key]).apply(fs, arguments);
+//     };
+//   } else {
+//     (<any>_fsMock)[key] = fs[key];
+//   }
+// });
 
-_fsMock['changeFSModule'] = function (newFs: NodeFileSystem): void {
-  fs = newFs;
-};
-_fsMock['getFSModule'] = function (): NodeFileSystem {
-  return fs;
-};
-_fsMock['fs'] = NodeFileSystem;
-_fsMock['Stats'] = NodeFileSystem.Stats;
+// _fsMock['changeFSModule'] = function (newFs: NodeFileSystem): void {
+//   fs = newFs;
+// };
+// _fsMock['getFSModule'] = function (): NodeFileSystem {
+//   return fs;
+// };
+// _fsMock['fs'] = NodeFileSystem;
+// _fsMock['Stats'] = NodeFileSystem.Stats;
 
 export default fs;

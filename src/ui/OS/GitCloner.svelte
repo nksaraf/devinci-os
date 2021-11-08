@@ -1,7 +1,5 @@
 <script>
-  import * as fs from 'os/lib/fs/fs';
-
-  import { git, withGitConfig } from 'os/lib/git';
+  import GitCloneWorker from './clone?worker';
 
   import { onMount } from 'svelte';
 
@@ -12,17 +10,7 @@
   };
 
   onMount(() => {
-    fs.promise.then(() => {
-      git.clone(
-        withGitConfig({
-          dir: '/home',
-          url: 'https://github.com/streamich/spyfs',
-          onProgress: (e) => {
-            progress = e;
-          },
-        }),
-      );
-    });
+    new GitCloneWorker();
   });
 
   let oldPhase = progress.phase;

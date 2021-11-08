@@ -7,6 +7,7 @@ import type {
   BFSThreeArgCallback,
 } from '../../fs/core/file_system';
 import { FileFlag } from '../../fs/core/file_flag';
+import type { FileFlagString } from '../../fs/core/file_flag';
 import * as path from 'path';
 import Stats from './fs_stats';
 import setImmediate from '../../fs/generic/setImmediate';
@@ -122,9 +123,9 @@ function normalizePath(p: string): string {
 function normalizeOptions(
   options: any,
   defEnc: string | null,
-  defFlag: string,
+  defFlag: FileFlagString,
   defMode: number | null,
-): { encoding: string; flag: string; mode: number } {
+): { encoding: string; flag: FileFlagString; mode: number } {
   // typeof null === 'object' so special-case handing is needed.
   switch (options === null ? 'null' : typeof options) {
     case 'object':
@@ -431,9 +432,19 @@ export default class NodeFileSystem {
    * @param mode defaults to `0644`
    * @param callback
    */
-  public open(path: string, flag: string, cb?: CallbackTwoArgs<number>): void;
-  public open(path: string, flag: string, mode: number | string, cb?: CallbackTwoArgs<number>): void;
-  public open(path: string, flag: string, arg2?: any, cb: CallbackTwoArgs<number> = nopCb): void {
+  public open(path: string, flag: FileFlagString, cb?: CallbackTwoArgs<number>): void;
+  public open(
+    path: string,
+    flag: FileFlagString,
+    mode: number | string,
+    cb?: CallbackTwoArgs<number>,
+  ): void;
+  public open(
+    path: string,
+    flag: FileFlagString,
+    arg2?: any,
+    cb: CallbackTwoArgs<number> = nopCb,
+  ): void {
     const mode = normalizeMode(arg2, 0x1a4);
     cb = typeof arg2 === 'function' ? arg2 : cb;
     const newCb = wrapCb(cb, 2);
@@ -463,7 +474,7 @@ export default class NodeFileSystem {
    * @param mode defaults to `0644`
    * @return [BrowserFS.File]
    */
-  public openSync(path: string, flag: string, mode: number | string = 0x1a4): number {
+  public openSync(path: string, flag: FileFlagString, mode: number | string = 0x1a4): number {
     return this.getFdForFile(
       assertRoot(this.root).openSync(
         normalizePath(path),
@@ -562,12 +573,7 @@ export default class NodeFileSystem {
     options?: { encoding?: string; mode?: string | number; flag?: string },
     cb?: CallbackOneArg,
   ): void;
-  public writeFile(
-    filename: string,
-    data: any,
-    arg3: any = {},
-    cb: CallbackOneArg = nopCb,
-  ): void {
+  public writeFile(filename: string, data: any, arg3: any = {}, cb: CallbackOneArg = nopCb): void {
     const options = normalizeOptions(arg3, 'utf8', 'w', 0x1a4);
     cb = typeof arg3 === 'function' ? arg3 : cb;
     const newCb = wrapCb(cb, 1);
@@ -1338,12 +1344,7 @@ export default class NodeFileSystem {
    */
   public symlink(srcpath: string, dstpath: string, cb?: CallbackOneArg): void;
   public symlink(srcpath: string, dstpath: string, type?: string, cb?: CallbackOneArg): void;
-  public symlink(
-    srcpath: string,
-    dstpath: string,
-    arg3?: any,
-    cb: CallbackOneArg = nopCb,
-  ): void {
+  public symlink(srcpath: string, dstpath: string, arg3?: any, cb: CallbackOneArg = nopCb): void {
     const type = typeof arg3 === 'string' ? arg3 : 'file';
     cb = typeof arg3 === 'function' ? arg3 : cb;
     const newCb = wrapCb(cb, 1);
@@ -1582,7 +1583,11 @@ export default class NodeFileSystem {
    * @param callback
    */
   public realpath(path: string, cb?: CallbackTwoArgs<string>): void;
-  public realpath(path: string, cache: { [path: string]: string }, cb: CallbackTwoArgs<string>): void;
+  public realpath(
+    path: string,
+    cache: { [path: string]: string },
+    cb: CallbackTwoArgs<string>,
+  ): void;
   public realpath(path: string, arg2?: any, cb: CallbackTwoArgs<string> = nopCb): void {
     const cache = typeof arg2 === 'object' ? arg2 : {};
     cb = typeof arg2 === 'function' ? arg2 : nopCb;

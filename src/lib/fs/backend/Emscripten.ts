@@ -1,10 +1,16 @@
-import {SynchronousFileSystem, CallbackOneArg, CallbackTwoArgs, BFSThreeArgCallback, FileSystemOptions} from '../core/file_system';
-import {default as Stats, FileType} from '../../node/fs/node_fs_statsfs_stats';
-import {FileFlag} from '../core/file_flag';
-import {BaseFile, File} from '../core/file';
-import {uint8Array2Buffer, buffer2Uint8array} from '../core/util';
-import {ApiError, ErrorCode, ErrorStrings} from '../core/api_error';
-import {EmscriptenFSNode} from '../generic/emscripten_fs';
+import {
+  SynchronousFileSystem,
+  CallbackOneArg,
+  CallbackTwoArgs,
+  BFSThreeArgCallback,
+  FileSystemOptions,
+} from '../core/file_system';
+import { default as Stats, FileType } from '../core/stats';
+import type { FileFlag } from '../core/file_flag';
+import { BaseFile, File } from '../core/file';
+import { uint8Array2Buffer, buffer2Uint8array } from '../core/util';
+import { ApiError, ErrorCode, ErrorStrings } from '../core/api_error';
+import type { EmscriptenFSNode } from '../generic/emscripten_fs';
 
 /**
  * @hidden
@@ -36,7 +42,8 @@ export class EmscriptenFile extends BaseFile implements File {
     private _fs: EmscriptenFileSystem,
     private _FS: any,
     private _path: string,
-    private _stream: any) {
+    private _stream: any,
+  ) {
     super();
   }
   public getPos(): number | undefined {
@@ -90,14 +97,25 @@ export class EmscriptenFile extends BaseFile implements File {
       throw convertError(e, this._path);
     }
   }
-  public write(buffer: Buffer, offset: number, length: number, position: number, cb: BFSThreeArgCallback<number, Buffer>): void {
+  public write(
+    buffer: Buffer,
+    offset: number,
+    length: number,
+    position: number,
+    cb: BFSThreeArgCallback<number, Buffer>,
+  ): void {
     try {
       cb(null, this.writeSync(buffer, offset, length, position), buffer);
     } catch (e) {
       cb(e);
     }
   }
-  public writeSync(buffer: Buffer, offset: number, length: number, position: number | null): number {
+  public writeSync(
+    buffer: Buffer,
+    offset: number,
+    length: number,
+    position: number | null,
+  ): number {
     try {
       const u8 = buffer2Uint8array(buffer);
       // Emscripten is particular about what position is set to.
@@ -107,7 +125,13 @@ export class EmscriptenFile extends BaseFile implements File {
       throw convertError(e, this._path);
     }
   }
-  public read(buffer: Buffer, offset: number, length: number, position: number, cb: BFSThreeArgCallback<number, Buffer>): void {
+  public read(
+    buffer: Buffer,
+    offset: number,
+    length: number,
+    position: number,
+    cb: BFSThreeArgCallback<number, Buffer>,
+  ): void {
     try {
       cb(null, this.readSync(buffer, offset, length, position), buffer);
     } catch (e) {
@@ -192,22 +216,27 @@ export interface EmscriptenFileSystemOptions {
  * Mounts an Emscripten file system into the BrowserFS file system.
  */
 export default class EmscriptenFileSystem extends SynchronousFileSystem {
-  public static readonly Name = "EmscriptenFileSystem";
+  public static readonly Name = 'EmscriptenFileSystem';
 
   public static readonly Options: FileSystemOptions = {
     FS: {
-      type: "object",
-      description: "The Emscripten file system to use (the `FS` variable)"
-    }
+      type: 'object',
+      description: 'The Emscripten file system to use (the `FS` variable)',
+    },
   };
 
   /**
    * Create an EmscriptenFileSystem instance with the given options.
    */
-  public static Create(opts: EmscriptenFileSystemOptions, cb: CallbackTwoArgs<EmscriptenFileSystem>): void {
+  public static Create(
+    opts: EmscriptenFileSystemOptions,
+    cb: CallbackTwoArgs<EmscriptenFileSystem>,
+  ): void {
     cb(null, new EmscriptenFileSystem(opts.FS));
   }
-  public static isAvailable(): boolean { return true; }
+  public static isAvailable(): boolean {
+    return true;
+  }
 
   private _FS: any;
 
@@ -215,11 +244,21 @@ export default class EmscriptenFileSystem extends SynchronousFileSystem {
     super();
     this._FS = _FS;
   }
-  public getName(): string { return this._FS.DB_NAME(); }
-  public isReadOnly(): boolean { return false; }
-  public supportsLinks(): boolean { return true; }
-  public supportsProps(): boolean { return true; }
-  public supportsSynch(): boolean { return true; }
+  public getName(): string {
+    return this._FS.DB_NAME();
+  }
+  public isReadOnly(): boolean {
+    return false;
+  }
+  public supportsLinks(): boolean {
+    return true;
+  }
+  public supportsProps(): boolean {
+    return true;
+  }
+  public supportsSynch(): boolean {
+    return true;
+  }
 
   public renameSync(oldPath: string, newPath: string): void {
     try {
@@ -243,7 +282,7 @@ export default class EmscriptenFileSystem extends SynchronousFileSystem {
         stats.mode,
         stats.atime.getTime(),
         stats.mtime.getTime(),
-        stats.ctime.getTime()
+        stats.ctime.getTime(),
       );
     } catch (e) {
       throw convertError(e, p);
@@ -382,5 +421,4 @@ export default class EmscriptenFileSystem extends SynchronousFileSystem {
       throw ApiError.EPERM(`Invalid mode: ${mode}`);
     }
   }
-
 }

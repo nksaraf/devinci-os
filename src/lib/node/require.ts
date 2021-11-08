@@ -11,6 +11,8 @@ function unique(arr) {
   });
 }
 
+let nodeGlobalThis = {};
+
 // export default class NodeProcess extends Process {
 //   constructor(opts_) {
 //     const { FS, ...opts } = opts_;
@@ -190,6 +192,8 @@ export function createRequire({
   require.cache = new Map<String, NodeModule>();
 
   require.cache.set('@node/buffer.js', buffer);
+  require.cache.set('@node/internal/console/global.js', console);
+  require.cache.set('@node/v8.js', {});
 
   return require as unknown as NodeRequire;
   // require.cache.set('process', {

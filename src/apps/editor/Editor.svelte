@@ -6,8 +6,7 @@
   import cssWorker from '../../../node_modules/monaco-editor/esm/vs/language/css/css.worker?worker';
   import htmlWorker from '../../../node_modules/monaco-editor/esm/vs/language/html/html.worker?worker';
   import tsWorker from '../../../node_modules/monaco-editor/esm/vs/language/typescript/ts.worker?worker';
-  import fs from 'os/lib/fs/fs';
-  import TrafficLights from 'os/ui/Window/TrafficLights.svelte';
+  import fs from 'os/lib/node/fsode/fs import TrafficLights from 'os/ui/Window/TrafficLights.svelte';
   import type { WindowAPI } from '__/stores/window.store';
   import ExpandSvg from '@ui/components/SVG/traffic-lights/ExpandSVG.svelte';
 

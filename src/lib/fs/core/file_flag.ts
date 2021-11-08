@@ -1,4 +1,4 @@
-import {ErrorCode, ApiError} from './api_error';
+import { ErrorCode, ApiError } from './api_error';
 
 export enum ActionType {
   // Indicates that the code should not do anything.
@@ -8,7 +8,7 @@ export enum ActionType {
   // Indicates that the code should truncate the file, but only if it is a file.
   TRUNCATE_FILE = 2,
   // Indicates that the code should create the file.
-  CREATE_FILE = 3
+  CREATE_FILE = 3,
 }
 
 /**
@@ -33,7 +33,20 @@ export class FileFlag {
   // Contains cached FileMode instances.
   private static flagCache: { [mode: string]: FileFlag } = {};
   // Array of valid mode strings.
-  private static validFlagStrs = ['r', 'r+', 'rs', 'rs+', 'w', 'wx', 'w+', 'wx+', 'a', 'ax', 'a+', 'ax+'];
+  private static validFlagStrs = [
+    'r',
+    'r+',
+    'rs',
+    'rs+',
+    'w',
+    'wx',
+    'w+',
+    'wx+',
+    'a',
+    'ax',
+    'a+',
+    'ax+',
+  ];
 
   /**
    * Get an object representing the given file flag.
@@ -46,7 +59,7 @@ export class FileFlag {
     if (FileFlag.flagCache.hasOwnProperty(flagStr)) {
       return FileFlag.flagCache[flagStr];
     }
-    return FileFlag.flagCache[flagStr] = new FileFlag(flagStr);
+    return (FileFlag.flagCache[flagStr] = new FileFlag(flagStr));
   }
 
   private flagStr: string;
@@ -58,7 +71,7 @@ export class FileFlag {
   constructor(flagStr: string) {
     this.flagStr = flagStr;
     if (FileFlag.validFlagStrs.indexOf(flagStr) < 0) {
-      throw new ApiError(ErrorCode.EINVAL, "Invalid flag: " + flagStr);
+      throw new ApiError(ErrorCode.EINVAL, 'Invalid flag: ' + flagStr);
     }
   }
 
@@ -79,7 +92,11 @@ export class FileFlag {
    * Returns true if the file is writeable.
    */
   public isWriteable(): boolean {
-    return this.flagStr.indexOf('w') !== -1 || this.flagStr.indexOf('a') !== -1 || this.flagStr.indexOf('+') !== -1;
+    return (
+      this.flagStr.indexOf('w') !== -1 ||
+      this.flagStr.indexOf('a') !== -1 ||
+      this.flagStr.indexOf('+') !== -1
+    );
   }
   /**
    * Returns true if the file mode should truncate.
@@ -130,3 +147,17 @@ export class FileFlag {
     }
   }
 }
+
+export type FileFlagString =
+  | 'r'
+  | 'r+'
+  | 'rs'
+  | 'rs+'
+  | 'w'
+  | 'wx'
+  | 'w+'
+  | 'wx+'
+  | 'a'
+  | 'ax'
+  | 'a+'
+  | 'ax+';
