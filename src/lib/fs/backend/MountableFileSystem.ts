@@ -75,6 +75,8 @@ export default class MountableFileSystem extends BaseFileSystem implements FileS
     opts: MountableFileSystemOptions,
     cb: CallbackTwoArgs<MountableFileSystem>,
   ): void {
+    InMemoryFileSystem.CreateSync();
+
     InMemoryFileSystem.Create({}, (e, imfs?) => {
       if (imfs) {
         const fs = new MountableFileSystem(imfs);
@@ -262,10 +264,11 @@ export default class MountableFileSystem extends BaseFileSystem implements FileS
         throw e;
       }
     }
+    // TODO: FIX AND UNCOMMENT
     // Scenario 2: Different file systems.
-    const data = fs.readFileSync(oldPath);
-    fs.writeFileSync(newPath, data);
-    return fs.unlinkSync(oldPath);
+    // const data = fs.readFileSync(oldPath);
+    // fs.writeFileSync(newPath, data);
+    // return fs.unlinkSync(oldPath);
   }
 
   public readdirSync(p: string): string[] {

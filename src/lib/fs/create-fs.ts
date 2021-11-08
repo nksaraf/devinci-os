@@ -31,3 +31,16 @@ export async function createFileSystem(mountPoints: {
 
   return mountFS;
 }
+
+export function createFileSystemSync(mountPoints: {
+  // Locations of mount points. Can be empty.
+  [mountPoint: string]: FileSystem;
+}) {
+  let fs;
+  // crossing our fingers that ths is synchronous
+  MountableFileSystem.Create(mountPoints, (err, _fs) => {
+    fs = _fs;
+  });
+
+  return fs;
+}

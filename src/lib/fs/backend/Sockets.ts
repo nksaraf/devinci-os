@@ -1,10 +1,23 @@
-import type MountableFileSystem from '../fs/backend/MountableFileSystem';
-import type { File } from '../fs/core/file';
-import type { CallbackTwoArgs, CallbackOneArg, BFSThreeArgCallback } from '../fs/core/file_system';
-import type stats from '../fs/core/stats';
-import { createFileSystem, createFileSystemSync } from '../fs/create-fs';
+import type { File } from '../core/file';
+import {
+  FileSystem,
+  BFSThreeArgCallback,
+  CallbackOneArg,
+  CallbackTwoArgs,
+  SynchronousFileSystem,
+} from '../core/file_system';
+import type stats from '../core/stats';
+import * as net from 'net';
 
-class TTYFile implements File {
+class Socket extends net.Socket {
+  constructor(fs: FileSystem);
+}
+
+class SocketFile implements File {
+  fs: SocketFileSystem;
+  constructor(addr: string, port: number, fs: FileSystem) {
+    super();
+  }
   getPos(): number {
     throw new Error('Method not implemented.');
   }
@@ -82,44 +95,18 @@ class TTYFile implements File {
   }
 }
 
-export class Process {
-  cwd: string;
-  env: { [key: string]: string };
-  argv: string[];
-  stdin: TTYFile;
-  stdout: TTYFile;
-  stderr: TTYFile;
-  chdir(path: string): void {
-    this.cwd = path;
+class SocketsFileSystem extends SynchronousFileSystem implements FileSystem {
+  getName(): string {
+    throw new Error('Method not implemented.');
   }
-  files: { [key: number]: File };
-  constructor() {}
+  isReadOnly(): boolean {
+    throw new Error('Method not implemented.');
+  }
+  supportsProps(): boolean {
+    throw new Error('Method not implemented.');
+  }
+  supportsSynch(): boolean {
+    return false;
+  }
+  createFile;
 }
-
-export class Kernel {
-  static fs: MountableFileSystem;
-  static path: typeof import('path');
-
-  static async init() {
-    Kernel.fs = createFileSystemSync({});
-    return;
-  }
-
-  static spawn(argv) {}
-
-  static processes: {
-    [pid: number]: Process;
-  } = {};
-
-  private static createProcess() {
-    return new Process();
-  }
-
-  static log = console.log;
-}
-
-class MainProcess {}
-
-import Global from '../global';
-
-Global.Kernel = Kernel;

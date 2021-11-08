@@ -1,5 +1,8 @@
 import type { Terminal, IBuffer } from 'xterm';
-import type { ActiveCharPrompt, ActivePrompt } from './shell/shell-utilsll-utils';
+import { BaseFile, File } from '../fs/core/file';
+import type { CallbackTwoArgs, CallbackOneArg, BFSThreeArgCallback } from '../fs/core/file_system';
+import type stats from '../fs/core/stats';
+import type { ActiveCharPrompt, ActivePrompt } from '../shell/shell-utils';
 
 /**
  * Convert offset at the given input to col/row location
@@ -33,6 +36,84 @@ export function offsetToColRow(input: string, offset: number, maxCols: number) {
  */
 export function countLines(input: string, maxCols: number) {
   return offsetToColRow(input, input.length, maxCols).row + 1;
+}
+
+class TTYFile extends BaseFile implements File {
+  getPos(): number {
+    throw new Error('Method not implemented.');
+  }
+  stat(cb: CallbackTwoArgs<stats>): void {
+    throw new Error('Method not implemented.');
+  }
+  statSync(): stats {
+    throw new Error('Method not implemented.');
+  }
+  close(cb: CallbackOneArg): void {
+    throw new Error('Method not implemented.');
+  }
+  closeSync(): void {
+    throw new Error('Method not implemented.');
+  }
+  truncate(len: number, cb: CallbackOneArg): void {
+    throw new Error('Method not implemented.');
+  }
+  truncateSync(len: number): void {
+    throw new Error('Method not implemented.');
+  }
+  sync(cb: CallbackOneArg): void {
+    throw new Error('Method not implemented.');
+  }
+  syncSync(): void {
+    throw new Error('Method not implemented.');
+  }
+  write(
+    buffer: Buffer,
+    offset: number,
+    length: number,
+    position: number,
+    cb: BFSThreeArgCallback<number, Buffer>,
+  ): void {
+    throw new Error('Method not implemented.');
+  }
+  writeSync(buffer: Buffer, offset: number, length: number, position: number): number {
+    throw new Error('Method not implemented.');
+  }
+  read(
+    buffer: Buffer,
+    offset: number,
+    length: number,
+    position: number,
+    cb: BFSThreeArgCallback<number, Buffer>,
+  ): void {
+    throw new Error('Method not implemented.');
+  }
+  readSync(buffer: Buffer, offset: number, length: number, position: number): number {
+    throw new Error('Method not implemented.');
+  }
+  datasync(cb: CallbackOneArg): void {
+    throw new Error('Method not implemented.');
+  }
+  datasyncSync(): void {
+    throw new Error('Method not implemented.');
+  }
+  chown(uid: number, gid: number, cb: CallbackOneArg): void {
+    throw new Error('Method not implemented.');
+  }
+  chownSync(uid: number, gid: number): void {
+    throw new Error('Method not implemented.');
+  }
+  chmod(mode: number, cb: CallbackOneArg): void {
+    throw new Error('Method not implemented.');
+  }
+  chmodSync(mode: number): void {
+    throw new Error('Method not implemented.');
+  }
+  utimes(atime: Date, mtime: Date, cb: CallbackOneArg): void {
+    throw new Error('Method not implemented.');
+  }
+  utimesSync(atime: Date, mtime: Date): void {
+    throw new Error('Method not implemented.');
+  }
 }
 
 /**

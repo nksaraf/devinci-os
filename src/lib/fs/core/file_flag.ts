@@ -1,3 +1,4 @@
+import { stringify } from 'querystring';
 import { ErrorCode, ApiError } from './api_error';
 
 export enum ActionType {
@@ -29,6 +30,8 @@ export enum ActionType {
  *
  * Exclusive mode ensures that the file path is newly created.
  */
+// export type FileFlag = {} string;
+
 export class FileFlag {
   // Contains cached FileMode instances.
   private static flagCache: { [mode: string]: FileFlag } = {};
