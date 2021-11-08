@@ -25,7 +25,7 @@
 <GitCloner />
 
 <main>
-  <BootupScreen />
+  <!-- <BootupScreen /> -->
   <TopBar />
   <Wallpaper />
   <WindowsArea />

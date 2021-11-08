@@ -1,11 +1,12 @@
 import toExport from '../global';
 import { constants } from './constants';
-import type { InternalAsyncWrapBinding } from './internalBinding/async_wrap';
-import * as fs from './internalBinding/fs';
+import type { InternalAsyncWrapBinding } from './bindings/async_wrap';
+import * as fs from './bindings/fs';
+import type { Kernel } from './runtime';
 
 class FSEvent {}
 
-export const getInternalBinding = (name) =>
+export const createInternalBindings = (kernel: Kernel) => (name) =>
   ({
     constants,
     async_wrap: {

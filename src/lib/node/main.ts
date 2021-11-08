@@ -1,19 +1,20 @@
 import './polyfill';
-import toExport from '../global';
-import { getInternalBinding } from './getInternalBinding';
 import { createFileSystem, createFileSystemBackend } from '../fs';
 import HttpRequest from '../fs/backend/HTTPRequest';
+import { Node } from './runtime';
 
-function bootstrapNode() {
-  require('internal/per_context/primordials');
-  let loaders = require('internal/bootstrap/loaders', {
-    scope: {
-      getInternalBinding,
-    },
-  });
-  toExport.internalBinding = loaders.internalBinding;
-  require('internal/bootstrap/node');
-}
+// function bootstrapNode({ fs: FileSystem }): Node {
+//   const require = createNodeRequire({ fs: toExport.fs });
+//   require('internal/per_context/primordials');
+//   // @ts-ignore
+//   let loaders = require('internal/bootstrap/loaders', {
+//     scope: {
+//       getInternalBinding,
+//     },
+//   });
+//   toExport.internalBinding = loaders.internalBinding;
+
+// }
 
 export async function loadNodeFS() {
   let httpFS = await createFileSystemBackend(HttpRequest, {
@@ -25,10 +26,13 @@ export async function loadNodeFS() {
     '/@node': httpFS,
   });
 
-  toExport.fs.initialize(fs);
+  Node.bootstrap({ fs });
+  const node = Node.require('fs');
+  // bootstrapNode({ fs });
 
-  bootstrapNode();
-  console.log(require('buffer'));
-  require('fs');
-  require('path');
+  // Node.require('buffer');
+  // node.fs = require('fs');
+  // node.path = require('path');
+
+  // toExport.node = node;
 }

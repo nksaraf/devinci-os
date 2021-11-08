@@ -4,7 +4,7 @@ import { ApiError, ErrorCode } from '../core/api_error';
 import { FileFlag, ActionType } from '../core/file_flag';
 import { copyingSlice } from '../core/util';
 import type { File } from '../core/file';
-import Stats from '../../node/fs/fs_stats';
+import Stats from '../core/stats';
 import { NoSyncFile } from '../generic/preload_file';
 import {
   xhrIsAvailable,

@@ -7,9 +7,9 @@ import type {
 } from '../core/file_system';
 import InMemoryFileSystem from './InMemory';
 import { ApiError, ErrorCode } from '../core/api_error';
-import fs from '../../node/fs';
 import * as path from 'path';
 import { mkdirpSync } from '../core/util';
+import { FileFlag } from '../core/file_flag';
 
 /**
  * Configuration options for the MountableFileSystem backend.
@@ -230,18 +230,23 @@ export default class MountableFileSystem extends BaseFileSystem implements FileS
       });
     }
 
-    // Scenario 2: Different file systems.
-    // Read old file, write new file, delete old file.
-    return fs.readFile(oldPath, function (err: ApiError, data?: any) {
+    fs1rv.fs.readFile(oldPath, 'utf8', FileFlag.getFileFlag('r'), (err: ApiError, data?: any) => {
       if (err) {
         return cb(err);
       }
-      fs.writeFile(newPath, data, function (err: ApiError) {
-        if (err) {
-          return cb(err);
-        }
-        fs.unlink(oldPath, cb);
-      });
+      fs2rv.fs.writeFile(
+        newPath,
+        data,
+        'utf8',
+        FileFlag.getFileFlag('w'),
+        undefined,
+        function (err: ApiError) {
+          if (err) {
+            return cb(err);
+          }
+          fs1rv.fs.unlink(oldPath, cb);
+        },
+      );
     });
   }
 

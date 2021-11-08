@@ -6,7 +6,6 @@ class FSReqCallback<ResultType = unknown> {
 
 import { isString } from '@antfu/utils';
 import { constants } from '../constants';
-import fs from '../fs';
 
 interface ReadFileContext {
   fd: number | undefined;

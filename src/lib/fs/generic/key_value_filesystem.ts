@@ -1,7 +1,7 @@
 import type { CallbackOneArg, CallbackTwoArgs, BFSThreeArgCallback } from '../core/file_system';
 import { BaseFileSystem, SynchronousFileSystem } from '../core/file_system';
 import { ApiError, ErrorCode } from '../core/api_error';
-import { default as Stats, FileType } from '../../node/fs/fs_stats';
+import { default as Stats, FileType } from '../core/stats';
 import type { File } from '../core/file';
 import type { FileFlag } from '../core/file_flag';
 import * as path from 'path';
@@ -1381,7 +1381,11 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
    * the exceedingly unlikely chance that we try to reuse a random GUID.
    * @param cb Passed an error or the GUID that the data was stored under.
    */
-  private addNewNode(tx: AsyncKeyValueRWTransaction, data: Buffer, cb: CallbackTwoArgs<string>): void {
+  private addNewNode(
+    tx: AsyncKeyValueRWTransaction,
+    data: Buffer,
+    cb: CallbackTwoArgs<string>,
+  ): void {
     let retries = 0,
       currId: string;
     const reroll = () => {

@@ -1,4 +1,4 @@
-import { default as Stats, FileType } from '../../node/fs/fs_stats';
+import { default as Stats, FileType } from '../core/stats';
 import * as path from 'path';
 
 /**
