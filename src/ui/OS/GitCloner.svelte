@@ -1,6 +1,9 @@
 <script>
+  import * as fs from 'os/lib/fs/fs';
+
   import { git, withGitConfig } from 'os/lib/git';
-  import { toast } from 'os/lib/toasts';
+
+  import { onMount } from 'svelte';
 
   let progress = {
     phase: 'Not started',
@@ -8,15 +11,19 @@
     total: 0,
   };
 
-  git.clone(
-    withGitConfig({
-      dir: '/home',
-      url: 'https://github.com/streamich/spyfs',
-      onProgress: (e) => {
-        progress = e;
-      },
-    }),
-  );
+  onMount(() => {
+    fs.promise.then(() => {
+      git.clone(
+        withGitConfig({
+          dir: '/home',
+          url: 'https://github.com/streamich/spyfs',
+          onProgress: (e) => {
+            progress = e;
+          },
+        }),
+      );
+    });
+  });
 
   let oldPhase = progress.phase;
 

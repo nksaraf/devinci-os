@@ -1,4 +1,4 @@
-import {BFSCallback, FileSystemOptions} from '../core/file_system';
+import {CallbackTwoArgs, FileSystemOptions} from '../core/file_system';
 import {SyncKeyValueStore, SimpleSyncStore, SyncKeyValueFileSystem, SimpleSyncRWTransaction, SyncKeyValueRWTransaction} from '../generic/key_value_filesystem';
 import {ApiError, ErrorCode} from '../core/api_error';
 import global from '../../global
@@ -89,7 +89,7 @@ export default class LocalStorageFileSystem extends SyncKeyValueFileSystem {
   /**
    * Creates a LocalStorageFileSystem instance.
    */
-  public static Create(options: any, cb: BFSCallback<LocalStorageFileSystem>): void {
+  public static Create(options: any, cb: CallbackTwoArgs<LocalStorageFileSystem>): void {
     cb(null, new LocalStorageFileSystem());
   }
   public static isAvailable(): boolean {

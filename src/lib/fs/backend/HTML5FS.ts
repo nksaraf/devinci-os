@@ -2,13 +2,13 @@ import PreloadFile from '../generic/preload_file';
 import {
   BaseFileSystem,
   FileSystem as IFileSystem,
-  BFSOneArgCallback,
-  BFSCallback,
+  CallbackOneArg,
+  CallbackTwoArgs,
   FileSystemOptions,
 } from '../core/file_system';
 import { ApiError, ErrorCode } from '../core/api_error';
 import { FileFlag, ActionType } from '../core/file_flag';
-import { default as Stats, FileType } from '../node/node_fs_stats';
+import { default as Stats, FileType } from '../../node/fs/node_fs_statsfs_stats';
 import type { File as IFile } from '../core/file';
 import * as path from 'path';
 import global from '../../global';
@@ -137,7 +137,7 @@ export class HTML5FSFile extends PreloadFile<HTML5FS> implements IFile {
     this._entry = entry;
   }
 
-  public sync(cb: BFSOneArgCallback): void {
+  public sync(cb: CallbackOneArg): void {
     if (!this.isDirty()) {
       return cb();
     }
@@ -160,7 +160,7 @@ export class HTML5FSFile extends PreloadFile<HTML5FS> implements IFile {
     });
   }
 
-  public close(cb: BFSOneArgCallback): void {
+  public close(cb: CallbackOneArg): void {
     this.sync(cb);
   }
 }
@@ -198,7 +198,7 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
   /**
    * Creates an HTML5FS instance with the given options.
    */
-  public static Create(opts: HTML5FSOptions, cb: BFSCallback<HTML5FS>): void {
+  public static Create(opts: HTML5FSOptions, cb: CallbackTwoArgs<HTML5FS>): void {
     const fs = new HTML5FS(opts.size, opts.type);
     fs._allocate((e) => (e ? cb(e) : cb(null, fs)));
   }
@@ -246,7 +246,7 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
    * Karma clears the storage after you quit it but not between runs of the test
    * suite, and the tests expect an empty FS every time.
    */
-  public empty(mainCb: BFSOneArgCallback): void {
+  public empty(mainCb: CallbackOneArg): void {
     // Get a list of all entries in the root directory to delete them
     this._readdir('/', (err: ApiError, entries?: Entry[]): void => {
       if (err) {
@@ -281,7 +281,7 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
     });
   }
 
-  public rename(oldPath: string, newPath: string, cb: BFSOneArgCallback): void {
+  public rename(oldPath: string, newPath: string, cb: CallbackOneArg): void {
     let semaphore: number = 2;
     let successCount: number = 0;
     const root: DirectoryEntry = this.fs.root;
@@ -351,7 +351,7 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
     root.getDirectory(oldPath, {}, success, error);
   }
 
-  public stat(path: string, isLstat: boolean, cb: BFSCallback<Stats>): void {
+  public stat(path: string, isLstat: boolean, cb: CallbackTwoArgs<Stats>): void {
     // Throw an error if the entry doesn't exist, because then there's nothing
     // to stat.
     const opts = {
@@ -388,7 +388,7 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
     this.fs.root.getFile(path, opts, loadAsFile, failedToLoadAsFile);
   }
 
-  public open(p: string, flags: FileFlag, mode: number, cb: BFSCallback<IFile>): void {
+  public open(p: string, flags: FileFlag, mode: number, cb: CallbackTwoArgs<IFile>): void {
     // XXX: err is a DOMError
     const error = (err: any): void => {
       if (err.name === 'InvalidModificationError' && flags.isExclusive()) {
@@ -422,11 +422,11 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
     );
   }
 
-  public unlink(path: string, cb: BFSOneArgCallback): void {
+  public unlink(path: string, cb: CallbackOneArg): void {
     this._remove(path, cb, true);
   }
 
-  public rmdir(path: string, cb: BFSOneArgCallback): void {
+  public rmdir(path: string, cb: CallbackOneArg): void {
     // Check if directory is non-empty, first.
     this.readdir(path, (e, files?) => {
       if (e) {
@@ -439,7 +439,7 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
     });
   }
 
-  public mkdir(path: string, mode: number, cb: BFSOneArgCallback): void {
+  public mkdir(path: string, mode: number, cb: CallbackOneArg): void {
     // Create the directory, but throw an error if it already exists, as per
     // mkdir(1)
     const opts = {
@@ -458,7 +458,7 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
   /**
    * Map _readdir's list of `FileEntry`s to their names and return that.
    */
-  public readdir(path: string, cb: BFSCallback<string[]>): void {
+  public readdir(path: string, cb: CallbackTwoArgs<string[]>): void {
     this._readdir(path, (e: ApiError, entries?: Entry[]): void => {
       if (entries) {
         const rv: string[] = [];
@@ -490,7 +490,7 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
   /**
    * Returns an array of `FileEntry`s. Used internally by empty and readdir.
    */
-  private _readdir(path: string, cb: BFSCallback<Entry[]>): void {
+  private _readdir(path: string, cb: CallbackTwoArgs<Entry[]>): void {
     const error = (err: DOMException): void => {
       cb(convertError(err, path, true));
     };
@@ -522,7 +522,7 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
   /**
    * Requests a storage quota from the browser to back this FS.
    */
-  private _allocate(cb: BFSOneArgCallback): void {
+  private _allocate(cb: CallbackOneArg): void {
     const success = (fs: FileSystem): void => {
       this.fs = fs;
       cb();
@@ -550,7 +550,7 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
    * `rmdir`). If this doesn't match what's actually at `path`, an error will be
    * returned
    */
-  private _remove(path: string, cb: BFSOneArgCallback, isFile: boolean): void {
+  private _remove(path: string, cb: CallbackOneArg, isFile: boolean): void {
     const success = (entry: Entry): void => {
       const succ = () => {
         cb();

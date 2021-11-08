@@ -1,5 +1,5 @@
-import {SynchronousFileSystem, BFSOneArgCallback, BFSCallback, BFSThreeArgCallback, FileSystemOptions} from '../core/file_system';
-import {default as Stats, FileType} from '../node/node_fs_stats';
+import {SynchronousFileSystem, CallbackOneArg, CallbackTwoArgs, BFSThreeArgCallback, FileSystemOptions} from '../core/file_system';
+import {default as Stats, FileType} from '../../node/fs/node_fs_statsfs_stats';
 import {FileFlag} from '../core/file_flag';
 import {BaseFile, File} from '../core/file';
 import {uint8Array2Buffer, buffer2Uint8array} from '../core/util';
@@ -42,7 +42,7 @@ export class EmscriptenFile extends BaseFile implements File {
   public getPos(): number | undefined {
     return undefined;
   }
-  public close(cb: BFSOneArgCallback): void {
+  public close(cb: CallbackOneArg): void {
     let err: ApiError | null = null;
     try {
       this.closeSync();
@@ -59,7 +59,7 @@ export class EmscriptenFile extends BaseFile implements File {
       throw convertError(e, this._path);
     }
   }
-  public stat(cb: BFSCallback<Stats>): void {
+  public stat(cb: CallbackTwoArgs<Stats>): void {
     try {
       cb(null, this.statSync());
     } catch (e) {
@@ -73,7 +73,7 @@ export class EmscriptenFile extends BaseFile implements File {
       throw convertError(e, this._path);
     }
   }
-  public truncate(len: number, cb: BFSOneArgCallback): void {
+  public truncate(len: number, cb: CallbackOneArg): void {
     let err: ApiError | null = null;
     try {
       this.truncateSync(len);
@@ -124,14 +124,14 @@ export class EmscriptenFile extends BaseFile implements File {
       throw convertError(e, this._path);
     }
   }
-  public sync(cb: BFSOneArgCallback): void {
+  public sync(cb: CallbackOneArg): void {
     // NOP.
     cb();
   }
   public syncSync(): void {
     // NOP.
   }
-  public chown(uid: number, gid: number, cb: BFSOneArgCallback): void {
+  public chown(uid: number, gid: number, cb: CallbackOneArg): void {
     let err: ApiError | null = null;
     try {
       this.chownSync(uid, gid);
@@ -148,7 +148,7 @@ export class EmscriptenFile extends BaseFile implements File {
       throw convertError(e, this._path);
     }
   }
-  public chmod(mode: number, cb: BFSOneArgCallback): void {
+  public chmod(mode: number, cb: CallbackOneArg): void {
     let err: ApiError | null = null;
     try {
       this.chmodSync(mode);
@@ -165,7 +165,7 @@ export class EmscriptenFile extends BaseFile implements File {
       throw convertError(e, this._path);
     }
   }
-  public utimes(atime: Date, mtime: Date, cb: BFSOneArgCallback): void {
+  public utimes(atime: Date, mtime: Date, cb: CallbackOneArg): void {
     let err: ApiError | null = null;
     try {
       this.utimesSync(atime, mtime);
@@ -204,7 +204,7 @@ export default class EmscriptenFileSystem extends SynchronousFileSystem {
   /**
    * Create an EmscriptenFileSystem instance with the given options.
    */
-  public static Create(opts: EmscriptenFileSystemOptions, cb: BFSCallback<EmscriptenFileSystem>): void {
+  public static Create(opts: EmscriptenFileSystemOptions, cb: CallbackTwoArgs<EmscriptenFileSystem>): void {
     cb(null, new EmscriptenFileSystem(opts.FS));
   }
   public static isAvailable(): boolean { return true; }

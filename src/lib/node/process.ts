@@ -88,7 +88,7 @@ class NextTickQueue {
  * @see http://nodejs.org/api/process.html
  * @class
  */
-export class Process extends EventEmitter {
+export class Process extends EventEmitter implements NodeJS.Process {
   private startTime = Date.now();
 
   private _cwd: string = '/';
@@ -146,8 +146,8 @@ export class Process extends EventEmitter {
 
   public execPath = './';
 
-  public abort(): void {
-    this.emit('abort');
+  public abort(): never {
+    throw new Error('abort');
   }
 
   public env: { [name: string]: string } = {};
@@ -264,8 +264,9 @@ export class Process extends EventEmitter {
     },
   };
 
-  public kill(pid: number, signal?: string): void {
+  public kill(pid: number, signal?: string): never {
     this.emit('kill', [pid, signal]);
+    throw new Error(`process.kill() called.`);
   }
 
   public pid = (Math.random() * 1000) | 0;
@@ -304,7 +305,11 @@ export class Process extends EventEmitter {
     return this.stdin;
   }
 
-  public emitWarning(warning: string | Error, name?: string, ctor?: Function): void {
+  public emitWarning(warning: string | Error, ctor?: Function): void;
+  public emitWarning(warning: string | Error, type?: string, ctor?: Function): void;
+  public emitWarning(warning: string | Error, type?: string, code?: string, ctor?: Function): void;
+  public emitWarning(warning: string | Error, options?: EmitWarningOptions): void;
+  public emitWarning(warning: string | Error, name?: Function | string, ctor?: Function | string, ): void {
     const warningObj = {
       name: name ? name : typeof warning !== 'string' ? warning.name : 'Warning',
       message: typeof warning === 'string' ? warning : warning.message,

@@ -1,9 +1,9 @@
 import { ApiError, ErrorCode } from '../core/api_error';
-import { default as Stats, FileType } from '../node/node_fs_stats';
+import { default as Stats, FileType } from '../core/stats';
 import {
   SynchronousFileSystem,
   FileSystem,
-  BFSCallback,
+  CallbackTwoArgs,
   FileSystemOptions,
 } from '../core/file_system';
 import type { File } from '../core/file';
@@ -690,7 +690,7 @@ export default class ZipFS extends SynchronousFileSystem implements FileSystem {
   /**
    * Constructs a ZipFS instance with the given options.
    */
-  public static Create(opts: ZipFSOptions, cb: BFSCallback<ZipFS>): void {
+  public static Create(opts: ZipFSOptions, cb: CallbackTwoArgs<ZipFS>): void {
     try {
       ZipFS._computeIndex(opts.zipData, (e, zipTOC?) => {
         if (zipTOC) {
@@ -765,7 +765,7 @@ export default class ZipFS extends SynchronousFileSystem implements FileSystem {
     }
   }
 
-  private static _computeIndex(data: Buffer, cb: BFSCallback<ZipTOC>) {
+  private static _computeIndex(data: Buffer, cb: CallbackTwoArgs<ZipTOC>) {
     try {
       const index: FileIndex<CentralDirectory> = new FileIndex<CentralDirectory>();
       const eocd: EndOfCentralDirectory = ZipFS._getEOCD(data);
@@ -789,7 +789,7 @@ export default class ZipFS extends SynchronousFileSystem implements FileSystem {
     index: FileIndex<CentralDirectory>,
     cdPtr: number,
     cdEnd: number,
-    cb: BFSCallback<ZipTOC>,
+    cb: CallbackTwoArgs<ZipTOC>,
     cdEntries: CentralDirectory[],
     eocd: EndOfCentralDirectory,
   ) {
@@ -805,7 +805,7 @@ export default class ZipFS extends SynchronousFileSystem implements FileSystem {
     index: FileIndex<CentralDirectory>,
     cdPtr: number,
     cdEnd: number,
-    cb: BFSCallback<ZipTOC>,
+    cb: CallbackTwoArgs<ZipTOC>,
     cdEntries: CentralDirectory[],
     eocd: EndOfCentralDirectory,
   ) {

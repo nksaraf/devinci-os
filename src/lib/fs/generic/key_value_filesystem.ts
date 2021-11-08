@@ -1,7 +1,7 @@
-import type { BFSOneArgCallback, BFSCallback, BFSThreeArgCallback } from '../core/file_system';
+import type { CallbackOneArg, CallbackTwoArgs, BFSThreeArgCallback } from '../core/file_system';
 import { BaseFileSystem, SynchronousFileSystem } from '../core/file_system';
 import { ApiError, ErrorCode } from '../core/api_error';
-import { default as Stats, FileType } from '../node/node_fs_stats';
+import { default as Stats, FileType } from '../../node/fs/fs_stats';
 import type { File } from '../core/file';
 import type { FileFlag } from '../core/file_flag';
 import * as path from 'path';
@@ -774,7 +774,7 @@ export interface AsyncKeyValueStore {
   /**
    * Empties the key-value store completely.
    */
-  clear(cb: BFSOneArgCallback): void;
+  clear(cb: CallbackOneArg): void;
   /**
    * Begins a read-write transaction.
    */
@@ -794,7 +794,7 @@ export interface AsyncKeyValueROTransaction {
    * Retrieves the data at the given key.
    * @param key The key to look under for data.
    */
-  get(key: string, cb: BFSCallback<Buffer>): void;
+  get(key: string, cb: CallbackTwoArgs<Buffer>): void;
 }
 
 /**
@@ -811,20 +811,20 @@ export interface AsyncKeyValueRWTransaction extends AsyncKeyValueROTransaction {
    * @param cb Triggered with an error and whether or not the value was
    *   committed.
    */
-  put(key: string, data: Buffer, overwrite: boolean, cb: BFSCallback<boolean>): void;
+  put(key: string, data: Buffer, overwrite: boolean, cb: CallbackTwoArgs<boolean>): void;
   /**
    * Deletes the data at the given key.
    * @param key The key to delete from the store.
    */
-  del(key: string, cb: BFSOneArgCallback): void;
+  del(key: string, cb: CallbackOneArg): void;
   /**
    * Commits the transaction.
    */
-  commit(cb: BFSOneArgCallback): void;
+  commit(cb: CallbackOneArg): void;
   /**
    * Aborts and rolls back the transaction.
    */
-  abort(cb: BFSOneArgCallback): void;
+  abort(cb: CallbackOneArg): void;
 }
 
 export class AsyncKeyValueFile extends PreloadFile<AsyncKeyValueFileSystem> implements File {
@@ -838,7 +838,7 @@ export class AsyncKeyValueFile extends PreloadFile<AsyncKeyValueFileSystem> impl
     super(_fs, _path, _flag, _stat, contents);
   }
 
-  public sync(cb: BFSOneArgCallback): void {
+  public sync(cb: CallbackOneArg): void {
     if (this.isDirty()) {
       this._fs._sync(this.getPath(), this.getBuffer(), this.getStats(), (e?: ApiError) => {
         if (!e) {
@@ -851,7 +851,7 @@ export class AsyncKeyValueFile extends PreloadFile<AsyncKeyValueFileSystem> impl
     }
   }
 
-  public close(cb: BFSOneArgCallback): void {
+  public close(cb: CallbackOneArg): void {
     this.sync(cb);
   }
 }
@@ -879,7 +879,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
    * Initializes the file system. Typically called by subclasses' async
    * constructors.
    */
-  public init(store: AsyncKeyValueStore, cb: BFSOneArgCallback) {
+  public init(store: AsyncKeyValueStore, cb: CallbackOneArg) {
     this.store = store;
     // INVARIANT: Ensure that the root exists.
     this.makeRootDirectory(cb);
@@ -903,7 +903,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
   /**
    * Delete all contents stored in the file system.
    */
-  public empty(cb: BFSOneArgCallback): void {
+  public empty(cb: CallbackOneArg): void {
     if (this._cache) {
       this._cache.removeAll();
     }
@@ -915,7 +915,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
     });
   }
 
-  public rename(oldPath: string, newPath: string, cb: BFSOneArgCallback): void {
+  public rename(oldPath: string, newPath: string, cb: CallbackOneArg): void {
     // TODO: Make rename compatible with the cache.
     if (this._cache) {
       // Clear and disable cache during renaming process.
@@ -1065,7 +1065,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
     }
   }
 
-  public stat(p: string, isLstat: boolean, cb: BFSCallback<Stats>): void {
+  public stat(p: string, isLstat: boolean, cb: CallbackTwoArgs<Stats>): void {
     const tx = this.store.beginTransaction('readonly');
     this.findINode(tx, p, (e: ApiError, inode?: Inode): void => {
       if (noError(e, cb)) {
@@ -1074,7 +1074,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
     });
   }
 
-  public createFile(p: string, flag: FileFlag, mode: number, cb: BFSCallback<File>): void {
+  public createFile(p: string, flag: FileFlag, mode: number, cb: CallbackTwoArgs<File>): void {
     const tx = this.store.beginTransaction('readwrite'),
       data = emptyBuffer();
 
@@ -1085,7 +1085,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
     });
   }
 
-  public openFile(p: string, flag: FileFlag, cb: BFSCallback<File>): void {
+  public openFile(p: string, flag: FileFlag, cb: CallbackTwoArgs<File>): void {
     const tx = this.store.beginTransaction('readonly');
     // Step 1: Grab the file's inode.
     this.findINode(tx, p, (e: ApiError, inode?: Inode) => {
@@ -1104,11 +1104,11 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
     });
   }
 
-  public unlink(p: string, cb: BFSOneArgCallback): void {
+  public unlink(p: string, cb: CallbackOneArg): void {
     this.removeEntry(p, false, cb);
   }
 
-  public rmdir(p: string, cb: BFSOneArgCallback): void {
+  public rmdir(p: string, cb: CallbackOneArg): void {
     // Check first if directory is empty.
     this.readdir(p, (err, files?) => {
       if (err) {
@@ -1121,13 +1121,13 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
     });
   }
 
-  public mkdir(p: string, mode: number, cb: BFSOneArgCallback): void {
+  public mkdir(p: string, mode: number, cb: CallbackOneArg): void {
     const tx = this.store.beginTransaction('readwrite'),
       data = Buffer.from('{}');
     this.commitNewFile(tx, p, FileType.DIRECTORY, mode, data, cb);
   }
 
-  public readdir(p: string, cb: BFSCallback<string[]>): void {
+  public readdir(p: string, cb: CallbackTwoArgs<string[]>): void {
     const tx = this.store.beginTransaction('readonly');
     this.findINode(tx, p, (e: ApiError, inode?: Inode) => {
       if (noError(e, cb)) {
@@ -1145,7 +1145,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
     });
   }
 
-  public _sync(p: string, data: Buffer, stats: Stats, cb: BFSOneArgCallback): void {
+  public _sync(p: string, data: Buffer, stats: Stats, cb: CallbackOneArg): void {
     // @todo Ensure mtime updates properly, and use that to determine if a data
     //       update is required.
     const tx = this.store.beginTransaction('readwrite');
@@ -1186,7 +1186,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
   /**
    * Checks if the root directory exists. Creates it if it doesn't.
    */
-  private makeRootDirectory(cb: BFSOneArgCallback) {
+  private makeRootDirectory(cb: CallbackOneArg) {
     const tx = this.store.beginTransaction('readwrite');
     tx.get(ROOT_NODE_ID, (e: ApiError, data?: Buffer) => {
       if (e || data === undefined) {
@@ -1234,7 +1234,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
     tx: AsyncKeyValueROTransaction,
     parent: string,
     filename: string,
-    cb: BFSCallback<string>,
+    cb: CallbackTwoArgs<string>,
   ): void {
     if (this._cache) {
       const id = this._cache.get(path.join(parent, filename));
@@ -1296,7 +1296,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
    * @param cb Passed an error or the Inode of the path p.
    * @todo memoize/cache
    */
-  private findINode(tx: AsyncKeyValueROTransaction, p: string, cb: BFSCallback<Inode>): void {
+  private findINode(tx: AsyncKeyValueROTransaction, p: string, cb: CallbackTwoArgs<Inode>): void {
     this._findINode(tx, path.dirname(p), path.basename(p), (e: ApiError, id?: string): void => {
       if (noError(e, cb)) {
         this.getINode(tx, p, id!, cb);
@@ -1315,7 +1315,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
     tx: AsyncKeyValueROTransaction,
     p: string,
     id: string,
-    cb: BFSCallback<Inode>,
+    cb: CallbackTwoArgs<Inode>,
   ): void {
     tx.get(id, (e: ApiError, data?: Buffer): void => {
       if (noError(e, cb)) {
@@ -1336,7 +1336,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
     tx: AsyncKeyValueROTransaction,
     p: string,
     inode: Inode,
-    cb: BFSCallback<{ [fileName: string]: string }>,
+    cb: CallbackTwoArgs<{ [fileName: string]: string }>,
   ): void {
     if (!inode.isDirectory()) {
       cb(ApiError.ENOTDIR(p));
@@ -1381,7 +1381,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
    * the exceedingly unlikely chance that we try to reuse a random GUID.
    * @param cb Passed an error or the GUID that the data was stored under.
    */
-  private addNewNode(tx: AsyncKeyValueRWTransaction, data: Buffer, cb: BFSCallback<string>): void {
+  private addNewNode(tx: AsyncKeyValueRWTransaction, data: Buffer, cb: CallbackTwoArgs<string>): void {
     let retries = 0,
       currId: string;
     const reroll = () => {
@@ -1420,7 +1420,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
     type: FileType,
     mode: number,
     data: Buffer,
-    cb: BFSCallback<Inode>,
+    cb: CallbackTwoArgs<Inode>,
   ): void {
     const parentDir = path.dirname(p),
       fname = path.basename(p),
@@ -1498,7 +1498,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
    * @param isDir Does the path belong to a directory, or a file?
    * @todo Update mtime.
    */
-  private removeEntry(p: string, isDir: boolean, cb: BFSOneArgCallback): void {
+  private removeEntry(p: string, isDir: boolean, cb: CallbackOneArg): void {
     // Eagerly delete from cache (harmless even if removal fails)
     if (this._cache) {
       this._cache.remove(p);

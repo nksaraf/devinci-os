@@ -2,14 +2,14 @@ import { BaseFile } from '../core/file';
 import type { File } from '../core/file';
 import type {
   FileSystem,
-  BFSOneArgCallback,
-  BFSCallback,
+  CallbackOneArg,
+  CallbackTwoArgs,
   BFSThreeArgCallback,
 } from '../core/file_system';
-import Stats from '../node/node_fs_stats';
+import Stats from '../core/stats';
 import type { FileFlag } from '../core/file_flag';
 import { ApiError, ErrorCode } from '../core/api_error';
-import fs from '../node/node_fs';
+import fs from '../../node/fs';
 import { emptyBuffer } from '../core/util';
 
 /**
@@ -124,7 +124,7 @@ export default class PreloadFile<T extends FileSystem> extends BaseFile {
    * class.
    * @param [Function(BrowserFS.ApiError)] cb
    */
-  public sync(cb: BFSOneArgCallback): void {
+  public sync(cb: CallbackOneArg): void {
     try {
       this.syncSync();
       cb();
@@ -145,7 +145,7 @@ export default class PreloadFile<T extends FileSystem> extends BaseFile {
    * class.
    * @param [Function(BrowserFS.ApiError)] cb
    */
-  public close(cb: BFSOneArgCallback): void {
+  public close(cb: CallbackOneArg): void {
     try {
       this.closeSync();
       cb();
@@ -165,7 +165,7 @@ export default class PreloadFile<T extends FileSystem> extends BaseFile {
    * Asynchronous `stat`.
    * @param [Function(BrowserFS.ApiError, BrowserFS.node.fs.Stats)] cb
    */
-  public stat(cb: BFSCallback<Stats>): void {
+  public stat(cb: CallbackTwoArgs<Stats>): void {
     try {
       cb(null, Stats.clone(this._stat));
     } catch (e) {
@@ -185,7 +185,7 @@ export default class PreloadFile<T extends FileSystem> extends BaseFile {
    * @param [Number] len
    * @param [Function(BrowserFS.ApiError)] cb
    */
-  public truncate(len: number, cb: BFSOneArgCallback): void {
+  public truncate(len: number, cb: CallbackOneArg): void {
     try {
       this.truncateSync(len);
       if (this._flag.isSynchronous() && !fs.getRootFS()!.supportsSynch()) {
@@ -356,7 +356,7 @@ export default class PreloadFile<T extends FileSystem> extends BaseFile {
    * @param [Number|String] mode
    * @param [Function(BrowserFS.ApiError)] cb
    */
-  public chmod(mode: number, cb: BFSOneArgCallback): void {
+  public chmod(mode: number, cb: CallbackOneArg): void {
     try {
       this.chmodSync(mode);
       cb();
@@ -402,7 +402,7 @@ export class NoSyncFile<T extends FileSystem> extends PreloadFile<T> implements 
    * Asynchronous sync. Doesn't do anything, simply calls the cb.
    * @param [Function(BrowserFS.ApiError)] cb
    */
-  public sync(cb: BFSOneArgCallback): void {
+  public sync(cb: CallbackOneArg): void {
     cb();
   }
   /**
@@ -415,7 +415,7 @@ export class NoSyncFile<T extends FileSystem> extends PreloadFile<T> implements 
    * Asynchronous close. Doesn't do anything, simply calls the cb.
    * @param [Function(BrowserFS.ApiError)] cb
    */
-  public close(cb: BFSOneArgCallback): void {
+  public close(cb: CallbackOneArg): void {
     cb();
   }
   /**

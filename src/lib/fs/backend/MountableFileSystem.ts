@@ -1,13 +1,13 @@
-import {
+import { BaseFileSystem } from '../core/file_system';
+import type {
   FileSystem,
-  BaseFileSystem,
-  BFSOneArgCallback,
-  BFSCallback,
+  CallbackOneArg,
+  CallbackTwoArgs,
   FileSystemOptions,
 } from '../core/file_system';
 import InMemoryFileSystem from './InMemory';
 import { ApiError, ErrorCode } from '../core/api_error';
-import fs from '../node/node_fs';
+import fs from '../../node/fs';
 import * as path from 'path';
 import { mkdirpSync } from '../core/util';
 
@@ -73,7 +73,7 @@ export default class MountableFileSystem extends BaseFileSystem implements FileS
    */
   public static Create(
     opts: MountableFileSystemOptions,
-    cb: BFSCallback<MountableFileSystem>,
+    cb: CallbackTwoArgs<MountableFileSystem>,
   ): void {
     InMemoryFileSystem.Create({}, (e, imfs?) => {
       if (imfs) {
@@ -217,7 +217,7 @@ export default class MountableFileSystem extends BaseFileSystem implements FileS
   // Note that we go through the Node API to use its robust default argument
   // processing.
 
-  public rename(oldPath: string, newPath: string, cb: BFSOneArgCallback): void {
+  public rename(oldPath: string, newPath: string, cb: CallbackOneArg): void {
     // Scenario 1: old and new are on same FS.
     const fs1rv = this._getFs(oldPath);
     const fs2rv = this._getFs(newPath);
@@ -297,7 +297,7 @@ export default class MountableFileSystem extends BaseFileSystem implements FileS
     }
   }
 
-  public readdir(p: string, cb: BFSCallback<string[]>): void {
+  public readdir(p: string, cb: CallbackTwoArgs<string[]>): void {
     const fsInfo = this._getFs(p);
     fsInfo.fs.readdir(fsInfo.path, (err, files) => {
       if (fsInfo.fs !== this.rootFs) {
@@ -336,7 +336,7 @@ export default class MountableFileSystem extends BaseFileSystem implements FileS
     }
   }
 
-  public realpath(p: string, cache: { [path: string]: string }, cb: BFSCallback<string>): void {
+  public realpath(p: string, cache: { [path: string]: string }, cb: CallbackTwoArgs<string>): void {
     const fsInfo = this._getFs(p);
 
     fsInfo.fs.realpath(fsInfo.path, {}, (err, rv) => {
@@ -362,7 +362,7 @@ export default class MountableFileSystem extends BaseFileSystem implements FileS
     }
   }
 
-  public rmdir(p: string, cb: BFSOneArgCallback): void {
+  public rmdir(p: string, cb: CallbackOneArg): void {
     const fsInfo = this._getFs(p);
     if (this._containsMountPt(p)) {
       cb(ApiError.ENOTEMPTY(p));

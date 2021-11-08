@@ -48,9 +48,8 @@
     "src/**/*.js",
     "src/**/*.svelte",
     "./*.ts",
-    "packages/macos-ui/src/**/*",
-    "packages/browserfs/src/**/*"
+    "packages/macos-ui/src/**/*"
   ],
-  "exclude": ["node_modules/**/*"],
+  "exclude": ["node_modules/**/*", "packages/node"],
   "extends": "@tsconfig/svelte/tsconfig.json"
 }

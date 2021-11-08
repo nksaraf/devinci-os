@@ -1,5 +1,5 @@
-import { default as FS } from './FS';
-import type { FSModule } from './FS';
+import { default as NodeFileSystem } from './fs';
+import type { FSModule } from './fs';
 // Manually export the individual public functions of fs.
 // Required because some code will invoke functions off of the module.
 // e.g.:
@@ -9,7 +9,7 @@ import type { FSModule } from './FS';
 /**
  * @hidden
  */
-let fs: any = new FS();
+let fs: any = new NodeFileSystem();
 /**
  * @hidden
  */
@@ -17,7 +17,7 @@ const _fsMock: FSModule = <any>{};
 /**
  * @hidden
  */
-const fsProto = FS.prototype;
+const fsProto = NodeFileSystem.prototype;
 Object.keys(fsProto).forEach((key) => {
   if (typeof fs[key] === 'function') {
     (<any>_fsMock)[key] = function () {
@@ -28,13 +28,13 @@ Object.keys(fsProto).forEach((key) => {
   }
 });
 
-_fsMock['changeFSModule'] = function (newFs: FS): void {
+_fsMock['changeFSModule'] = function (newFs: NodeFileSystem): void {
   fs = newFs;
 };
-_fsMock['getFSModule'] = function (): FS {
+_fsMock['getFSModule'] = function (): NodeFileSystem {
   return fs;
 };
-_fsMock['FS'] = FS;
-_fsMock['Stats'] = FS.Stats;
+_fsMock['fs'] = NodeFileSystem;
+_fsMock['Stats'] = NodeFileSystem.Stats;
 
-export default _fsMock;
+export default fs;

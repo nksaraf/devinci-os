@@ -9,9 +9,9 @@
  * Adapted from Emscripten's NodeFS:
  * https://raw.github.com/kripken/emscripten/master/src/library_nodefs.js
  */
-import type NodeFileSystem from '../node/FS';
-import fs from '../node/node_fs';
-import type NodeStats from '../node/node_fs_stats';
+import type NodeFileSystem from '../../node/fs/FS/node/FS';
+import fs from '../../node/fs/node_fs/node_fs';
+import type NodeStats from '../../node/fs/node_fs_statsfs_stats';
 import { uint8Array2Buffer } from '../core/util';
 
 export interface Stats {

@@ -1,7 +1,7 @@
 /**
  * Grab bag of utility functions used across the code.
  */
-import type { FileSystem, BFSOneArgCallback, FileSystemConstructor } from './file_system';
+import type { FileSystem, CallbackOneArg, FileSystemConstructor } from './file_system';
 import { ErrorCode, ApiError } from './api_error';
 import levenshtein from './levenshtein';
 import * as path from 'path';
@@ -183,7 +183,7 @@ export function emptyBuffer(): Buffer {
  * Option validator for a Buffer file system option.
  * @hidden
  */
-export function bufferValidator(v: object, cb: BFSOneArgCallback): void {
+export function bufferValidator(v: object, cb: CallbackOneArg): void {
   if (Buffer.isBuffer(v)) {
     cb();
   } else {
@@ -198,7 +198,7 @@ export function bufferValidator(v: object, cb: BFSOneArgCallback): void {
 export function checkOptions(
   fsType: FileSystemConstructor,
   opts: any,
-  cb: BFSOneArgCallback,
+  cb: CallbackOneArg,
 ): void {
   const optsInfo = fsType.Options;
   const fsName = fsType.Name;

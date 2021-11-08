@@ -1,12 +1,17 @@
 import { ApiError, ErrorCode } from './api_error';
-import type Stats from '../node/node_fs_stats';
+import type Stats from '../../node/fs/fs_stats';
 import type { File } from './file';
 import { FileFlag, ActionType } from './file_flag';
 import * as path from 'path';
 import { fail } from './util';
+// import wasmUrl from 'asc:./fs.asm';
 
-export type BFSOneArgCallback = (e?: ApiError | null) => any;
-export type BFSCallback<T> = (e: ApiError | null | undefined, rv?: T) => any;
+// WebAssembly.instantiateStreaming(fetch(wasmUrl), {}).then(({ instance }) =>
+//   console.log(instance.exports.add(40, 2)),
+// );
+
+export type CallbackOneArg = (e?: ApiError | null) => any;
+export type CallbackTwoArgs<T> = (e: ApiError | null | undefined, rv?: T) => any;
 export type BFSThreeArgCallback<T, U> = (e: ApiError | null | undefined, arg1?: T, arg2?: U) => any;
 
 /**
@@ -103,7 +108,7 @@ export interface FileSystem {
    * **Core**: Asynchronous rename. No arguments other than a possible exception
    * are given to the completion callback.
    */
-  rename(oldPath: string, newPath: string, cb: BFSOneArgCallback): void;
+  rename(oldPath: string, newPath: string, cb: CallbackOneArg): void;
   /**
    * **Core**: Synchronous rename.
    */
@@ -113,7 +118,7 @@ export interface FileSystem {
    * @param isLstat True if this is `lstat`, false if this is regular
    *   `stat`.
    */
-  stat(p: string, isLstat: boolean | null, cb: BFSCallback<Stats>): void;
+  stat(p: string, isLstat: boolean | null, cb: CallbackTwoArgs<Stats>): void;
   /**
    * **Core**: Synchronous `stat` or `lstat`.
    * @param isLstat True if this is `lstat`, false if this is regular
@@ -129,7 +134,7 @@ export interface FileSystem {
    * @param mode Mode to use to open the file. Can be ignored if the
    *   filesystem doesn't support permissions.
    */
-  open(p: string, flag: FileFlag, mode: number, cb: BFSCallback<File>): void;
+  open(p: string, flag: FileFlag, mode: number, cb: CallbackTwoArgs<File>): void;
   /**
    * **Core**: Synchronous file open.
    * @see http://www.manpagez.com/man/2/open/
@@ -142,7 +147,7 @@ export interface FileSystem {
   /**
    * **Core**: Asynchronous `unlink`.
    */
-  unlink(p: string, cb: BFSOneArgCallback): void;
+  unlink(p: string, cb: CallbackOneArg): void;
   /**
    * **Core**: Synchronous `unlink`.
    */
@@ -151,7 +156,7 @@ export interface FileSystem {
   /**
    * **Core**: Asynchronous `rmdir`.
    */
-  rmdir(p: string, cb: BFSOneArgCallback): void;
+  rmdir(p: string, cb: CallbackOneArg): void;
   /**
    * **Core**: Synchronous `rmdir`.
    */
@@ -161,7 +166,7 @@ export interface FileSystem {
    * @param mode Mode to make the directory using. Can be ignored if
    *   the filesystem doesn't support permissions.
    */
-  mkdir(p: string, mode: number, cb: BFSOneArgCallback): void;
+  mkdir(p: string, mode: number, cb: CallbackOneArg): void;
   /**
    * **Core**: Synchronous `mkdir`.
    * @param mode Mode to make the directory using. Can be ignored if
@@ -174,7 +179,7 @@ export interface FileSystem {
    * The callback gets two arguments `(err, files)` where `files` is an array of
    * the names of the files in the directory excluding `'.'` and `'..'`.
    */
-  readdir(p: string, cb: BFSCallback<string[]>): void;
+  readdir(p: string, cb: CallbackTwoArgs<string[]>): void;
   /**
    * **Core**: Synchronous `readdir`. Reads the contents of a directory.
    */
@@ -200,7 +205,7 @@ export interface FileSystem {
    *   force a specific path resolution or avoid additional `fs.stat` calls for
    *   known real paths. If not supplied by the user, it'll be an empty object.
    */
-  realpath(p: string, cache: { [path: string]: string }, cb: BFSCallback<string>): void;
+  realpath(p: string, cache: { [path: string]: string }, cb: CallbackTwoArgs<string>): void;
   /**
    * **Supplemental**: Synchronous `realpath`.
    *
@@ -214,7 +219,7 @@ export interface FileSystem {
   /**
    * **Supplemental**: Asynchronous `truncate`.
    */
-  truncate(p: string, len: number, cb: BFSOneArgCallback): void;
+  truncate(p: string, len: number, cb: CallbackOneArg): void;
   /**
    * **Supplemental**: Synchronous `truncate`.
    */
@@ -230,7 +235,7 @@ export interface FileSystem {
     fname: string,
     encoding: string | null,
     flag: FileFlag,
-    cb: BFSCallback<string | Buffer>,
+    cb: CallbackTwoArgs<string | Buffer>,
   ): void;
   /**
    * **Supplemental**: Synchronously reads the entire contents of a file.
@@ -251,7 +256,7 @@ export interface FileSystem {
     encoding: string | null,
     flag: FileFlag,
     mode: number,
-    cb: BFSOneArgCallback,
+    cb: CallbackOneArg,
   ): void;
   /**
    * **Supplemental**: Synchronously writes data to a file, replacing the file
@@ -276,7 +281,7 @@ export interface FileSystem {
     encoding: string | null,
     flag: FileFlag,
     mode: number,
-    cb: BFSOneArgCallback,
+    cb: CallbackOneArg,
   ): void;
   /**
    * **Supplemental**: Synchronously append data to a file, creating the file if
@@ -297,7 +302,7 @@ export interface FileSystem {
    * @param isLchmod `True` if `lchmod`, false if `chmod`. Has no
    *   bearing on result if links aren't supported.
    */
-  chmod(p: string, isLchmod: boolean, mode: number, cb: BFSOneArgCallback): void;
+  chmod(p: string, isLchmod: boolean, mode: number, cb: CallbackOneArg): void;
   /**
    * **Optional**: Synchronous `chmod` or `lchmod`.
    * @param isLchmod `True` if `lchmod`, false if `chmod`. Has no
@@ -309,7 +314,7 @@ export interface FileSystem {
    * @param isLchown `True` if `lchown`, false if `chown`. Has no
    *   bearing on result if links aren't supported.
    */
-  chown(p: string, isLchown: boolean, uid: number, gid: number, cb: BFSOneArgCallback): void;
+  chown(p: string, isLchown: boolean, uid: number, gid: number, cb: CallbackOneArg): void;
   /**
    * **Optional**: Synchronous `chown` or `lchown`.
    * @param isLchown `True` if `lchown`, false if `chown`. Has no
@@ -320,7 +325,7 @@ export interface FileSystem {
    * **Optional**: Change file timestamps of the file referenced by the supplied
    * path.
    */
-  utimes(p: string, atime: Date, mtime: Date, cb: BFSOneArgCallback): void;
+  utimes(p: string, atime: Date, mtime: Date, cb: CallbackOneArg): void;
   /**
    * **Optional**: Change file timestamps of the file referenced by the supplied
    * path.
@@ -331,7 +336,7 @@ export interface FileSystem {
   /**
    * **Optional**: Asynchronous `link`.
    */
-  link(srcpath: string, dstpath: string, cb: BFSOneArgCallback): void;
+  link(srcpath: string, dstpath: string, cb: CallbackOneArg): void;
   /**
    * **Optional**: Synchronous `link`.
    */
@@ -340,7 +345,7 @@ export interface FileSystem {
    * **Optional**: Asynchronous `symlink`.
    * @param type can be either `'dir'` or `'file'`
    */
-  symlink(srcpath: string, dstpath: string, type: string, cb: BFSOneArgCallback): void;
+  symlink(srcpath: string, dstpath: string, type: string, cb: CallbackOneArg): void;
   /**
    * **Optional**: Synchronous `symlink`.
    * @param type can be either `'dir'` or `'file'`
@@ -349,7 +354,7 @@ export interface FileSystem {
   /**
    * **Optional**: Asynchronous readlink.
    */
-  readlink(p: string, cb: BFSCallback<string>): void;
+  readlink(p: string, cb: CallbackTwoArgs<string>): void;
   /**
    * **Optional**: Synchronous readlink.
    */
@@ -371,7 +376,7 @@ export interface FileSystemOption<T> {
   // Calls the callback with an error object on an error.
   // (Can call callback synchronously.)
   // Defaults to `(opt, cb) => cb()`.
-  validator?(opt: T, cb: BFSOneArgCallback): void;
+  validator?(opt: T, cb: CallbackOneArg): void;
 }
 
 /**
@@ -397,7 +402,7 @@ export interface FileSystemConstructor {
    * **Core**: Creates a file system of this given type with the given
    * options.
    */
-  Create(options: object, cb: BFSCallback<FileSystem>): void;
+  Create(options: object, cb: CallbackTwoArgs<FileSystem>): void;
   /**
    * **Core**: Returns 'true' if this filesystem is available in the current
    * environment. For example, a `localStorage`-backed filesystem will return
@@ -413,11 +418,9 @@ export interface FileSystemConstructor {
    *
    * Defaults to 'false', as the FileSystem base class isn't usable alone.
    */
-  isWatchable(): boolean;
+  isWatchable?(): boolean;
 
-  watch(
-    p: string,
-    persistent: boolean,)
+  watch?(p: string, persistent: boolean);
 }
 
 /**
@@ -436,17 +439,17 @@ export class BaseFileSystem {
    * @param p The path to open.
    * @param flag The flag to use when opening the file.
    */
-  public openFile(p: string, flag: FileFlag, cb: BFSCallback<File>): void {
+  public openFile(p: string, flag: FileFlag, cb: CallbackTwoArgs<File>): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
   /**
    * Create the file at path p with the given mode. Then, open it with the given
    * flag.
    */
-  public createFile(p: string, flag: FileFlag, mode: number, cb: BFSCallback<File>): void {
+  public createFile(p: string, flag: FileFlag, mode: number, cb: CallbackTwoArgs<File>): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public open(p: string, flag: FileFlag, mode: number, cb: BFSCallback<File>): void {
+  public open(p: string, flag: FileFlag, mode: number, cb: CallbackTwoArgs<File>): void {
     const mustBeFile = (e: ApiError, stats?: Stats): void => {
       if (e) {
         // File does not exist.
@@ -502,13 +505,13 @@ export class BaseFileSystem {
     };
     this.stat(p, false, mustBeFile);
   }
-  public rename(oldPath: string, newPath: string, cb: BFSOneArgCallback): void {
+  public rename(oldPath: string, newPath: string, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public renameSync(oldPath: string, newPath: string): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public stat(p: string, isLstat: boolean | null, cb: BFSCallback<Stats>): void {
+  public stat(p: string, isLstat: boolean | null, cb: CallbackTwoArgs<Stats>): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public statSync(p: string, isLstat: boolean | null): Stats {
@@ -573,25 +576,25 @@ export class BaseFileSystem {
         throw new ApiError(ErrorCode.EINVAL, 'Invalid FileFlag object.');
     }
   }
-  public unlink(p: string, cb: BFSOneArgCallback): void {
+  public unlink(p: string, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public unlinkSync(p: string): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public rmdir(p: string, cb: BFSOneArgCallback): void {
+  public rmdir(p: string, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public rmdirSync(p: string): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public mkdir(p: string, mode: number, cb: BFSOneArgCallback): void {
+  public mkdir(p: string, mode: number, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public mkdirSync(p: string, mode: number): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public readdir(p: string, cb: BFSCallback<string[]>): void {
+  public readdir(p: string, cb: CallbackTwoArgs<string[]>): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public readdirSync(p: string): string[] {
@@ -610,7 +613,7 @@ export class BaseFileSystem {
       return false;
     }
   }
-  public realpath(p: string, cache: { [path: string]: string }, cb: BFSCallback<string>): void {
+  public realpath(p: string, cache: { [path: string]: string }, cb: CallbackTwoArgs<string>): void {
     if (this.supportsLinks()) {
       // The path could contain symlinks. Split up the path,
       // resolve any symlinks, return the resolved string.
@@ -651,7 +654,7 @@ export class BaseFileSystem {
       }
     }
   }
-  public truncate(p: string, len: number, cb: BFSOneArgCallback): void {
+  public truncate(p: string, len: number, cb: CallbackOneArg): void {
     this.open(p, FileFlag.getFileFlag('r+'), 0x1a4, function (er: ApiError, fd?: File) {
       if (er) {
         return cb(er);
@@ -678,7 +681,7 @@ export class BaseFileSystem {
     fname: string,
     encoding: BufferEncoding,
     flag: FileFlag,
-    cb: BFSCallback<string | Buffer>,
+    cb: CallbackTwoArgs<string | Buffer>,
   ): void {
     // Wrap cb in file closing code.
     const oldCb = cb;
@@ -739,7 +742,7 @@ export class BaseFileSystem {
     encoding: BufferEncoding,
     flag: FileFlag,
     mode: number,
-    cb: BFSOneArgCallback,
+    cb: CallbackOneArg,
   ): void {
     // Wrap cb in file closing code.
     const oldCb = cb;
@@ -790,7 +793,7 @@ export class BaseFileSystem {
     encoding: BufferEncoding,
     flag: FileFlag,
     mode: number,
-    cb: BFSOneArgCallback,
+    cb: CallbackOneArg,
   ): void {
     // Wrap cb in file closing code.
     const oldCb = cb;
@@ -826,7 +829,7 @@ export class BaseFileSystem {
       fd.closeSync();
     }
   }
-  public chmod(p: string, isLchmod: boolean, mode: number, cb: BFSOneArgCallback): void {
+  public chmod(p: string, isLchmod: boolean, mode: number, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public chmodSync(p: string, isLchmod: boolean, mode: number) {
@@ -837,32 +840,32 @@ export class BaseFileSystem {
     isLchown: boolean,
     uid: number,
     gid: number,
-    cb: BFSOneArgCallback,
+    cb: CallbackOneArg,
   ): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public chownSync(p: string, isLchown: boolean, uid: number, gid: number): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public utimes(p: string, atime: Date, mtime: Date, cb: BFSOneArgCallback): void {
+  public utimes(p: string, atime: Date, mtime: Date, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public utimesSync(p: string, atime: Date, mtime: Date): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public link(srcpath: string, dstpath: string, cb: BFSOneArgCallback): void {
+  public link(srcpath: string, dstpath: string, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public linkSync(srcpath: string, dstpath: string): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public symlink(srcpath: string, dstpath: string, type: string, cb: BFSOneArgCallback): void {
+  public symlink(srcpath: string, dstpath: string, type: string, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public symlinkSync(srcpath: string, dstpath: string, type: string): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public readlink(p: string, cb: BFSOneArgCallback): void {
+  public readlink(p: string, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public readlinkSync(p: string): string {
@@ -879,7 +882,7 @@ export class SynchronousFileSystem extends BaseFileSystem {
     return true;
   }
 
-  public rename(oldPath: string, newPath: string, cb: BFSOneArgCallback): void {
+  public rename(oldPath: string, newPath: string, cb: CallbackOneArg): void {
     try {
       this.renameSync(oldPath, newPath);
       cb();
@@ -888,7 +891,7 @@ export class SynchronousFileSystem extends BaseFileSystem {
     }
   }
 
-  public stat(p: string, isLstat: boolean | null, cb: BFSCallback<Stats>): void {
+  public stat(p: string, isLstat: boolean | null, cb: CallbackTwoArgs<Stats>): void {
     try {
       cb(null, this.statSync(p, isLstat));
     } catch (e) {
@@ -896,7 +899,7 @@ export class SynchronousFileSystem extends BaseFileSystem {
     }
   }
 
-  public open(p: string, flags: FileFlag, mode: number, cb: BFSCallback<File>): void {
+  public open(p: string, flags: FileFlag, mode: number, cb: CallbackTwoArgs<File>): void {
     try {
       cb(null, this.openSync(p, flags, mode));
     } catch (e) {
@@ -904,7 +907,7 @@ export class SynchronousFileSystem extends BaseFileSystem {
     }
   }
 
-  public unlink(p: string, cb: BFSOneArgCallback): void {
+  public unlink(p: string, cb: CallbackOneArg): void {
     try {
       this.unlinkSync(p);
       cb();
@@ -913,7 +916,7 @@ export class SynchronousFileSystem extends BaseFileSystem {
     }
   }
 
-  public rmdir(p: string, cb: BFSOneArgCallback): void {
+  public rmdir(p: string, cb: CallbackOneArg): void {
     try {
       this.rmdirSync(p);
       cb();
@@ -922,7 +925,7 @@ export class SynchronousFileSystem extends BaseFileSystem {
     }
   }
 
-  public mkdir(p: string, mode: number, cb: BFSOneArgCallback): void {
+  public mkdir(p: string, mode: number, cb: CallbackOneArg): void {
     try {
       this.mkdirSync(p, mode);
       cb();
@@ -931,7 +934,7 @@ export class SynchronousFileSystem extends BaseFileSystem {
     }
   }
 
-  public readdir(p: string, cb: BFSCallback<string[]>): void {
+  public readdir(p: string, cb: CallbackTwoArgs<string[]>): void {
     try {
       cb(null, this.readdirSync(p));
     } catch (e) {
@@ -939,7 +942,7 @@ export class SynchronousFileSystem extends BaseFileSystem {
     }
   }
 
-  public chmod(p: string, isLchmod: boolean, mode: number, cb: BFSOneArgCallback): void {
+  public chmod(p: string, isLchmod: boolean, mode: number, cb: CallbackOneArg): void {
     try {
       this.chmodSync(p, isLchmod, mode);
       cb();
@@ -953,7 +956,7 @@ export class SynchronousFileSystem extends BaseFileSystem {
     isLchown: boolean,
     uid: number,
     gid: number,
-    cb: BFSOneArgCallback,
+    cb: CallbackOneArg,
   ): void {
     try {
       this.chownSync(p, isLchown, uid, gid);
@@ -963,7 +966,7 @@ export class SynchronousFileSystem extends BaseFileSystem {
     }
   }
 
-  public utimes(p: string, atime: Date, mtime: Date, cb: BFSOneArgCallback): void {
+  public utimes(p: string, atime: Date, mtime: Date, cb: CallbackOneArg): void {
     try {
       this.utimesSync(p, atime, mtime);
       cb();
@@ -972,7 +975,7 @@ export class SynchronousFileSystem extends BaseFileSystem {
     }
   }
 
-  public link(srcpath: string, dstpath: string, cb: BFSOneArgCallback): void {
+  public link(srcpath: string, dstpath: string, cb: CallbackOneArg): void {
     try {
       this.linkSync(srcpath, dstpath);
       cb();
@@ -981,7 +984,7 @@ export class SynchronousFileSystem extends BaseFileSystem {
     }
   }
 
-  public symlink(srcpath: string, dstpath: string, type: string, cb: BFSOneArgCallback): void {
+  public symlink(srcpath: string, dstpath: string, type: string, cb: CallbackOneArg): void {
     try {
       this.symlinkSync(srcpath, dstpath, type);
       cb();
@@ -990,7 +993,7 @@ export class SynchronousFileSystem extends BaseFileSystem {
     }
   }
 
-  public readlink(p: string, cb: BFSCallback<string>): void {
+  public readlink(p: string, cb: CallbackTwoArgs<string>): void {
     try {
       cb(null, this.readlinkSync(p));
     } catch (e) {

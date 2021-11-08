@@ -1,19 +1,20 @@
+// import './node/main';
+import './node/polyfill';
 import git from 'isomorphic-git';
 import type { PromiseFsClient } from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
 import type { HttpClient } from 'isomorphic-git/http/web';
-import fs from 'os/lib/fs';
-import { Buffer } from 'buffer';
+import nodeFS from 'os/lib/node/fs';
+import FSWorker from './worker?worker';
 
-window.Buffer = Buffer;
-
+new FSWorker();
 export function withGitConfig<T>(data: Partial<T>): T & {
   fs: PromiseFsClient;
   http: HttpClient;
   corsProxy: string;
 } {
   return {
-    fs,
+    fs: nodeFS,
     http,
     corsProxy: 'https://cors.isomorphic-git.org',
     ...data,

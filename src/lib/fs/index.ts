@@ -5,8 +5,8 @@
 
 // IE substr does not support negative indices
 if ('ab'.substr(-1) !== 'b') {
-  String.prototype.substr = function(substr: (start: number, length?: number) => string) {
-    return function(this: string, start: number, length?: number): string {
+  String.prototype.substr = (function (substr: (start: number, length?: number) => string) {
+    return function (this: string, start: number, length?: number): string {
       // did we get a negative start, calculate how much it is from the
       // beginning of the string
       if (start < 0) {
@@ -15,14 +15,18 @@ if ('ab'.substr(-1) !== 'b') {
       // call the original function
       return substr.call(this, start, length);
     };
-  }(String.prototype.substr);
+  })(String.prototype.substr);
 }
 
 // Polyfill for Uint8Array.prototype.slice.
 // Safari and some other browsers do not define it.
-if (typeof(ArrayBuffer) !== 'undefined' && typeof(Uint8Array) !== 'undefined') {
+if (typeof ArrayBuffer !== 'undefined' && typeof Uint8Array !== 'undefined') {
   if (!Uint8Array.prototype['slice']) {
-    Uint8Array.prototype.slice = function(this: Uint8Array, start: number = 0, end: number = this.length): Uint8Array {
+    Uint8Array.prototype.slice = function (
+      this: Uint8Array,
+      start: number = 0,
+      end: number = this.length,
+    ): Uint8Array {
       const self: Uint8Array = this;
       if (start < 0) {
         start = this.length + start;
@@ -44,4 +48,4 @@ if (typeof(ArrayBuffer) !== 'undefined' && typeof(Uint8Array) !== 'undefined') {
   }
 }
 
-export * from './core/browserfs';
+export * from './fs';

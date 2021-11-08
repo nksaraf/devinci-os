@@ -1,4 +1,4 @@
-import type { BFSCallback, FileSystemOptions } from '../core/file_system';
+import type { CallbackTwoArgs as CallbackOneArg, FileSystemOptions } from '../core/file_system';
 import type {
   SyncKeyValueStore,
   SimpleSyncStore,
@@ -52,7 +52,7 @@ export default class InMemoryFileSystem extends SyncKeyValueFileSystem {
   /**
    * Creates an InMemoryFileSystem instance.
    */
-  public static Create(options: any, cb: BFSCallback<InMemoryFileSystem>): void {
+  public static Create(options: any, cb: CallbackOneArg<InMemoryFileSystem>): void {
     cb(null, new InMemoryFileSystem());
   }
   private constructor() {

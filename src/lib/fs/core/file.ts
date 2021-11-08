@@ -1,6 +1,6 @@
 import { ApiError, ErrorCode } from './api_error';
-import type Stats from '../node/node_fs_stats';
-import type { BFSCallback, BFSOneArgCallback, BFSThreeArgCallback } from './file_system';
+import type Stats from './stats';
+import type { CallbackTwoArgs, CallbackOneArg, BFSThreeArgCallback as CallbackThreeArgs } from './file_system';
 
 export interface File {
   /**
@@ -10,7 +10,7 @@ export interface File {
   /**
    * **Core**: Asynchronous `stat`.
    */
-  stat(cb: BFSCallback<Stats>): void;
+  stat(cb: CallbackTwoArgs<Stats>): void;
   /**
    * **Core**: Synchronous `stat`.
    */
@@ -18,7 +18,7 @@ export interface File {
   /**
    * **Core**: Asynchronous close.
    */
-  close(cb: BFSOneArgCallback): void;
+  close(cb: CallbackOneArg): void;
   /**
    * **Core**: Synchronous close.
    */
@@ -26,7 +26,7 @@ export interface File {
   /**
    * **Core**: Asynchronous truncate.
    */
-  truncate(len: number, cb: BFSOneArgCallback): void;
+  truncate(len: number, cb: CallbackOneArg): void;
   /**
    * **Core**: Synchronous truncate.
    */
@@ -34,7 +34,7 @@ export interface File {
   /**
    * **Core**: Asynchronous sync.
    */
-  sync(cb: BFSOneArgCallback): void;
+  sync(cb: CallbackOneArg): void;
   /**
    * **Core**: Synchronous sync.
    */
@@ -57,7 +57,7 @@ export interface File {
     offset: number,
     length: number,
     position: number | null,
-    cb: BFSThreeArgCallback<number, Buffer>,
+    cb: CallbackThreeArgs<number, Buffer>,
   ): void;
   /**
    * **Core**: Write buffer to the file.
@@ -89,7 +89,7 @@ export interface File {
     offset: number,
     length: number,
     position: number | null,
-    cb: BFSThreeArgCallback<number, Buffer>,
+    cb: CallbackThreeArgs<number, Buffer>,
   ): void;
   /**
    * **Core**: Read data from the file.
@@ -106,7 +106,7 @@ export interface File {
    *
    * Default implementation maps to `sync`.
    */
-  datasync(cb: BFSOneArgCallback): void;
+  datasync(cb: CallbackOneArg): void;
   /**
    * **Supplementary**: Synchronous `datasync`.
    *
@@ -116,7 +116,7 @@ export interface File {
   /**
    * **Optional**: Asynchronous `chown`.
    */
-  chown(uid: number, gid: number, cb: BFSOneArgCallback): void;
+  chown(uid: number, gid: number, cb: CallbackOneArg): void;
   /**
    * **Optional**: Synchronous `chown`.
    */
@@ -124,7 +124,7 @@ export interface File {
   /**
    * **Optional**: Asynchronous `fchmod`.
    */
-  chmod(mode: number, cb: BFSOneArgCallback): void;
+  chmod(mode: number, cb: CallbackOneArg): void;
   /**
    * **Optional**: Synchronous `fchmod`.
    */
@@ -132,7 +132,7 @@ export interface File {
   /**
    * **Optional**: Change the file timestamps of the file.
    */
-  utimes(atime: Date, mtime: Date, cb: BFSOneArgCallback): void;
+  utimes(atime: Date, mtime: Date, cb: CallbackOneArg): void;
   /**
    * **Optional**: Change the file timestamps of the file.
    */
@@ -144,31 +144,31 @@ export interface File {
  * object.
  */
 export class BaseFile {
-  public sync(cb: BFSOneArgCallback): void {
+  public sync(cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public syncSync(): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public datasync(cb: BFSOneArgCallback): void {
+  public datasync(cb: CallbackOneArg): void {
     this.sync(cb);
   }
   public datasyncSync(): void {
     return this.syncSync();
   }
-  public chown(uid: number, gid: number, cb: BFSOneArgCallback): void {
+  public chown(uid: number, gid: number, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public chownSync(uid: number, gid: number): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public chmod(mode: number, cb: BFSOneArgCallback): void {
+  public chmod(mode: number, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public chmodSync(mode: number): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public utimes(atime: Date, mtime: Date, cb: BFSOneArgCallback): void {
+  public utimes(atime: Date, mtime: Date, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public utimesSync(atime: Date, mtime: Date): void {

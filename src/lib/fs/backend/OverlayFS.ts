@@ -1,11 +1,12 @@
-import {FileSystem, BaseFileSystem, BFSOneArgCallback, BFSCallback, FileSystemOptions} from '../core/file_system';
+import {FileSystem, BaseFileSystem, CallbackOneArg, CallbackTwoArgs, FileSystemOptions} from '../core/file_system';
 import {ApiError, ErrorCode} from '../core/api_error';
 import {FileFlag, ActionType} from '../core/file_flag';
 import type {File} from '../core/file';
-import {default as Stats} from '../node/node_fs_stats';
+import {default as Stats} from '../../node/fs/node_fs_statsfs_stats';
 import PreloadFile from '../generic/preload_file';
 import LockedFS from '../generic/locked_fs';
 import * as path from 'path';
+
 /**
  * @hidden
  */
@@ -34,7 +35,7 @@ class OverlayFile extends PreloadFile<UnlockedOverlayFS> implements File {
     super(fs, path, flag, stats, data);
   }
 
-  public sync(cb: BFSOneArgCallback): void {
+  public sync(cb: CallbackOneArg): void {
     if (!this.isDirty()) {
       cb(null);
       return;
@@ -53,7 +54,7 @@ class OverlayFile extends PreloadFile<UnlockedOverlayFS> implements File {
     }
   }
 
-  public close(cb: BFSOneArgCallback): void {
+  public close(cb: CallbackOneArg): void {
     this.sync(cb);
   }
 
@@ -76,7 +77,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
   private _writable: FileSystem;
   private _readable: FileSystem;
   private _isInitialized: boolean = false;
-  private _initializeCallbacks: (BFSOneArgCallback)[] = [];
+  private _initializeCallbacks: (CallbackOneArg)[] = [];
   private _deletedFiles: {[path: string]: boolean} = {};
   private _deleteLog: string = '';
   // If 'true', we have scheduled a delete log update.
@@ -103,7 +104,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
     };
   }
 
-  public _syncAsync(file: PreloadFile<UnlockedOverlayFS>, cb: BFSOneArgCallback): void {
+  public _syncAsync(file: PreloadFile<UnlockedOverlayFS>, cb: CallbackOneArg): void {
     this.createParentDirectoriesAsync(file.getPath(), (err?: ApiError) => {
       if (err) {
         return cb(err);
@@ -126,7 +127,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
    *
    * Called once to load up metadata stored on the writable file system.
    */
-  public _initialize(cb: BFSOneArgCallback): void {
+  public _initialize(cb: CallbackOneArg): void {
     const callbackArray = this._initializeCallbacks;
 
     const end = (e?: ApiError): void => {
@@ -176,7 +177,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
     this.updateLog('');
   }
 
-  public rename(oldPath: string, newPath: string, cb: BFSOneArgCallback): void {
+  public rename(oldPath: string, newPath: string, cb: CallbackOneArg): void {
     if (!this.checkInitAsync(cb) || this.checkPathAsync(oldPath, cb) || this.checkPathAsync(newPath, cb)) {
       return;
     }
@@ -348,7 +349,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
     }
   }
 
-  public stat(p: string, isLstat: boolean, cb: BFSCallback<Stats>): void {
+  public stat(p: string, isLstat: boolean, cb: CallbackTwoArgs<Stats>): void {
     if (!this.checkInitAsync(cb)) {
       return;
     }
@@ -389,7 +390,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
     }
   }
 
-  public open(p: string, flag: FileFlag, mode: number, cb: BFSCallback<File>): void {
+  public open(p: string, flag: FileFlag, mode: number, cb: CallbackTwoArgs<File>): void {
     if (!this.checkInitAsync(cb) || this.checkPathAsync(p, cb)) {
       return;
     }
@@ -478,7 +479,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
     }
   }
 
-  public unlink(p: string, cb: BFSOneArgCallback): void {
+  public unlink(p: string, cb: CallbackOneArg): void {
     if (!this.checkInitAsync(cb) || this.checkPathAsync(p, cb)) {
       return;
     }
@@ -528,7 +529,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
     }
   }
 
-  public rmdir(p: string, cb: BFSOneArgCallback): void {
+  public rmdir(p: string, cb: CallbackOneArg): void {
     if (!this.checkInitAsync(cb)) {
       return;
     }
@@ -594,7 +595,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
     }
   }
 
-  public mkdir(p: string, mode: number, cb: BFSCallback<Stats>): void {
+  public mkdir(p: string, mode: number, cb: CallbackTwoArgs<Stats>): void {
     if (!this.checkInitAsync(cb)) {
       return;
     }
@@ -626,7 +627,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
     }
   }
 
-  public readdir(p: string, cb: BFSCallback<string[]>): void {
+  public readdir(p: string, cb: CallbackTwoArgs<string[]>): void {
     if (!this.checkInitAsync(cb)) {
       return;
     }
@@ -718,7 +719,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
     return this._writable.existsSync(p) || (this._readable.existsSync(p) && this._deletedFiles[p] !== true);
   }
 
-  public chmod(p: string, isLchmod: boolean, mode: number, cb: BFSOneArgCallback): void {
+  public chmod(p: string, isLchmod: boolean, mode: number, cb: CallbackOneArg): void {
     if (!this.checkInitAsync(cb)) {
       return;
     }
@@ -738,7 +739,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
     });
   }
 
-  public chown(p: string, isLchmod: boolean, uid: number, gid: number, cb: BFSOneArgCallback): void {
+  public chown(p: string, isLchmod: boolean, uid: number, gid: number, cb: CallbackOneArg): void {
     if (!this.checkInitAsync(cb)) {
       return;
     }
@@ -758,7 +759,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
     });
   }
 
-  public utimes(p: string, atime: Date, mtime: Date, cb: BFSOneArgCallback): void {
+  public utimes(p: string, atime: Date, mtime: Date, cb: CallbackOneArg): void {
     if (!this.checkInitAsync(cb)) {
       return;
     }
@@ -819,7 +820,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
     }
   }
 
-  private checkInitAsync(cb: BFSOneArgCallback): boolean {
+  private checkInitAsync(cb: CallbackOneArg): boolean {
     if (!this._isInitialized) {
       cb(new ApiError(ErrorCode.EPERM, "OverlayFS is not initialized. Please initialize OverlayFS using its initialize() method before using it."));
       return false;
@@ -838,7 +839,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
     }
   }
 
-  private checkPathAsync(p: string, cb: BFSOneArgCallback): boolean {
+  private checkPathAsync(p: string, cb: CallbackOneArg): boolean {
     if (p === deletionLogPath) {
       cb(ApiError.EPERM(p));
       return true;
@@ -846,7 +847,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
     return false;
   }
 
-  private createParentDirectoriesAsync(p: string, cb: BFSOneArgCallback): void {
+  private createParentDirectoriesAsync(p: string, cb: CallbackOneArg): void {
     let parent = path.dirname(p);
     const toCreate: string[] = [];
     const self = this;
@@ -923,7 +924,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
     }
   }
 
-  private operateOnWritableAsync(p: string, cb: BFSOneArgCallback): void {
+  private operateOnWritableAsync(p: string, cb: CallbackOneArg): void {
     this.exists(p, (exists: boolean) => {
       if (!exists) {
         return cb(ApiError.ENOENT(p));
@@ -954,7 +955,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements FileSystem {
     }
   }
 
-  private copyToWritableAsync(p: string, cb: BFSOneArgCallback): void {
+  private copyToWritableAsync(p: string, cb: CallbackOneArg): void {
     this.stat(p, false, (err: ApiError, pStats?: Stats) => {
       if (err) {
         return cb(err);
@@ -1008,7 +1009,7 @@ export default class OverlayFS extends LockedFS<UnlockedOverlayFS> {
   /**
    * Constructs and initializes an OverlayFS instance with the given options.
    */
-  public static Create(opts: OverlayFSOptions, cb: BFSCallback<OverlayFS>): void {
+  public static Create(opts: OverlayFSOptions, cb: CallbackTwoArgs<OverlayFS>): void {
     try {
       const fs = new OverlayFS(opts.writable, opts.readable);
       fs._initialize((e?) => {
@@ -1038,7 +1039,7 @@ export default class OverlayFS extends LockedFS<UnlockedOverlayFS> {
     return super.getFSUnlocked();
   }
 
-  private _initialize(cb: BFSOneArgCallback): void {
+  private _initialize(cb: CallbackOneArg): void {
     super.getFSUnlocked()._initialize(cb);
   }
 }

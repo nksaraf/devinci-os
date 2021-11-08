@@ -1,4 +1,4 @@
-import {BaseFileSystem, FileSystem, BFSCallback, FileSystemOptions} from '../core/file_system';
+import {BaseFileSystem, FileSystem, CallbackTwoArgs, FileSystemOptions} from '../core/file_system';
 import * as path from 'path';
 import {ApiError} from '../core/api_error';
 
@@ -47,7 +47,7 @@ export default class FolderAdapter extends BaseFileSystem implements FileSystem 
   /**
    * Creates a FolderAdapter instance with the given options.
    */
-  public static Create(opts: FolderAdapterOptions, cb: BFSCallback<FolderAdapter>): void {
+  public static Create(opts: FolderAdapterOptions, cb: CallbackTwoArgs<FolderAdapter>): void {
     const fa = new FolderAdapter(opts.folder, opts.wrapped);
     fa._initialize(function(e?) {
       if (e) {

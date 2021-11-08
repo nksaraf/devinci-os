@@ -3,19 +3,19 @@
  * XmlHttpRequest across browsers.
  */
 
-import {isIE, emptyBuffer} from '../core/util';
-import {ApiError, ErrorCode} from '../core/api_error';
-import {BFSCallback} from '../core/file_system';
+import { isIE, emptyBuffer } from '../core/util';
+import { ApiError, ErrorCode } from '../core/api_error';
+import type { CallbackTwoArgs } from '../core/file_system';
 
-export const xhrIsAvailable = (typeof(XMLHttpRequest) !== "undefined" && XMLHttpRequest !== null);
+export const xhrIsAvailable = typeof XMLHttpRequest !== 'undefined' && XMLHttpRequest !== null;
 
 /**
  * @hidden
  */
-function asyncDownloadFileModern(p: string, type: 'buffer', cb: BFSCallback<Buffer>): void;
-function asyncDownloadFileModern(p: string, type: 'json', cb: BFSCallback<any>): void;
-function asyncDownloadFileModern(p: string, type: string, cb: BFSCallback<any>): void;
-function asyncDownloadFileModern(p: string, type: string, cb: BFSCallback<any>): void {
+function asyncDownloadFileModern(p: string, type: 'buffer', cb: CallbackTwoArgs<Buffer>): void;
+function asyncDownloadFileModern(p: string, type: 'json', cb: CallbackTwoArgs<any>): void;
+function asyncDownloadFileModern(p: string, type: string, cb: CallbackTwoArgs<any>): void;
+function asyncDownloadFileModern(p: string, type: string, cb: CallbackTwoArgs<any>): void {
   const req = new XMLHttpRequest();
   req.open('GET', p, true);
   let jsonSupported = true;
@@ -24,9 +24,9 @@ function asyncDownloadFileModern(p: string, type: string, cb: BFSCallback<any>):
       req.responseType = 'arraybuffer';
       break;
     case 'json':
-     // Some browsers don't support the JSON response type.
-     // They either reset responseType, or throw an exception.
-     // @see https://github.com/Modernizr/Modernizr/blob/master/src/testXhrType.js
+      // Some browsers don't support the JSON response type.
+      // They either reset responseType, or throw an exception.
+      // @see https://github.com/Modernizr/Modernizr/blob/master/src/testXhrType.js
       try {
         req.responseType = 'json';
         jsonSupported = req.responseType === 'json';
@@ -35,9 +35,9 @@ function asyncDownloadFileModern(p: string, type: string, cb: BFSCallback<any>):
       }
       break;
     default:
-      return cb(new ApiError(ErrorCode.EINVAL, "Invalid download type: " + type));
+      return cb(new ApiError(ErrorCode.EINVAL, 'Invalid download type: ' + type));
   }
-  req.onreadystatechange = function(e) {
+  req.onreadystatechange = function (e) {
     if (req.readyState === 4) {
       if (req.status === 200) {
         switch (type) {
@@ -75,7 +75,7 @@ function syncDownloadFileModern(p: string, type: string): any {
   let err: any = null;
   // Classic hack to download binary data as a string.
   req.overrideMimeType('text/plain; charset=x-user-defined');
-  req.onreadystatechange = function(e) {
+  req.onreadystatechange = function (e) {
     if (req.readyState === 4) {
       if (req.status === 200) {
         switch (type) {
@@ -126,11 +126,11 @@ function syncDownloadFileIE10(p: string, type: string): any {
       // IE10 does not support the JSON type.
       break;
     default:
-      throw new ApiError(ErrorCode.EINVAL, "Invalid download type: " + type);
+      throw new ApiError(ErrorCode.EINVAL, 'Invalid download type: ' + type);
   }
   let data: any;
   let err: any;
-  req.onreadystatechange = function(e) {
+  req.onreadystatechange = function (e) {
     if (req.readyState === 4) {
       if (req.status === 200) {
         switch (type) {
@@ -156,20 +156,22 @@ function syncDownloadFileIE10(p: string, type: string): any {
 /**
  * @hidden
  */
-function getFileSize(async: boolean, p: string, cb: BFSCallback<number>): void {
+function getFileSize(async: boolean, p: string, cb: CallbackTwoArgs<number>): void {
   const req = new XMLHttpRequest();
   req.open('HEAD', p, async);
-  req.onreadystatechange = function(e) {
+  req.onreadystatechange = function (e) {
     if (req.readyState === 4) {
       if (req.status === 200) {
         try {
           return cb(null, parseInt(req.getResponseHeader('Content-Length') || '-1', 10));
         } catch (e) {
           // In the event that the header isn't present or there is an error...
-          return cb(new ApiError(ErrorCode.EIO, "XHR HEAD error: Could not read content-length."));
+          return cb(new ApiError(ErrorCode.EIO, 'XHR HEAD error: Could not read content-length.'));
         }
       } else {
-        return cb(new ApiError(ErrorCode.EIO, `XHR HEAD error: response returned code ${req.status}`));
+        return cb(
+          new ApiError(ErrorCode.EIO, `XHR HEAD error: response returned code ${req.status}`),
+        );
       }
     }
   };
@@ -184,9 +186,9 @@ function getFileSize(async: boolean, p: string, cb: BFSCallback<number>): void {
  * @hidden
  */
 export let asyncDownloadFile: {
-  (p: string, type: 'buffer', cb: BFSCallback<Buffer>): void;
-  (p: string, type: 'json', cb: BFSCallback<any>): void;
-  (p: string, type: string, cb: BFSCallback<any>): void;
+  (p: string, type: 'buffer', cb: CallbackTwoArgs<Buffer>): void;
+  (p: string, type: 'json', cb: CallbackTwoArgs<any>): void;
+  (p: string, type: string, cb: CallbackTwoArgs<any>): void;
 } = asyncDownloadFileModern;
 
 /**
@@ -200,7 +202,7 @@ export let syncDownloadFile: {
   (p: string, type: 'buffer'): Buffer;
   (p: string, type: 'json'): any;
   (p: string, type: string): any;
-} = (isIE && typeof Blob !== 'undefined') ? syncDownloadFileIE10 : syncDownloadFileModern;
+} = isIE && typeof Blob !== 'undefined' ? syncDownloadFileIE10 : syncDownloadFileModern;
 
 /**
  * Synchronously retrieves the size of the given file in bytes.
@@ -208,7 +210,7 @@ export let syncDownloadFile: {
  */
 export function getFileSizeSync(p: string): number {
   let rv: number = -1;
-  getFileSize(false, p, function(err: ApiError, size?: number) {
+  getFileSize(false, p, function (err: ApiError, size?: number) {
     if (err) {
       throw err;
     }

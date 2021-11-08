@@ -1,6 +1,6 @@
 import {ApiError, ErrorCode} from '../core/api_error';
-import {default as Stats, FileType} from '../node/node_fs_stats';
-import {SynchronousFileSystem, FileSystem, BFSCallback, FileSystemOptions} from '../core/file_system';
+import {default as Stats, FileType} from '../../node/fs/node_fs_statsfs_stats';
+import {SynchronousFileSystem, FileSystem, CallbackTwoArgs, FileSystemOptions} from '../core/file_system';
 import {File} from '../core/file';
 import {FileFlag, ActionType} from '../core/file_flag';
 import {NoSyncFile} from '../generic/preload_file';
@@ -1167,7 +1167,7 @@ export default class IsoFS extends SynchronousFileSystem implements FileSystem {
   /**
    * Creates an IsoFS instance with the given options.
    */
-  public static Create(opts: IsoFSOptions, cb: BFSCallback<IsoFS>): void {
+  public static Create(opts: IsoFSOptions, cb: CallbackTwoArgs<IsoFS>): void {
     try {
       cb(null, new IsoFS(opts.data, opts.name));
     } catch (e) {

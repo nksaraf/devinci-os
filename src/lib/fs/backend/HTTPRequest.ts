@@ -1,9 +1,10 @@
-import { BaseFileSystem, FileSystem, BFSCallback, FileSystemOptions } from '../core/file_system';
+import { BaseFileSystem } from '../core/file_system';
+import type { FileSystem, CallbackTwoArgs, FileSystemOptions } from '../core/file_system';
 import { ApiError, ErrorCode } from '../core/api_error';
 import { FileFlag, ActionType } from '../core/file_flag';
 import { copyingSlice } from '../core/util';
 import type { File } from '../core/file';
-import Stats from '../node/node_fs_stats';
+import Stats from '../../node/fs/fs_stats';
 import { NoSyncFile } from '../generic/preload_file';
 import {
   xhrIsAvailable,
@@ -21,7 +22,7 @@ import { FileIndex, isFileInode, isDirInode } from '../generic/file_index';
  * this is an uncommon case.
  * @hidden
  */
-function tryToString(buff: Buffer, encoding: BufferEncoding, cb: BFSCallback<string>) {
+function tryToString(buff: Buffer, encoding: BufferEncoding, cb: CallbackTwoArgs<string>) {
   try {
     cb(null, buff.toString(encoding));
   } catch (e) {
@@ -45,9 +46,9 @@ export interface HTTPRequestOptions {
 }
 
 interface AsyncDownloadFileMethod {
-  (p: string, type: 'buffer', cb: BFSCallback<Buffer>): void;
-  (p: string, type: 'json', cb: BFSCallback<any>): void;
-  (p: string, type: string, cb: BFSCallback<any>): void;
+  (p: string, type: 'buffer', cb: CallbackTwoArgs<Buffer>): void;
+  (p: string, type: 'json', cb: CallbackTwoArgs<any>): void;
+  (p: string, type: string, cb: CallbackTwoArgs<any>): void;
 }
 
 interface SyncDownloadFileMethod {
@@ -118,7 +119,7 @@ export default class HTTPRequest extends BaseFileSystem implements FileSystem {
   /**
    * Construct an HTTPRequest file system backend with the given options.
    */
-  public static Create(opts: HTTPRequestOptions, cb: BFSCallback<HTTPRequest>): void {
+  public static Create(opts: HTTPRequestOptions, cb: CallbackTwoArgs<HTTPRequest>): void {
     if (opts.index === undefined) {
       opts.index = `index.json`;
     }
@@ -142,7 +143,7 @@ export default class HTTPRequest extends BaseFileSystem implements FileSystem {
   public readonly prefixUrl: string;
   private _index: FileIndex<{}>;
   private _requestFileAsyncInternal: AsyncDownloadFileMethod;
-  private _requestFileSizeAsyncInternal: (p: string, cb: BFSCallback<number>) => void;
+  private _requestFileSizeAsyncInternal: (p: string, cb: CallbackTwoArgs<number>) => void;
   private _requestFileSyncInternal: SyncDownloadFileMethod;
   private _requestFileSizeSyncInternal: (p: string) => number;
 
@@ -164,6 +165,7 @@ export default class HTTPRequest extends BaseFileSystem implements FileSystem {
     }
 
     if (xhrIsAvailable) {
+      console.log('XHR IS AVAILABLE');
       this._requestFileSyncInternal = syncDownloadFile;
       this._requestFileSizeSyncInternal = getFileSizeSync;
     } else {
@@ -224,7 +226,7 @@ export default class HTTPRequest extends BaseFileSystem implements FileSystem {
     }
   }
 
-  public stat(path: string, isLstat: boolean, cb: BFSCallback<Stats>): void {
+  public stat(path: string, isLstat: boolean, cb: CallbackTwoArgs<Stats>): void {
     const inode = this._index.getInode(path);
     if (inode === null) {
       return cb(ApiError.ENOENT(path));
@@ -272,7 +274,7 @@ export default class HTTPRequest extends BaseFileSystem implements FileSystem {
     return stats;
   }
 
-  public open(path: string, flags: FileFlag, mode: number, cb: BFSCallback<File>): void {
+  public open(path: string, flags: FileFlag, mode: number, cb: CallbackTwoArgs<File>): void {
     // INVARIANT: You can't write to files on this file system.
     if (flags.isWriteable()) {
       return cb(new ApiError(ErrorCode.EPERM, path));
@@ -350,7 +352,7 @@ export default class HTTPRequest extends BaseFileSystem implements FileSystem {
     }
   }
 
-  public readdir(path: string, cb: BFSCallback<string[]>): void {
+  public readdir(path: string, cb: CallbackTwoArgs<string[]>): void {
     try {
       cb(null, this.readdirSync(path));
     } catch (e) {
@@ -377,7 +379,7 @@ export default class HTTPRequest extends BaseFileSystem implements FileSystem {
     fname: string,
     encoding: BufferEncoding,
     flag: FileFlag,
-    cb: BFSCallback<string | Buffer>,
+    cb: CallbackTwoArgs<string | Buffer>,
   ): void {
     // Wrap cb in file closing code.
     const oldCb = cb;
@@ -432,10 +434,10 @@ export default class HTTPRequest extends BaseFileSystem implements FileSystem {
   /**
    * Asynchronously download the given file.
    */
-  private _requestFileAsync(p: string, type: 'buffer', cb: BFSCallback<Buffer>): void;
-  private _requestFileAsync(p: string, type: 'json', cb: BFSCallback<any>): void;
-  private _requestFileAsync(p: string, type: string, cb: BFSCallback<any>): void;
-  private _requestFileAsync(p: string, type: string, cb: BFSCallback<any>): void {
+  private _requestFileAsync(p: string, type: 'buffer', cb: CallbackTwoArgs<Buffer>): void;
+  private _requestFileAsync(p: string, type: 'json', cb: CallbackTwoArgs<any>): void;
+  private _requestFileAsync(p: string, type: string, cb: CallbackTwoArgs<any>): void;
+  private _requestFileAsync(p: string, type: string, cb: CallbackTwoArgs<any>): void {
     this._requestFileAsyncInternal(this._getHTTPPath(p), type, cb);
   }
 
@@ -452,7 +454,7 @@ export default class HTTPRequest extends BaseFileSystem implements FileSystem {
   /**
    * Only requests the HEAD content, for the file size.
    */
-  private _requestFileSizeAsync(path: string, cb: BFSCallback<number>): void {
+  private _requestFileSizeAsync(path: string, cb: CallbackTwoArgs<number>): void {
     this._requestFileSizeAsyncInternal(this._getHTTPPath(path), cb);
   }
 

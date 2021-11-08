@@ -1,5 +1,5 @@
 <script lang="ts">
-  import fs from 'os/lib/fs';
+  import fs from 'os/lib/fs/fs';
   import { onDestroy, onMount } from 'svelte';
   import FinderItem from './FinderItem.svelte';
 

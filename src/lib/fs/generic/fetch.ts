@@ -3,7 +3,7 @@
  */
 
 import { ApiError, ErrorCode } from '../core/api_error';
-import type { BFSCallback } from '../core/file_system';
+import type { CallbackTwoArgs } from '../core/file_system';
 
 export const fetchIsAvailable = typeof fetch !== 'undefined' && fetch !== null;
 
@@ -14,10 +14,10 @@ export const fetchIsAvailable = typeof fetch !== 'undefined' && fetch !== null;
  * constants.
  * @hidden
  */
-export function fetchFileAsync(p: string, type: 'buffer', cb: BFSCallback<Buffer>): void;
-export function fetchFileAsync(p: string, type: 'json', cb: BFSCallback<any>): void;
-export function fetchFileAsync(p: string, type: string, cb: BFSCallback<any>): void;
-export function fetchFileAsync(p: string, type: string, cb: BFSCallback<any>): void {
+export function fetchFileAsync(p: string, type: 'buffer', cb: CallbackTwoArgs<Buffer>): void;
+export function fetchFileAsync(p: string, type: 'json', cb: CallbackTwoArgs<any>): void;
+export function fetchFileAsync(p: string, type: string, cb: CallbackTwoArgs<any>): void;
+export function fetchFileAsync(p: string, type: string, cb: CallbackTwoArgs<any>): void {
   let request;
   try {
     request = fetch(p);
@@ -55,7 +55,7 @@ export function fetchFileAsync(p: string, type: string, cb: BFSCallback<any>): v
  * Asynchronously retrieves the size of the given file in bytes.
  * @hidden
  */
-export function fetchFileSizeAsync(p: string, cb: BFSCallback<number>): void {
+export function fetchFileSizeAsync(p: string, cb: CallbackTwoArgs<number>): void {
   fetch(p, { method: 'HEAD' })
     .then((res) => {
       if (!res.ok) {

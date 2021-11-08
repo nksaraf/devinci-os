@@ -1,7 +1,7 @@
 import PreloadFile from '../generic/preload_file';
-import {BaseFileSystem, FileSystem, BFSOneArgCallback, BFSCallback, FileSystemOptions} from '../core/file_system';
+import {BaseFileSystem, FileSystem, CallbackOneArg, CallbackTwoArgs, FileSystemOptions} from '../core/file_system';
 import {FileFlag} from '../core/file_flag';
-import {default as Stats, FileType} from '../node/node_fs_stats';
+import {default as Stats, FileType} from '../../node/fs/node_fs_statsfs_stats';
 import {ApiError, ErrorCode} from '../core/api_error';
 import {File} from '../core/file';
 import {arrayBuffer2Buffer, buffer2ArrayBuffer} from '../core/util';
@@ -118,7 +118,7 @@ function WriteErrorToError(err: DropboxTypes.files.WriteError, p: string, msg: s
   }
 }
 
-function FilesDeleteWrapped(client: DropboxClient, p: string, cb: BFSOneArgCallback): void {
+function FilesDeleteWrapped(client: DropboxClient, p: string, cb: CallbackOneArg): void {
   const arg: DropboxTypes.files.DeleteArg = {
     path: FixPath(p)
   };
@@ -150,11 +150,11 @@ export class DropboxFile extends PreloadFile<DropboxFileSystem> implements File 
     super(_fs, _path, _flag, _stat, contents);
   }
 
-  public sync(cb: BFSOneArgCallback): void {
+  public sync(cb: CallbackOneArg): void {
     this._fs._syncFile(this.getPath(), this.getBuffer(), cb);
   }
 
-  public close(cb: BFSOneArgCallback): void {
+  public close(cb: CallbackOneArg): void {
     this.sync(cb);
   }
 }
@@ -186,7 +186,7 @@ export default class DropboxFileSystem extends BaseFileSystem implements FileSys
    * Creates a new DropboxFileSystem instance with the given options.
    * Must be given an *authenticated* Dropbox client from 2.x JS SDK.
    */
-  public static Create(opts: DropboxFileSystemOptions, cb: BFSCallback<DropboxFileSystem>): void {
+  public static Create(opts: DropboxFileSystemOptions, cb: CallbackTwoArgs<DropboxFileSystem>): void {
     cb(null, new DropboxFileSystem(opts.client));
   }
 
@@ -229,7 +229,7 @@ export default class DropboxFileSystem extends BaseFileSystem implements FileSys
    * Deletes *everything* in the file system. Mainly intended for unit testing!
    * @param mainCb Called when operation completes.
    */
-  public empty(mainCb: BFSOneArgCallback): void {
+  public empty(mainCb: CallbackOneArg): void {
     this.readdir('/', (e, paths?) => {
       if (paths) {
         const next = (e?: ApiError) => {
@@ -246,7 +246,7 @@ export default class DropboxFileSystem extends BaseFileSystem implements FileSys
     });
   }
 
-  public rename(oldPath: string, newPath: string, cb: BFSOneArgCallback): void {
+  public rename(oldPath: string, newPath: string, cb: CallbackOneArg): void {
     // Dropbox doesn't let you rename things over existing things, but POSIX does.
     // So, we need to see if newPath exists...
     this.stat(newPath, false, (e, stats?) => {
@@ -313,7 +313,7 @@ export default class DropboxFileSystem extends BaseFileSystem implements FileSys
     });
   }
 
-  public stat(path: string, isLstat: boolean, cb: BFSCallback<Stats>): void {
+  public stat(path: string, isLstat: boolean, cb: CallbackTwoArgs<Stats>): void {
     if (path === '/') {
       // Dropbox doesn't support querying the root directory.
       setImmediate(function() {
@@ -354,7 +354,7 @@ export default class DropboxFileSystem extends BaseFileSystem implements FileSys
     });
   }
 
-  public openFile(path: string, flags: FileFlag, cb: BFSCallback<File>): void {
+  public openFile(path: string, flags: FileFlag, cb: CallbackTwoArgs<File>): void {
     const downloadArg: DropboxTypes.files.DownloadArg = {
       path: FixPath(path)
     };
@@ -381,7 +381,7 @@ export default class DropboxFileSystem extends BaseFileSystem implements FileSys
     });
   }
 
-  public createFile(p: string, flags: FileFlag, mode: number, cb: BFSCallback<File>): void {
+  public createFile(p: string, flags: FileFlag, mode: number, cb: CallbackTwoArgs<File>): void {
     const fileData = Buffer.alloc(0);
     const blob = new Blob([buffer2ArrayBuffer(fileData) as ArrayBuffer], {type: "octet/stream"});
     const commitInfo: DropboxTypes.files.CommitInfo = {
@@ -413,7 +413,7 @@ export default class DropboxFileSystem extends BaseFileSystem implements FileSys
   /**
    * Delete a file
    */
-  public unlink(path: string, cb: BFSOneArgCallback): void {
+  public unlink(path: string, cb: CallbackOneArg): void {
     // Must be a file. Check first.
     this.stat(path, false, (e, stat) => {
       if (stat) {
@@ -431,7 +431,7 @@ export default class DropboxFileSystem extends BaseFileSystem implements FileSys
   /**
    * Delete a directory
    */
-  public rmdir(path: string, cb: BFSOneArgCallback): void {
+  public rmdir(path: string, cb: CallbackOneArg): void {
     this.readdir(path, (e, paths) => {
       if (paths) {
         if (paths.length > 0) {
@@ -448,7 +448,7 @@ export default class DropboxFileSystem extends BaseFileSystem implements FileSys
   /**
    * Create a directory
    */
-  public mkdir(p: string, mode: number, cb: BFSOneArgCallback): void {
+  public mkdir(p: string, mode: number, cb: CallbackOneArg): void {
     // Dropbox's create_folder is recursive. Check if parent exists.
     const parent = dirname(p);
     this.stat(parent, false, (e, stats?) => {
@@ -476,7 +476,7 @@ export default class DropboxFileSystem extends BaseFileSystem implements FileSys
   /**
    * Get the names of the files in a directory
    */
-  public readdir(path: string, cb: BFSCallback<string[]>): void {
+  public readdir(path: string, cb: CallbackTwoArgs<string[]>): void {
     const arg: DropboxTypes.files.ListFolderArg = {
       path: FixPath(path)
     };
@@ -490,7 +490,7 @@ export default class DropboxFileSystem extends BaseFileSystem implements FileSys
   /**
    * (Internal) Syncs file to Dropbox.
    */
-  public _syncFile(p: string, d: Buffer, cb: BFSOneArgCallback): void {
+  public _syncFile(p: string, d: Buffer, cb: CallbackOneArg): void {
     const blob = new Blob([buffer2ArrayBuffer(d) as ArrayBuffer], {type: "octet/stream"});
     const arg: DropboxTypes.files.CommitInfo = {
       contents: blob,
@@ -520,7 +520,7 @@ export default class DropboxFileSystem extends BaseFileSystem implements FileSys
   }
 }
 
-function ProcessListFolderError(e: DropboxTypes.Error<DropboxTypes.files.ListFolderError>, path: string, cb: BFSCallback<string[]>): void {
+function ProcessListFolderError(e: DropboxTypes.Error<DropboxTypes.files.ListFolderError>, path: string, cb: CallbackTwoArgs<string[]>): void {
   const err = ExtractTheFuckingError(e);
   switch (err['.tag']) {
     case 'path':
@@ -534,7 +534,7 @@ function ProcessListFolderError(e: DropboxTypes.Error<DropboxTypes.files.ListFol
   }
 }
 
-function ContinueReadingDir(client: DropboxClient, path: string, res: DropboxTypes.files.ListFolderResult, previousEntries: string[], cb: BFSCallback<string[]>): void {
+function ContinueReadingDir(client: DropboxClient, path: string, res: DropboxTypes.files.ListFolderResult, previousEntries: string[], cb: CallbackTwoArgs<string[]>): void {
   const newEntries = <string[]> res.entries.map((e) => e.path_display).filter((p) => !!p);
   const entries = previousEntries.concat(newEntries);
   if (!res.has_more) {

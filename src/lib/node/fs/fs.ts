@@ -1,15 +1,15 @@
-import type { File } from '../core/file';
-import { ApiError, ErrorCode } from '../core/api_error';
+import type { File } from '../../fs/core/file';
+import { ApiError, ErrorCode } from '../../fs/core/api_error';
 import type {
   FileSystem,
-  BFSOneArgCallback,
-  BFSCallback,
+  CallbackOneArg,
+  CallbackTwoArgs,
   BFSThreeArgCallback,
-} from '../core/file_system';
-import { FileFlag } from '../core/file_flag';
+} from '../../fs/core/file_system';
+import { FileFlag } from '../../fs/core/file_flag';
 import * as path from 'path';
-import Stats from './node_fs_stats';
-import setImmediate from '../generic/setImmediate';
+import Stats from './fs_stats';
+import setImmediate from '../../fs/generic/setImmediate';
 
 // Typing info only.
 import type * as _fs from 'fs';
@@ -239,7 +239,7 @@ export default class NodeFileSystem {
    * @param newPath
    * @param callback
    */
-  public rename(oldPath: string, newPath: string, cb: BFSOneArgCallback = nopCb): void {
+  public rename(oldPath: string, newPath: string, cb: CallbackOneArg = nopCb): void {
     const newCb = wrapCb(cb, 1);
     try {
       assertRoot(this.root).rename(normalizePath(oldPath), normalizePath(newPath), newCb);
@@ -298,7 +298,7 @@ export default class NodeFileSystem {
    * @param path
    * @param callback
    */
-  public stat(path: string, cb: BFSCallback<Stats> = nopCb): void {
+  public stat(path: string, cb: CallbackTwoArgs<Stats> = nopCb): void {
     const newCb = wrapCb(cb, 2);
     try {
       return assertRoot(this.root).stat(normalizePath(path), false, newCb);
@@ -323,7 +323,7 @@ export default class NodeFileSystem {
    * @param path
    * @param callback
    */
-  public lstat(path: string, cb: BFSCallback<Stats> = nopCb): void {
+  public lstat(path: string, cb: CallbackTwoArgs<Stats> = nopCb): void {
     const newCb = wrapCb(cb, 2);
     try {
       return assertRoot(this.root).stat(normalizePath(path), true, newCb);
@@ -351,9 +351,9 @@ export default class NodeFileSystem {
    * @param len
    * @param callback
    */
-  public truncate(path: string, cb?: BFSOneArgCallback): void;
-  public truncate(path: string, len: number, cb?: BFSOneArgCallback): void;
-  public truncate(path: string, arg2: any = 0, cb: BFSOneArgCallback = nopCb): void {
+  public truncate(path: string, cb?: CallbackOneArg): void;
+  public truncate(path: string, len: number, cb?: CallbackOneArg): void;
+  public truncate(path: string, arg2: any = 0, cb: CallbackOneArg = nopCb): void {
     let len = 0;
     if (typeof arg2 === 'function') {
       cb = arg2;
@@ -389,7 +389,7 @@ export default class NodeFileSystem {
    * @param path
    * @param callback
    */
-  public unlink(path: string, cb: BFSOneArgCallback = nopCb): void {
+  public unlink(path: string, cb: CallbackOneArg = nopCb): void {
     const newCb = wrapCb(cb, 1);
     try {
       return assertRoot(this.root).unlink(normalizePath(path), newCb);
@@ -431,9 +431,9 @@ export default class NodeFileSystem {
    * @param mode defaults to `0644`
    * @param callback
    */
-  public open(path: string, flag: string, cb?: BFSCallback<number>): void;
-  public open(path: string, flag: string, mode: number | string, cb?: BFSCallback<number>): void;
-  public open(path: string, flag: string, arg2?: any, cb: BFSCallback<number> = nopCb): void {
+  public open(path: string, flag: string, cb?: CallbackTwoArgs<number>): void;
+  public open(path: string, flag: string, mode: number | string, cb?: CallbackTwoArgs<number>): void;
+  public open(path: string, flag: string, arg2?: any, cb: CallbackTwoArgs<number> = nopCb): void {
     const mode = normalizeMode(arg2, 0x1a4);
     cb = typeof arg2 === 'function' ? arg2 : cb;
     const newCb = wrapCb(cb, 2);
@@ -486,19 +486,19 @@ export default class NodeFileSystem {
    * @option options [String] flag Defaults to `'r'`.
    * @param callback If no encoding is specified, then the raw buffer is returned.
    */
-  public readFile(filename: string, cb: BFSCallback<Buffer>): void;
+  public readFile(filename: string, cb: CallbackTwoArgs<Buffer>): void;
   public readFile(
     filename: string,
     options: { flag?: string },
-    callback?: BFSCallback<Buffer>,
+    callback?: CallbackTwoArgs<Buffer>,
   ): void;
   public readFile(
     filename: string,
     options: { encoding: string; flag?: string },
-    callback?: BFSCallback<string>,
+    callback?: CallbackTwoArgs<string>,
   ): void;
-  public readFile(filename: string, encoding: string, cb: BFSCallback<string>): void;
-  public readFile(filename: string, arg2: any = {}, cb: BFSCallback<any> = nopCb) {
+  public readFile(filename: string, encoding: string, cb: CallbackTwoArgs<string>): void;
+  public readFile(filename: string, arg2: any = {}, cb: CallbackTwoArgs<any> = nopCb) {
     const options = normalizeOptions(arg2, null, 'r', null);
     cb = typeof arg2 === 'function' ? arg2 : cb;
     const newCb = wrapCb(cb, 2);
@@ -554,19 +554,19 @@ export default class NodeFileSystem {
    * @option options [String] flag Defaults to `'w'`.
    * @param callback
    */
-  public writeFile(filename: string, data: any, cb?: BFSOneArgCallback): void;
-  public writeFile(filename: string, data: any, encoding?: string, cb?: BFSOneArgCallback): void;
+  public writeFile(filename: string, data: any, cb?: CallbackOneArg): void;
+  public writeFile(filename: string, data: any, encoding?: string, cb?: CallbackOneArg): void;
   public writeFile(
     filename: string,
     data: any,
     options?: { encoding?: string; mode?: string | number; flag?: string },
-    cb?: BFSOneArgCallback,
+    cb?: CallbackOneArg,
   ): void;
   public writeFile(
     filename: string,
     data: any,
     arg3: any = {},
-    cb: BFSOneArgCallback = nopCb,
+    cb: CallbackOneArg = nopCb,
   ): void {
     const options = normalizeOptions(arg3, 'utf8', 'w', 0x1a4);
     cb = typeof arg3 === 'function' ? arg3 : cb;
@@ -641,15 +641,15 @@ export default class NodeFileSystem {
    * @option options [String] flag Defaults to `'a'`.
    * @param callback
    */
-  public appendFile(filename: string, data: any, cb?: BFSOneArgCallback): void;
+  public appendFile(filename: string, data: any, cb?: CallbackOneArg): void;
   public appendFile(
     filename: string,
     data: any,
     options?: { encoding?: string; mode?: number | string; flag?: string },
-    cb?: BFSOneArgCallback,
+    cb?: CallbackOneArg,
   ): void;
-  public appendFile(filename: string, data: any, encoding?: string, cb?: BFSOneArgCallback): void;
-  public appendFile(filename: string, data: any, arg3?: any, cb: BFSOneArgCallback = nopCb): void {
+  public appendFile(filename: string, data: any, encoding?: string, cb?: CallbackOneArg): void;
+  public appendFile(filename: string, data: any, arg3?: any, cb: CallbackOneArg = nopCb): void {
     const options = normalizeOptions(arg3, 'utf8', 'a', 0x1a4);
     cb = typeof arg3 === 'function' ? arg3 : cb;
     const newCb = wrapCb(cb, 1);
@@ -719,7 +719,7 @@ export default class NodeFileSystem {
    * @param fd
    * @param callback
    */
-  public fstat(fd: number, cb: BFSCallback<Stats> = nopCb): void {
+  public fstat(fd: number, cb: CallbackTwoArgs<Stats> = nopCb): void {
     const newCb = wrapCb(cb, 2);
     try {
       const file = this.fd2file(fd);
@@ -745,7 +745,7 @@ export default class NodeFileSystem {
    * @param fd
    * @param callback
    */
-  public close(fd: number, cb: BFSOneArgCallback = nopCb): void {
+  public close(fd: number, cb: CallbackOneArg = nopCb): void {
     const newCb = wrapCb(cb, 1);
     try {
       this.fd2file(fd).close((e: ApiError) => {
@@ -774,9 +774,9 @@ export default class NodeFileSystem {
    * @param len
    * @param callback
    */
-  public ftruncate(fd: number, cb?: BFSOneArgCallback): void;
-  public ftruncate(fd: number, len?: number, cb?: BFSOneArgCallback): void;
-  public ftruncate(fd: number, arg2?: any, cb: BFSOneArgCallback = nopCb): void {
+  public ftruncate(fd: number, cb?: CallbackOneArg): void;
+  public ftruncate(fd: number, len?: number, cb?: CallbackOneArg): void;
+  public ftruncate(fd: number, arg2?: any, cb: CallbackOneArg = nopCb): void {
     const length = typeof arg2 === 'number' ? arg2 : 0;
     cb = typeof arg2 === 'function' ? arg2 : cb;
     const newCb = wrapCb(cb, 1);
@@ -809,7 +809,7 @@ export default class NodeFileSystem {
    * @param fd
    * @param callback
    */
-  public fsync(fd: number, cb: BFSOneArgCallback = nopCb): void {
+  public fsync(fd: number, cb: CallbackOneArg = nopCb): void {
     const newCb = wrapCb(cb, 1);
     try {
       this.fd2file(fd).sync(newCb);
@@ -831,7 +831,7 @@ export default class NodeFileSystem {
    * @param fd
    * @param callback
    */
-  public fdatasync(fd: number, cb: BFSOneArgCallback = nopCb): void {
+  public fdatasync(fd: number, cb: CallbackOneArg = nopCb): void {
     const newCb = wrapCb(cb, 1);
     try {
       this.fd2file(fd).datasync(newCb);
@@ -1132,7 +1132,7 @@ export default class NodeFileSystem {
    * @param gid
    * @param callback
    */
-  public fchown(fd: number, uid: number, gid: number, callback: BFSOneArgCallback = nopCb): void {
+  public fchown(fd: number, uid: number, gid: number, callback: CallbackOneArg = nopCb): void {
     const newCb = wrapCb(callback, 1);
     try {
       this.fd2file(fd).chown(uid, gid, newCb);
@@ -1157,7 +1157,7 @@ export default class NodeFileSystem {
    * @param mode
    * @param callback
    */
-  public fchmod(fd: number, mode: string | number, cb: BFSOneArgCallback): void {
+  public fchmod(fd: number, mode: string | number, cb: CallbackOneArg): void {
     const newCb = wrapCb(cb, 1);
     try {
       const numMode = typeof mode === 'string' ? parseInt(mode, 8) : mode;
@@ -1189,7 +1189,7 @@ export default class NodeFileSystem {
     fd: number,
     atime: number | Date,
     mtime: number | Date,
-    cb: BFSOneArgCallback = nopCb,
+    cb: CallbackOneArg = nopCb,
   ): void {
     const newCb = wrapCb(cb, 1);
     try {
@@ -1224,7 +1224,7 @@ export default class NodeFileSystem {
    * @param path
    * @param callback
    */
-  public rmdir(path: string, cb: BFSOneArgCallback = nopCb): void {
+  public rmdir(path: string, cb: CallbackOneArg = nopCb): void {
     const newCb = wrapCb(cb, 1);
     try {
       path = normalizePath(path);
@@ -1249,7 +1249,7 @@ export default class NodeFileSystem {
    * @param mode defaults to `0777`
    * @param callback
    */
-  public mkdir(path: string, mode?: any, cb: BFSOneArgCallback = nopCb): void {
+  public mkdir(path: string, mode?: any, cb: CallbackOneArg = nopCb): void {
     if (typeof mode === 'function') {
       cb = mode;
       mode = 0x1ff;
@@ -1279,7 +1279,7 @@ export default class NodeFileSystem {
    * @param path
    * @param callback
    */
-  public readdir(path: string, cb: BFSCallback<string[]> = nopCb): void {
+  public readdir(path: string, cb: CallbackTwoArgs<string[]> = nopCb): void {
     const newCb = <(err: ApiError, files?: string[]) => void>wrapCb(cb, 2);
     try {
       path = normalizePath(path);
@@ -1307,7 +1307,7 @@ export default class NodeFileSystem {
    * @param dstpath
    * @param callback
    */
-  public link(srcpath: string, dstpath: string, cb: BFSOneArgCallback = nopCb): void {
+  public link(srcpath: string, dstpath: string, cb: CallbackOneArg = nopCb): void {
     const newCb = wrapCb(cb, 1);
     try {
       srcpath = normalizePath(srcpath);
@@ -1336,13 +1336,13 @@ export default class NodeFileSystem {
    * @param type can be either `'dir'` or `'file'` (default is `'file'`)
    * @param callback
    */
-  public symlink(srcpath: string, dstpath: string, cb?: BFSOneArgCallback): void;
-  public symlink(srcpath: string, dstpath: string, type?: string, cb?: BFSOneArgCallback): void;
+  public symlink(srcpath: string, dstpath: string, cb?: CallbackOneArg): void;
+  public symlink(srcpath: string, dstpath: string, type?: string, cb?: CallbackOneArg): void;
   public symlink(
     srcpath: string,
     dstpath: string,
     arg3?: any,
-    cb: BFSOneArgCallback = nopCb,
+    cb: CallbackOneArg = nopCb,
   ): void {
     const type = typeof arg3 === 'string' ? arg3 : 'file';
     cb = typeof arg3 === 'function' ? arg3 : cb;
@@ -1381,7 +1381,7 @@ export default class NodeFileSystem {
    * @param path
    * @param callback
    */
-  public readlink(path: string, cb: BFSCallback<string> = nopCb): void {
+  public readlink(path: string, cb: CallbackTwoArgs<string> = nopCb): void {
     const newCb = wrapCb(cb, 2);
     try {
       path = normalizePath(path);
@@ -1410,7 +1410,7 @@ export default class NodeFileSystem {
    * @param gid
    * @param callback
    */
-  public chown(path: string, uid: number, gid: number, cb: BFSOneArgCallback = nopCb): void {
+  public chown(path: string, uid: number, gid: number, cb: CallbackOneArg = nopCb): void {
     const newCb = wrapCb(cb, 1);
     try {
       path = normalizePath(path);
@@ -1438,7 +1438,7 @@ export default class NodeFileSystem {
    * @param gid
    * @param callback
    */
-  public lchown(path: string, uid: number, gid: number, cb: BFSOneArgCallback = nopCb): void {
+  public lchown(path: string, uid: number, gid: number, cb: CallbackOneArg = nopCb): void {
     const newCb = wrapCb(cb, 1);
     try {
       path = normalizePath(path);
@@ -1465,7 +1465,7 @@ export default class NodeFileSystem {
    * @param mode
    * @param callback
    */
-  public chmod(path: string, mode: number | string, cb: BFSOneArgCallback = nopCb): void {
+  public chmod(path: string, mode: number | string, cb: CallbackOneArg = nopCb): void {
     const newCb = wrapCb(cb, 1);
     try {
       const numMode = normalizeMode(mode, -1);
@@ -1498,7 +1498,7 @@ export default class NodeFileSystem {
    * @param mode
    * @param callback
    */
-  public lchmod(path: string, mode: number | string, cb: BFSOneArgCallback = nopCb): void {
+  public lchmod(path: string, mode: number | string, cb: CallbackOneArg = nopCb): void {
     const newCb = wrapCb(cb, 1);
     try {
       const numMode = normalizeMode(mode, -1);
@@ -1535,7 +1535,7 @@ export default class NodeFileSystem {
     path: string,
     atime: number | Date,
     mtime: number | Date,
-    cb: BFSOneArgCallback = nopCb,
+    cb: CallbackOneArg = nopCb,
   ): void {
     const newCb = wrapCb(cb, 1);
     try {
@@ -1581,9 +1581,9 @@ export default class NodeFileSystem {
    *   known real paths.
    * @param callback
    */
-  public realpath(path: string, cb?: BFSCallback<string>): void;
-  public realpath(path: string, cache: { [path: string]: string }, cb: BFSCallback<string>): void;
-  public realpath(path: string, arg2?: any, cb: BFSCallback<string> = nopCb): void {
+  public realpath(path: string, cb?: CallbackTwoArgs<string>): void;
+  public realpath(path: string, cache: { [path: string]: string }, cb: CallbackTwoArgs<string>): void;
+  public realpath(path: string, arg2?: any, cb: CallbackTwoArgs<string> = nopCb): void {
     const cache = typeof arg2 === 'object' ? arg2 : {};
     cb = typeof arg2 === 'function' ? arg2 : nopCb;
     const newCb = <(err: ApiError, resolvedPath?: string) => any>wrapCb(cb, 2);
