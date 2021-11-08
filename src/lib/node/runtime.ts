@@ -1,24 +1,24 @@
 import { FileFlag } from '../fs/core/file_flag';
-import type { FileSystem } from '../fs/core/file_system';
-import * as buffer from 'buffer';
+
 import Global from '../global';
-import type * as FS from 'fs';
+
 import { createInternalBindings } from './internal_binding';
+import type { Kernel } from '../kernel';
 
-export class Kernel {
-  fs: FileSystem;
-}
+// polyfilling buffer
+import * as buffer from 'buffer';
 
-export class Node {
-  static kernel: Kernel;
-  static fs: typeof FS;
-  static globalProxy: typeof globalThis;
-  static moduleCache: Map<string, any>;
-  static primordials: any = {};
-  static getInternalBinding;
-  static bootstrap(kernel: Kernel) {
-    Node.kernel = kernel;
-    Node.globalProxy = new Proxy({} as any, {
+export class NodeHost {
+  static kernel: typeof Kernel;
+  static fs: typeof import('fs');
+  private static moduleCache: Map<string, any>;
+  private static globalProxy: typeof globalThis;
+  private static primordials: any = {};
+  private static getInternalBinding;
+  static internalUrl = '/@node';
+  static bootstrap(kernel: typeof Kernel) {
+    NodeHost.kernel = kernel;
+    NodeHost.globalProxy = new Proxy({} as any, {
       has: () => true,
       get: (o, k) => (k in o ? o[k] : globalThis[k]),
       set: (o, k, v) => {
@@ -27,29 +27,30 @@ export class Node {
       },
     });
 
-    Node.getInternalBinding = createInternalBindings(kernel);
+    NodeHost.getInternalBinding = createInternalBindings(kernel);
 
     // globals that remain same for all requires
-    Object.assign(Node.globalProxy, {
+    Object.assign(NodeHost.globalProxy, {
       process: process,
-      require: Node.require,
+      require: NodeHost.require,
       console,
-      global: Node.globalProxy,
-      primordials: Node.primordials,
-      getInternalBinding: createInternalBindings,
+      global: NodeHost.globalProxy,
+      primordials: NodeHost.primordials,
+      getInternalBinding: NodeHost.getInternalBinding,
     });
 
-    Node.moduleCache = new Map<string, any>();
+    NodeHost.moduleCache = new Map<string, any>();
 
-    Node.moduleCache.set('@node/buffer.js', buffer);
-    Node.moduleCache.set('@node/internal/console/global.js', console);
-    Node.moduleCache.set('@node/v8.js', {});
+    // patching some things we dont want to have Node load for us
+    NodeHost.moduleCache.set(`${NodeHost.internalUrl}/buffer.js`, buffer);
+    NodeHost.moduleCache.set(`${NodeHost.internalUrl}/internal/console/global.js`, console);
+    NodeHost.moduleCache.set(`${NodeHost.internalUrl}/v8.js`, {});
 
-    Node.require('internal/per_context/primordials');
-    console.log(Node.primordials);
+    NodeHost.require('internal/per_context/primordials');
+    console.log(NodeHost.primordials);
 
-    let loadersExport = Node.require('internal/bootstrap/loaders');
-    Object.assign(Node.globalProxy, {
+    let loadersExport = NodeHost.require('internal/bootstrap/loaders');
+    Object.assign(NodeHost.globalProxy, {
       internalBinding: loadersExport.internalBinding,
     });
 
@@ -57,40 +58,47 @@ export class Node {
     // Node.require('internal/bootstrap/node');
 
     // load filesystem for others to use
-    Node.fs = Node.require('fs');
+    NodeHost.fs = NodeHost.require('fs');
   }
+
   static require(fileName: string) {
-    const __filename = Node.resolve(fileName);
+    const __filename = NodeHost.resolve(fileName);
     // console.log(__filename);
 
-    if (Node.moduleCache.has(__filename || fileName))
-      return Node.moduleCache.get(__filename || fileName);
+    if (NodeHost.moduleCache.has(__filename || fileName))
+      return NodeHost.moduleCache.get(__filename || fileName);
 
     if (!__filename) throw new Error(`File not found ${JSON.stringify(fileName)}`);
 
-    let contents = Node.kernel.fs.readFileSync('/' + __filename, 'utf8', FileFlag.getFileFlag('r'));
-
-    let result = Node.eval(contents);
-    console.log(__filename, result);
-
-    Node.moduleCache.set(__filename, result);
+    let result = NodeHost.loadModule(__filename);
     return result;
   }
+
+  private static loadModule(__filename: string) {
+    let contents = NodeHost.kernel.fs.readFileSync(__filename, 'utf8', FileFlag.getFileFlag('r'));
+
+    let result = NodeHost.eval(contents);
+    console.log(__filename, result);
+
+    NodeHost.moduleCache.set(__filename, result);
+    return result;
+  }
+
   static resolve(fileName: string) {
-    return `@node/${fileName}.js`;
+    return `${NodeHost.internalUrl}/${fileName}.js`;
   }
 
   static eval(source: string) {
     const module = { exports: {} };
     const exports = module.exports;
 
-    Object.assign(Node.globalProxy, {
+    Object.assign(NodeHost.globalProxy, {
       module,
       exports,
       __filename: '',
       __dirname: '',
       window: undefined,
-      globalThis: Node.globalProxy,
+      globalThis: NodeHost.globalProxy,
       importScripts: undefined,
     });
 
@@ -98,7 +106,7 @@ export class Node {
       { module },
       {
         has: () => true,
-        get: (o, k) => (k in o ? o[k] : Node.globalProxy[k]),
+        get: (o, k) => (k in o ? o[k] : NodeHost.globalProxy[k]),
         set: (o, k, v) => {
           o[k] = v;
           return true;
@@ -107,17 +115,17 @@ export class Node {
     );
 
     const evalWithContext = Function(`
-        return (global) => {
-            try {
-                with (global) {
-                  ${source}
-                }
-            }  catch(e) {
-              throw e;
-            } finally {
-              
-            }
-        }
+      return (global) => {
+          try {
+              with (global) {
+                ${source}
+              }
+          }  catch(e) {
+            throw e;
+          } finally {
+            
+          }
+      }
     `)();
 
     try {
@@ -135,4 +143,4 @@ export class Node {
   }
 }
 
-Global.Node = Node;
+Global.Node = NodeHost;

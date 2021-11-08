@@ -1,7 +1,7 @@
 import git, { withGitConfig } from 'os/lib/git';
-import { loadNodeFS } from 'os/lib/node/main';
+import { main } from 'os/lib/node/main';
 
-loadNodeFS().then(() => {
+main().then(() => {
   // git.clone(
   //   withGitConfig({
   //     dir: '/home',

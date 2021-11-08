@@ -1,7 +1,8 @@
 import './polyfill';
 import { createFileSystem, createFileSystemBackend } from '../fs';
 import HttpRequest from '../fs/backend/HTTPRequest';
-import { Node } from './runtime';
+import { NodeHost } from './runtime';
+import { Kernel } from '../kernel';
 
 // function bootstrapNode({ fs: FileSystem }): Node {
 //   const require = createNodeRequire({ fs: toExport.fs });
@@ -16,23 +17,14 @@ import { Node } from './runtime';
 
 // }
 
-export async function loadNodeFS() {
+export async function main() {
+  await Kernel.init();
   let httpFS = await createFileSystemBackend(HttpRequest, {
     index: '/node/index.json',
     baseUrl: '/node/',
+    preferXHR: true,
   });
 
-  let fs = await createFileSystem({
-    '/@node': httpFS,
-  });
-
-  Node.bootstrap({ fs });
-  const node = Node.require('fs');
-  // bootstrapNode({ fs });
-
-  // Node.require('buffer');
-  // node.fs = require('fs');
-  // node.path = require('path');
-
-  // toExport.node = node;
+  Kernel.fs.mount('/@node', httpFS);
+  NodeHost.bootstrap(Kernel);
 }

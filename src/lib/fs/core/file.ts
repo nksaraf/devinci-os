@@ -1,6 +1,10 @@
 import { ApiError, ErrorCode } from './api_error';
 import type Stats from './stats';
-import type { CallbackTwoArgs, CallbackOneArg, BFSThreeArgCallback as CallbackThreeArgs } from './file_system';
+import type {
+  CallbackTwoArgs,
+  CallbackOneArg,
+  BFSThreeArgCallback as CallbackThreeArgs,
+} from './file_system';
 
 export interface File {
   /**

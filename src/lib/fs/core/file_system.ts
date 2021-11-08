@@ -1,5 +1,5 @@
 import { ApiError, ErrorCode } from './api_error';
-import type Stats from '../../node/fs/fs_stats';
+import type Stats from './stats';
 import type { File } from './file';
 import { FileFlag, ActionType } from './file_flag';
 import * as path from 'path';
@@ -835,13 +835,7 @@ export class BaseFileSystem {
   public chmodSync(p: string, isLchmod: boolean, mode: number) {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public chown(
-    p: string,
-    isLchown: boolean,
-    uid: number,
-    gid: number,
-    cb: CallbackOneArg,
-  ): void {
+  public chown(p: string, isLchown: boolean, uid: number, gid: number, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public chownSync(p: string, isLchown: boolean, uid: number, gid: number): void {
@@ -951,13 +945,7 @@ export class SynchronousFileSystem extends BaseFileSystem {
     }
   }
 
-  public chown(
-    p: string,
-    isLchown: boolean,
-    uid: number,
-    gid: number,
-    cb: CallbackOneArg,
-  ): void {
+  public chown(p: string, isLchown: boolean, uid: number, gid: number, cb: CallbackOneArg): void {
     try {
       this.chownSync(p, isLchown, uid, gid);
       cb();

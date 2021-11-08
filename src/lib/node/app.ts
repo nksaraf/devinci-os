@@ -743,6 +743,43 @@
               return result as any;
             };
 
+            /**
+ * Wraps a callback function, ensuring it is invoked through setImmediate.
+ * @hidden
+ */
+function wrapCb<T extends Function>(cb: T, numArgs: number): T {
+  if (typeof cb !== 'function') {
+    throw new Error('Callback must be a function.');
+  }
+
+  const hookedCb = wrapCbHook(cb, numArgs);
+
+  // We could use `arguments`, but Function.call/apply is expensive. And we only
+  // need to handle 1-3 arguments
+  switch (numArgs) {
+    case 1:
+      return <any>function (arg1: any) {
+        setImmediate(function () {
+          return hookedCb(arg1);
+        });
+      };
+    case 2:
+      return <any>function (arg1: any, arg2: any) {
+        setImmediate(function () {
+          return hookedCb(arg1, arg2);
+        });
+      };
+    case 3:
+      return <any>function (arg1: any, arg2: any, arg3: any) {
+        setImmediate(function () {
+          return hookedCb(arg1, arg2, arg3);
+        });
+      };
+    default:
+      throw new Error('Invalid invocation of wrapCb.');
+  }
+}
+
             const fstat = (fd: FileDescriptor | undefined, req?: FSReqWrap): void => {
               if (fd !== undefined) {
                 statValues[1] =
