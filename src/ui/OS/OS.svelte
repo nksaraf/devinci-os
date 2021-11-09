@@ -2,15 +2,19 @@
   import TopBar from '@ui/components/TopBar/TopBar.svelte';
   import Wallpaper from '@ui/components/apps/WallpaperApp/Wallpaper.svelte';
   import Dock from '../Dock/Dock.svelte';
-  import { onMount } from 'svelte';
+  import { onMount, setContext } from 'svelte';
   import { createWindow } from 'os/stores/window.store';
   import WindowsArea from './WindowsArea.svelte';
   import finder from 'os/apps/finder/finder';
   import BootupScreen from '@ui/components/Desktop/BootupScreen.svelte';
   import GitCloner from './GitCloner.svelte';
-  import Toaster from 'os/lib/toasts';
+  import Toaster from 'os/kernel/toasts';
+  import type { Kernel } from 'os/kernel/kernel';
 
   export let url = '';
+  export let kernel: Kernel;
+
+  setContext('kernel', kernel);
 
   onMount(() => {
     createWindow(finder(), {

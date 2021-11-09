@@ -1,18 +1,28 @@
 import '@ui/css/global.scss';
 import 'uno.css';
-import OS from 'os/ui/OS/OS.svelte';
-import { Kernel } from './lib/kernel';
+import { Kernel } from './kernel';
+import Global from './kernel/global';
+import MacOS from 'os/ui/OS/OS.svelte';
+import type { Remote } from 'comlink';
 
+export const createKernel = async (): Promise<Remote<Kernel>> => {
+  console.log('booting Kernel');
+  let kernel = await new Kernel();
+  console.log(' heree booting Kernel');
 
-
-export const createKernel = (): Kernel => {
-    const kernel = new Kernel();
-    kernel.start();
-    return kernel;
+  await kernel.boot();
+  Global.Kernel = kernel;
+  return kernel;
 };
 
-const desktop = new OS({
-  target: document.getElementById('root'),
-});
-
-export default desktop;
+createKernel()
+  .then((kernel) => {
+    console.log(kernel);
+    const desktop = new MacOS({
+      target: document.getElementById('root'),
+      props: {
+        kernel: {},
+      },
+    });
+  })
+  .catch(console.error);

@@ -139,7 +139,7 @@ export default defineConfig({
       '__/stores': new URL('./src/stores/', import.meta.url).pathname,
       __: new URL('./packages/macos-ui/src/', import.meta.url).pathname,
       '@ui': new URL('./packages/macos-ui/src/', import.meta.url).pathname,
-      path: new URL('./src/lib/path/path.ts', import.meta.url).pathname,
+      path: new URL('./src/kernel/path/path.ts', import.meta.url).pathname,
       os: new URL('./src/', import.meta.url).pathname,
     },
   },

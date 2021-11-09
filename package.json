@@ -48,6 +48,7 @@
     "bfs-path": "^1.0.2",
     "bfs-process": "^1.0.0",
     "buffer": "^6.0.3",
+    "comlink": "^4.3.1",
     "date-fns": "^2.24.0",
     "events": "^3.3.0",
     "isomorphic-git": "^1.10.1",
