@@ -41,18 +41,19 @@ export class Kernel {
       this.events.emit('kernel:fs:loaded', this.fs);
     });
 
-    if (!((mode & KernelFlags.DISABLE_NET) === KernelFlags.DISABLE_NET)) {
-      const { Network } = await import('./net');
-      this.net = new Network();
-      this.events.emit('kernel:net:loaded', this.net);
-    }
+    // if (!((mode & KernelFlags.DISABLE_NET) === KernelFlags.DISABLE_NET)) {
+    const { Network } = await import('./net');
+    this.net = new Network();
+    this.net.kernel = this;
+    this.events.emit('kernel:net:loaded', this.net);
+    // }
 
-    if ((mode & KernelFlags.BOOTLOADER) === KernelFlags.BOOTLOADER) {
-      this.events.emit('kernel:proc:init');
-      let initPid = this.proc.init();
-      this.process = this.proc.getProcess(initPid);
-      this.events.emit('kernel:proc:pid', { initPid, process: this.process });
-    }
+    // if ((mode & KernelFlags.BOOTLOADER) === KernelFlags.BOOTLOADER) {
+    this.events.emit('kernel:proc:init');
+    let initPid = this.proc.init();
+    this.process = this.proc.getProcess(initPid);
+    this.events.emit('kernel:proc:pid', { initPid, process: this.process });
+    // }
 
     this.events.emit('kernel:boot:success');
 

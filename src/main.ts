@@ -41,7 +41,7 @@ export const initKernel = async () => {
     });
   });
 
-  const clientSocket = new SocketFile(kernel.proc.processes[0]);
+  const clientSocket = new SocketFile(kernel);
   clientSocket.connect('localhost', 4000, (err) => {
     clientSocket.write(Buffer.from('hello', 'utf-8'), 0, 0, -1, console.log);
   });

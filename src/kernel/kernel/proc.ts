@@ -58,7 +58,7 @@ export class Process {
   }
 
   private nextFd = 3;
-  files: { [key: number]: File };
+  files: { [key: number]: File } = {};
   constructor(options: ProcessOptions) {
     // this.cwd = options.cwd ?? '/';
     this.kernel = options.kernel;

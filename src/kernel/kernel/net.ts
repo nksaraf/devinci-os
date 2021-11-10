@@ -9,7 +9,6 @@ import { BaseFile } from '../fs/core/file';
 import type { File } from '../fs/core/file';
 import type { CallbackOneArg, CallbackTwoArgs } from '../fs/core/file_system';
 import { ApiError, ErrorCode } from '../fs/core/api_error';
-import type { Process } from './proc';
 import type stats from '../fs/core/stats';
 import type { Kernel } from './kernel';
 
@@ -92,7 +91,7 @@ export class Network {
 }
 
 export class SocketFile extends BaseFile implements File {
-  process: Process;
+  kernel: Kernel;
   isListening: boolean = false;
   refCount: number = 1;
   sockfd: number;
@@ -107,11 +106,11 @@ export class SocketFile extends BaseFile implements File {
   incomingQueue: Incoming[] = [];
   acceptQueue: AcceptCallback[] = [];
 
-  constructor(process: Process) {
+  constructor(kernel: Kernel) {
     super();
-    this.process = process;
-    this.sockfd = this.process.getNextFD();
-    this.process.files[this.sockfd] = this;
+    this.kernel = kernel;
+    this.sockfd = this.kernel.process.getNextFD();
+    this.kernel.process.files[this.sockfd] = this;
   }
 
   writeSync(buffer: Buffer, offset: number, length: number, position: number): number {
@@ -134,7 +133,7 @@ export class SocketFile extends BaseFile implements File {
     let queued = this.incomingQueue.shift();
 
     let remote = queued.socket;
-    let local = new SocketFile(this.process);
+    let local = new SocketFile(this.kernel);
     local.addr = queued.addr;
     local.port = queued.port;
 
@@ -182,7 +181,7 @@ export class SocketFile extends BaseFile implements File {
     // we can now accept the incoming request
     let acceptCB = this.acceptQueue.shift();
 
-    let local = new SocketFile(this.process);
+    let local = new SocketFile(this.kernel);
     local.addr = remoteAddr;
     local.port = remotePort;
 
@@ -209,7 +208,7 @@ export class SocketFile extends BaseFile implements File {
   }
 
   connect(addr: string, port: number, cb: ConnectCallback): void {
-    this.process.kernel.net.connect(this, addr, port, cb);
+    this.kernel.net.connect(this, addr, port, cb);
   }
 
   read(
@@ -250,7 +249,7 @@ export class SocketFile extends BaseFile implements File {
     if (this.incoming) this.incoming.unref();
     this.refCount--;
     if (!this.refCount) {
-      if (this.isListening) this.process.kernel.net.unbind(this, this.addr, this.port);
+      if (this.isListening) this.kernel.net.unbind(this, this.addr, this.port);
     }
   }
 
