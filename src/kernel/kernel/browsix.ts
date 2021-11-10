@@ -5,7 +5,7 @@
 'use strict';
 
 import { Pipe, PipeFile, isPipe } from './pipe';
-import { SocketFile, isSocket } from './socket';
+import { SocketFile, isSocket } from './net
 
 import { ExitCallback, OutputCallback, SyscallContext, SyscallResult, Syscall, ConnectCallback, IKernel, ITask, IFile, Environment } from './types';
 

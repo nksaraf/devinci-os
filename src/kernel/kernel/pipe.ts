@@ -1,5 +1,6 @@
 import { ApiError, ErrorCode } from '../fs/core/api_error';
-import { BaseFile, File } from '../fs/core/file';
+import { BaseFile } from '../fs/core/file';
+import type { File } from '../fs/core/file';
 import type { CallbackOneArg, CallbackTwoArgs } from '../fs/core/file_system';
 import type stats from '../fs/core/stats';
 
@@ -7,8 +8,13 @@ declare var Buffer: any;
 
 const CUTOFF = 8192;
 
+let id = 0;
+
+// Pipes have a waiting mechanism,
+// A read with not callback until it actually gets the data
 export class Pipe {
   bufs: Buffer[] = [];
+  id = id++;
   refcount: number = 1; // maybe more accurately a reader count
   readWaiter: Function = undefined;
   writeWaiter: Function = undefined;
@@ -35,6 +41,7 @@ export class Pipe {
     cb: CallbackTwoArgs<number>,
   ): void {
     this.bufs.push(b);
+    // call backs readers who were blocked on this pipe
     this.releaseReader();
 
     if (this.bufferLength <= CUTOFF) {
@@ -54,13 +61,16 @@ export class Pipe {
       console.log('ERROR: Pipe.read w/ non-zero offset');
     }
 
+    // there is either some data or the file is closed so no more data can come
     if (this.bufs.length || this.closed) {
       let n = this.copy(buf, off, len, pos);
+
       this.releaseWriter();
       return cb(undefined, n);
     }
 
     // at this point, we're waiting on more data or an EOF.
+    // we go into reader waiting mode
     this.readWaiter = () => {
       let n = this.copy(buf, 0, len, pos);
       this.releaseWriter();
@@ -137,6 +147,12 @@ export function isPipe(f: File): f is PipeFile {
   return f instanceof PipeFile;
 }
 
+/**
+ * A file that is backed by a pipe.
+ *
+ * Writes are directed to the pipe
+ * Reads are read from the pipe as data becomes available.
+ */
 export class PipeFile extends BaseFile implements File {
   pipe: Pipe;
   writeListener: CallbackTwoArgs<string>;

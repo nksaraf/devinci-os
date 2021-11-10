@@ -136,6 +136,8 @@ import {
   WASI_WHENCE_END,
   WASI_WHENCE_SET,
 } from './constants';
+import type Stats from '../fs/core/stats';
+import type { IFileSystem } from '../fs/core/file_system';
 
 const STDIN_DEFAULT_RIGHTS =
   WASI_RIGHT_FD_DATASYNC |
@@ -206,7 +208,7 @@ const stat = (wasi: WASI, fd: number): File => {
   return entry;
 };
 
-const translateFileAttributes = (wasi: WASI, fd: number | undefined, stats: any) => {
+const translateFileAttributes = (wasi: WASI, fd: number | undefined, stats: Stats) => {
   switch (true) {
     case stats.isBlockDevice():
       return {
@@ -304,7 +306,7 @@ export type WASIBindings = {
   isTTY: (fd: number) => boolean;
 
   // Filesystem
-  fs: typeof fs;
+  fs: IFileSystem;
 
   // Path
   path: any;
@@ -437,7 +439,7 @@ export default class WASIDefault {
     let path = this.bindings.path;
 
     for (const [k, v] of Object.entries(preopens)) {
-      const real = fs.openSync(v, fs.constants.O_RDONLY);
+      const real = fs.openSync(v, 'r', 0o666);
       const newfd = [...this.FD_MAP.keys()].reverse()[0] + 1;
       this.FD_MAP.set(newfd, {
         real,

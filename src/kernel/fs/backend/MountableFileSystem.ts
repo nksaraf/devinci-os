@@ -440,7 +440,7 @@ const fsCmdMap = [
   // 4 arg functions
   ['chown'],
   // 5 arg functions
-  ['writeFile', 'appendFile'],
+  ['writeFile', 'appendFile', 'openFile'],
 ];
 
 for (let i = 0; i < fsCmdMap.length; i++) {

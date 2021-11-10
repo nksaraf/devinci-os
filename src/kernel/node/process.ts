@@ -223,7 +223,7 @@ export class Process extends EventEmitter implements NodeJS.Process {
 
   public versions = {
     http_parser: '0.0',
-    node: '5.0',
+    // node: '5.0',
     v8: '0.0',
     uv: '0.0',
     zlib: '0.0',
@@ -309,7 +309,11 @@ export class Process extends EventEmitter implements NodeJS.Process {
   public emitWarning(warning: string | Error, type?: string, ctor?: Function): void;
   public emitWarning(warning: string | Error, type?: string, code?: string, ctor?: Function): void;
   public emitWarning(warning: string | Error, options?: EmitWarningOptions): void;
-  public emitWarning(warning: string | Error, name?: Function | string, ctor?: Function | string, ): void {
+  public emitWarning(
+    warning: string | Error,
+    name?: Function | string,
+    ctor?: Function | string,
+  ): void {
     const warningObj = {
       name: name ? name : typeof warning !== 'string' ? warning.name : 'Warning',
       message: typeof warning === 'string' ? warning : warning.message,

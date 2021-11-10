@@ -12,7 +12,8 @@ import {
 } from './shell-utils';
 import ShellHistory from './shell-history';
 
-import type TTY from 'os/lib/tty';
+import type TTY from 'os/kernel/kernel/tty';
+import CommandRunner from '../terminal/command-runner/command-runner';
 
 type AutoCompleteHandler = (index: number, tokens: string[]) => string[];
 

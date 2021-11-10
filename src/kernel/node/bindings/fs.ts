@@ -1,6 +1,6 @@
 import type MountableFileSystem from 'os/kernel/fs/backend/MountableFileSystem';
 import type PreloadFile from 'os/kernel/fs/generic/preload_file';
-import { Kernel } from 'os/kernel/kernel';
+import type { Kernel } from 'os/kernel/kernel';
 import { constants } from '../constants';
 
 const wrap = <T>(f: () => T, req: undefined): T => {
@@ -63,15 +63,8 @@ function asyncify(fn, req, ctx, ...args) {
 }
 
 export class InternalFS {
-  static fdMap = new Map<number, PreloadFile<MountableFileSystem>>();
-  static nextFD = 3;
-
   static FSReqCallback = FSReqCallback;
-  static getFdForFile(path: PreloadFile<MountableFileSystem>): number {
-    const fd = InternalFS.nextFD++;
-    this.fdMap.set(fd, path);
-    return fd;
-  }
+  static kernel: Kernel;
 
   static readonly kUsePromises: unique symbol = Symbol('usePromises');
 
@@ -81,7 +74,7 @@ export class InternalFS {
     mode: number,
   ): number | Promise<number> {
     console.log(arguments);
-    let file = Kernel.fs.openSync(
+    let file = InternalFS.kernel.fs.openSync(
       path as string,
       {
         [constants.fs.O_RDONLY]: 'r' as const,
@@ -121,7 +114,7 @@ export class InternalFS {
     position: number,
   ): number {
     console.log(arguments);
-    let file = InternalFS.fdMap.get(fd);
+    let file = InternalFS.kernel.get(fd);
     let buf = Buffer.from(buffer);
     let bytes = file.readSync(buf, 0, length, position);
     buf.copy(buffer, 0, 0, bytes);

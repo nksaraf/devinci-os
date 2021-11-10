@@ -20,6 +20,8 @@ import { emptyBuffer } from '../core/util';
  * 'close'. Each filesystem that wishes to use this file representation must
  * extend this class and implement those two methods.
  * @todo 'close' lever that disables functionality once closed.
+ * 
+ * this handles the tracking of the stats object passed in
  */
 export default abstract class PreloadFile<T extends IFileSystem> extends BaseFile {
   protected _fs: T;

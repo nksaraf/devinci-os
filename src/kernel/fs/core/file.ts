@@ -6,6 +6,70 @@ import type {
   BFSThreeArgCallback as CallbackThreeArgs,
 } from './file_system';
 
+export interface SyncFile {
+  /**
+   * **Core**: Get the current file position.
+   */
+  getPos(): number | undefined;
+
+  statSync(): Stats;
+
+  closeSync(): void;
+
+  /**
+   * **Core**: Synchronous truncate.
+   */
+  truncateSync(len: number): void;
+
+  /**
+   * **Core**: Synchronous sync.
+   */
+  syncSync(): void;
+
+  /**
+   * **Core**: Write buffer to the file.
+   * Note that it is unsafe to use fs.writeSync multiple times on the same file
+   * without waiting for it to return.
+   * @param buffer Buffer containing the data to write to
+   *  the file.
+   * @param offset Offset in the buffer to start reading data from.
+   * @param length The amount of bytes to write to the file.
+   * @param position Offset from the beginning of the file where this
+   *   data should be written. If position is null, the data will be written at
+   *   the current position.
+   */
+  writeSync(buffer: Buffer, offset: number, length: number, position: number | null): number;
+
+  /**
+   * **Core**: Read data from the file.
+   * @param buffer The buffer that the data will be written to.
+   * @param offset The offset within the buffer where writing will start.
+   * @param length An integer specifying the number of bytes to read.
+   * @param position An integer specifying where to begin reading from
+   *   in the file. If position is null, data will be read from the current file
+   *   position.
+   */
+  readSync(buffer: Buffer, offset: number, length: number, position: number): number;
+  /**
+   * **Supplementary**: Synchronous `datasync`.
+   *
+   * Default implementation maps to `syncSync`.
+   */
+  datasyncSync(): void;
+  /**
+   * **Optional**: Synchronous `chown`.
+   */
+  chownSync(uid: number, gid: number): void;
+  /**
+   * **Optional**: Synchronous `fchmod`.
+   */
+  chmodSync(mode: number): void;
+  /**
+   * **Optional**: Change the file timestamps of the file.
+   */
+  utimesSync(atime: Date, mtime: Date): void;
+}
+
 export interface File {
   /**
    * **Core**: Get the current file position.
@@ -147,7 +211,7 @@ export interface File {
  * Base class that contains shared implementations of functions for the file
  * object.
  */
-export class BaseFile {
+export abstract class BaseFile {
   public sync(cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }

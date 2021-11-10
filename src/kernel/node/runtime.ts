@@ -1,22 +1,29 @@
-import { FileFlagString } from '../fs/core/file_flag';
-
 import Global from '../global';
-
+import HTTPRequest from '../fs/backend/HTTPRequest';
 import { createInternalBindings } from './internal_binding';
 import type { Kernel } from '../kernel';
 
 // polyfilling buffer
 import * as buffer from 'buffer';
+import { createFileSystemBackend } from '../fs/create-fs';
 
 export class NodeHost {
-  static kernel: typeof Kernel;
+  static kernel: Kernel;
   static fs: typeof import('fs');
   private static moduleCache: Map<string, any>;
   private static globalProxy: typeof globalThis;
   private static primordials: any = {};
   private static getInternalBinding;
   static internalUrl = '/@node';
-  static bootstrap(kernel: typeof Kernel) {
+  static async bootstrap(kernel: Kernel) {
+    let httpFS = await createFileSystemBackend(HTTPRequest, {
+      index: '/node/index.json',
+      baseUrl: '/node/',
+      preferXHR: true,
+    });
+
+    kernel.fs.mount('/@node', httpFS);
+
     NodeHost.kernel = kernel;
     NodeHost.globalProxy = new Proxy({} as any, {
       has: () => true,
@@ -59,6 +66,7 @@ export class NodeHost {
 
     // load filesystem for others to use
     NodeHost.fs = NodeHost.require('fs');
+    NodeHost.require('stream');
   }
 
   static require(fileName: string) {
@@ -128,16 +136,16 @@ export class NodeHost {
       }
     `)();
 
-    try {
-      let result = evalWithContext(moduleProxy);
+    // try {
+    let result = evalWithContext(moduleProxy);
 
-      if (result != undefined) {
-        return result;
-      }
-    } catch (e) {
-      console.log(e);
-      throw e;
+    if (result != undefined) {
+      return result;
     }
+    // } catch (e) {
+    // // console.log(e);
+    // throw e;
+    // }
 
     return module.exports;
   }

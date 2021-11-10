@@ -1,4 +1,4 @@
-import toExport from '../global';
+import Global from '../global';
 import { constants } from './constants';
 import type { InternalAsyncWrapBinding } from './bindings/async_wrap';
 import { InternalFS } from './bindings/fs';
@@ -43,7 +43,7 @@ export const createInternalBindings = (kernel: Kernel) => {
       block_list: {},
       buffer: {
         setBufferPrototype(proto): void {
-          toExport.Buffer.prototype = proto;
+          Global.Buffer.prototype = proto;
         },
         getZeroFillToggle() {
           return true;
@@ -82,7 +82,12 @@ export const createInternalBindings = (kernel: Kernel) => {
       },
       heap_utils: {},
       http2: {},
-      http_parser: {},
+      http_parser: {
+        methods: ['get', 'post', 'head', 'connect', 'put', 'delete'],
+        HTTPParser: class HTTPParser {
+          static kOnMessageBegin = 0;
+        },
+      },
       inspector: {},
       js_stream: {},
       js_udp_wrap: {},
@@ -101,7 +106,11 @@ export const createInternalBindings = (kernel: Kernel) => {
         },
         config: '{}',
       },
-      options: {},
+      options: {
+        getCLIOptions: () => {
+          return { options: new Map() };
+        },
+      },
       os: {},
       performance: {
         getTimeOrigin: () => 0,
@@ -145,7 +154,9 @@ export const createInternalBindings = (kernel: Kernel) => {
         ): void => {},
         setTickCallback(callback: (...args: any[]) => void): void {},
       },
-      tcp_wrap: {},
+      tcp_wrap: {
+        TCP: class TCP {},
+      },
       timers: {
         setupTimers() {},
       },
@@ -190,32 +201,32 @@ export const createInternalBindings = (kernel: Kernel) => {
       util: {
         getPromiseDetails: (x: Promise<any>) => x && x.toString(),
         getProxyDetails: (x: Promise<any>) => x && x.toString(),
-        isAnyArrayBuffer: (x: any) => x instanceof ArrayBuffer,
-        isUint8Array: (x: any) => x instanceof Uint8Array,
-        isDataView: (x: any) => x instanceof DataView,
-        isExternal: (x: any) => false,
-        isMap: (x: any) => x instanceof Map,
-        isMapIterator: (x: any) => (x || {}).constructor === new Map().entries().constructor,
-        isPromise: (x: any) => x instanceof Promise,
-        isSet: (x: any) => x instanceof Set,
-        isSetIterator: (x: any) => (x || {}).constructor === new Set().entries().constructor,
-        isTypedArray: (x: any) =>
-          x instanceof Int8Array ||
-          x instanceof Uint8Array ||
-          x instanceof Uint8ClampedArray ||
-          x instanceof Int16Array ||
-          x instanceof Uint16Array ||
-          x instanceof Int32Array ||
-          x instanceof Uint32Array ||
-          x instanceof Float32Array ||
-          x instanceof Float64Array,
-        isRegExp: (x: any) => x instanceof RegExp,
-        isDate: (x: any) => x instanceof Date,
+        // isAnyArrayBuffer: (x: any) => x instanceof ArrayBuffer,
+        // isUint8Array: (x: any) => x instanceof Uint8Array,
+        // isDataView: (x: any) => x instanceof DataView,
+        // isExternal: (x: any) => false,
+        // isMap: (x: any) => x instanceof Map,
+        // isMapIterator: (x: any) => (x || {}).constructor === new Map().entries().constructor,
+        // isPromise: (x: any) => x instanceof Promise,
+        // isSet: (x: any) => x instanceof Set,
+        // isSetIterator: (x: any) => (x || {}).constructor === new Set().entries().constructor,
+        // isTypedArray: (x: any) =>
+        //   x instanceof Int8Array ||
+        //   x instanceof Uint8Array ||
+        //   x instanceof Uint8ClampedArray ||
+        //   x instanceof Int16Array ||
+        //   x instanceof Uint16Array ||
+        //   x instanceof Int32Array ||
+        //   x instanceof Uint32Array ||
+        //   x instanceof Float32Array ||
+        //   x instanceof Float64Array,
+        // isRegExp: (x: any) => x instanceof RegExp,
+        // isDate: (x: any) => x instanceof Date,
         getConstructorName: (x: any) => x && x.constructor && x.constructor.name,
         // kPending,
         // kRejected,
-        startSigintWatchdog: () => {},
-        stopSigintWatchdog: () => {},
+        // startSigintWatchdog: () => {},
+        // stopSigintWatchdog: () => {},
         getHiddenValue: (error: any, noIdea: any): boolean => false,
         createPromise: () => {
           console.error('util.createPromise not implemented');
@@ -226,7 +237,7 @@ export const createInternalBindings = (kernel: Kernel) => {
         promiseResolve: () => {
           console.error('util.promiseResolve not implemented');
         },
-
+        WeakReference: class WeakReference {},
         propertyFilter: {
           ALL_PROPERTIES: 0,
           ONLY_WRITABLE: 1,

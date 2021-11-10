@@ -1,10 +1,6 @@
-import type {
-  CallbackTwoArgs,
-  IFileSystem,
-  FileSystemConstructor,
-  FileSystemOptions,
-} from './core/file_system';
-import MountableFileSystem, { MountableFileSystemOptions } from './backend/MountableFileSystem';
+import type { CallbackTwoArgs, FileSystemConstructor, FileSystemOptions } from './core/file_system';
+import MountableFileSystem from './backend/MountableFileSystem';
+import type { MountableFileSystemOptions } from './backend/MountableFileSystem';
 import mitt from 'mitt';
 
 type Args<T extends FileSystemConstructor> = Parameters<T['Create']>;
@@ -28,19 +24,12 @@ export function createFileSystemBackend<T extends FileSystemConstructor>(
 
 export let events = mitt();
 
-export async function createFileSystem(mountPoints: {
-  // Locations of mount points. Can be empty.
-  [mountPoint: string]: IFileSystem;
-}) {
-  let mountFS = await createFileSystemBackend(MountableFileSystem, mountPoints);
-
-  return mountFS;
-}
-
-export class KernelFileSystem extends MountableFileSystem {
+export class FileSystem extends MountableFileSystem {
   constructor(opts: any) {
     super(opts);
   }
+
+  event: typeof events;
 
   public static readonly Name = 'MountableFileSystem';
 
@@ -51,12 +40,12 @@ export class KernelFileSystem extends MountableFileSystem {
    */
   public static Create(
     opts: MountableFileSystemOptions,
-    cb: CallbackTwoArgs<MountableFileSystem>,
-  ): void {
+    cb: CallbackTwoArgs<FileSystem>,
+  ): FileSystem {
     let fs;
     MountableFileSystem.Create({}, (e, imfs?) => {
       if (imfs) {
-        fs = new MountableFileSystem(imfs);
+        fs = new FileSystem(imfs);
         try {
           Object.keys(opts).forEach((mountPoint: string) => {
             fs.mount(mountPoint, opts[mountPoint]);
@@ -76,17 +65,4 @@ export class KernelFileSystem extends MountableFileSystem {
 
     return fs;
   }
-}
-
-export function createFileSystemSync(mountPoints: {
-  // Locations of mount points. Can be empty.
-  [mountPoint: string]: IFileSystem;
-}) {
-  let fs;
-  // crossing our fingers that ths is synchronous
-  MountableFileSystem.Create(mountPoints, (err, _fs) => {
-    fs = _fs;
-  });
-
-  return fs;
 }

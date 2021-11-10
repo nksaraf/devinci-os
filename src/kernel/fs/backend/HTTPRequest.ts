@@ -1,7 +1,8 @@
 import { BaseFileSystem } from '../core/file_system';
 import type { IFileSystem, CallbackTwoArgs, FileSystemOptions } from '../core/file_system';
 import { ApiError, ErrorCode } from '../core/api_error';
-import { FileFlagString, ActionType } from '../core/file_flag';
+import type { FileFlagString } from '../core/file_flag';
+import { ActionType, isWriteable, pathExistsAction } from '../core/file_flag';
 import { copyingSlice } from '../core/util';
 import type { File } from '../core/file';
 import Stats from '../core/stats';

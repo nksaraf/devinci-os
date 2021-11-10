@@ -1,5 +1,5 @@
 import type { Kernel } from 'os/kernel';
-import { ProcessState } from './process';
+import { ProcessState } from './proc
 export interface Environment {
   [name: string]: string;
 }

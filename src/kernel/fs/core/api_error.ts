@@ -119,8 +119,8 @@ export class ApiError extends Error implements NodeJS.ErrnoException {
     this.errno = type;
     this.code = ErrorCode[type];
     this.path = path;
-    this.stack = new Error().stack;
-    this.message = `Error: ${this.code}: ${message}${this.path ? `, '${this.path}'` : ''}`;
+    this.stack = new Error(`${this.code}: ${message}${this.path ? `, '${this.path}'` : ''}`).stack;
+    this.message = `${this.code}: ${message}${this.path ? `, '${this.path}'` : ''}`;
   }
 
   /**
