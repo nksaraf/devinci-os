@@ -2,7 +2,7 @@ import {
   SynchronousFileSystem,
   CallbackOneArg,
   CallbackTwoArgs,
-  BFSThreeArgCallback,
+  CallbackThreeArgs,
   FileSystemOptions,
 } from '../core/file_system';
 import { default as Stats, FileType } from '../core/stats';
@@ -102,7 +102,7 @@ export class EmscriptenFile extends BaseFile implements File {
     offset: number,
     length: number,
     position: number,
-    cb: BFSThreeArgCallback<number, Buffer>,
+    cb: CallbackThreeArgs<number, Buffer>,
   ): void {
     try {
       cb(null, this.writeSync(buffer, offset, length, position), buffer);
@@ -130,7 +130,7 @@ export class EmscriptenFile extends BaseFile implements File {
     offset: number,
     length: number,
     position: number,
-    cb: BFSThreeArgCallback<number, Buffer>,
+    cb: CallbackThreeArgs<number, Buffer>,
   ): void {
     try {
       cb(null, this.readSync(buffer, offset, length, position), buffer);

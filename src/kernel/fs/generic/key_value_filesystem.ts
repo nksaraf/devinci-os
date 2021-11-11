@@ -1,4 +1,4 @@
-import type { CallbackOneArg, CallbackTwoArgs, BFSThreeArgCallback } from '../core/file_system';
+import type { CallbackOneArg, CallbackTwoArgs, CallbackThreeArgs } from '../core/file_system';
 import { BaseFileSystem, SynchronousFileSystem } from '../core/file_system';
 import { ApiError, ErrorCode } from '../core/api_error';
 import { default as Stats, FileType } from '../core/stats';
@@ -356,6 +356,10 @@ export class SyncKeyValueFile extends PreloadFile<SyncKeyValueFileSystem> implem
   }
 }
 
+type DirectoryEntry = {
+  [fileName: string]: string;
+};
+
 /**
  * A "Synchronous key-value file system". Stores data to/retrieves data from an
  * underlying key-value store.
@@ -634,7 +638,7 @@ export class SyncKeyValueFileSystem extends SynchronousFileSystem {
     tx: SyncKeyValueROTransaction,
     p: string,
     inode: Inode,
-  ): { [fileName: string]: string } {
+  ): DirectoryEntry {
     if (!inode.isDirectory()) {
       throw ApiError.ENOTDIR(p);
     }
@@ -1368,7 +1372,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
   private findINodeAndDirListing(
     tx: AsyncKeyValueROTransaction,
     p: string,
-    cb: BFSThreeArgCallback<Inode, { [fileName: string]: string }>,
+    cb: CallbackThreeArgs<Inode, { [fileName: string]: string }>,
   ): void {
     this.findINode(tx, p, (e: ApiError, inode?: Inode): void => {
       if (noError(e, cb)) {

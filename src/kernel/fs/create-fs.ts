@@ -1,7 +1,7 @@
-import type { CallbackTwoArgs, FileSystemConstructor, FileSystemOptions } from './core/file_system';
+import type { FileSystemConstructor, FileSystemOptions } from './core/file_system';
 import MountableFileSystem from './backend/MountableFileSystem';
-import type { MountableFileSystemOptions } from './backend/MountableFileSystem';
 import mitt from 'mitt';
+import InMemoryFileSystem from './backend/InMemory';
 
 type Args<T extends FileSystemConstructor> = Parameters<T['Create']>;
 type CallbackType<T extends FileSystemConstructor> = Args<T>[1];
@@ -24,45 +24,14 @@ export function createFileSystemBackend<T extends FileSystemConstructor>(
 
 export let events = mitt();
 
-export class FileSystem extends MountableFileSystem {
-  constructor(opts: any) {
-    super(opts);
+export class VirtualFileSystem extends MountableFileSystem {
+  constructor() {
+    super(new InMemoryFileSystem());
   }
 
   event: typeof events;
 
-  public static readonly Name = 'MountableFileSystem';
+  public static readonly Name = 'VirtualFileSystem';
 
   public static readonly Options: FileSystemOptions = {};
-
-  /**
-   * Creates a MountableFileSystem instance with the given options.
-   */
-  public static Create(
-    opts: MountableFileSystemOptions,
-    cb: CallbackTwoArgs<FileSystem>,
-  ): FileSystem {
-    let fs;
-    MountableFileSystem.Create({}, (e, imfs?) => {
-      if (imfs) {
-        fs = new FileSystem(imfs);
-        try {
-          Object.keys(opts).forEach((mountPoint: string) => {
-            fs.mount(mountPoint, opts[mountPoint]);
-          });
-        } catch (e) {
-          return cb(e);
-        }
-        cb(null, fs);
-      } else {
-        cb(e);
-      }
-    });
-
-    if (fs === undefined) {
-      throw new Error('Unable to create MountableFileSystem');
-    }
-
-    return fs;
-  }
 }

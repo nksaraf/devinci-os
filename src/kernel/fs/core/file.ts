@@ -3,7 +3,7 @@ import type Stats from './stats';
 import type {
   CallbackTwoArgs,
   CallbackOneArg,
-  BFSThreeArgCallback as CallbackThreeArgs,
+  CallbackThreeArgs as CallbackThreeArgs,
 } from './file_system';
 
 export interface SyncFile {
@@ -86,7 +86,7 @@ export interface File {
   /**
    * **Core**: Asynchronous close.
    */
-  close(cb: CallbackOneArg): void;
+  close(cb: CallbackTwoArgs<Stats>): void;
   /**
    * **Core**: Synchronous close.
    */
@@ -212,6 +212,7 @@ export interface File {
  * object.
  */
 export abstract class BaseFile {
+  constructor() {}
   public sync(cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
@@ -240,6 +241,174 @@ export abstract class BaseFile {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
   public utimesSync(atime: Date, mtime: Date): void {
+    throw new ApiError(ErrorCode.ENOTSUP);
+  }
+}
+
+export abstract class SynchronousBaseFile extends BaseFile {
+  public supportsSynch(): boolean {
+    return true;
+  }
+
+  stat(cb: CallbackTwoArgs<Stats>): void {
+    try {
+      cb(null, this.statSync());
+    } catch (e) {
+      cb(e);
+    }
+  }
+
+  statSync(): Stats {
+    throw new Error('Method not implemented.');
+  }
+
+  truncate(len: number, cb: CallbackOneArg): void {
+    try {
+      this.truncateSync(len);
+      cb(null);
+    } catch (e) {
+      cb(e);
+    }
+  }
+
+  truncateSync(len: number): void {
+    throw new Error('Method not implemented.');
+  }
+
+  write(
+    buffer: Buffer,
+    offset: number,
+    length: number,
+    position: number,
+    cb: CallbackThreeArgs<number, Buffer>,
+  ): void {
+    try {
+      cb(null, this.writeSync(buffer, offset, length, position));
+    } catch (e) {
+      cb(e);
+    }
+  }
+
+  writeSync(buffer: Buffer, offset: number, length: number, position: number): number {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * Read data from the file.
+   * @param [BrowserFS.node.Buffer] buffer The buffer that the data will be
+   *   written to.
+   * @param [Number] offset The offset within the buffer where writing will
+   *   start.
+   * @param [Number] length An integer specifying the number of bytes to read.
+   * @param [Number] position An integer specifying where to begin reading from
+   *   in the file. If position is null, data will be read from the current file
+   *   position.
+   * @param [Function(BrowserFS.ApiError, Number, BrowserFS.node.Buffer)] cb The
+   *   number is the number of bytes read
+   */
+  public read(
+    buffer: Buffer,
+    offset: number,
+    length: number,
+    position: number,
+    cb: CallbackThreeArgs<number, Buffer>,
+  ): void {
+    try {
+      cb(null, this.readSync(buffer, offset, length, position), buffer);
+    } catch (e) {
+      cb(e);
+    }
+  }
+
+  public readSync(buffer: Buffer, offset: number, length: number, position: number): number {
+    throw new Error('Method not implemented.');
+  }
+
+  public datasync(cb: CallbackOneArg): void {
+    this.sync(cb);
+  }
+
+  public datasyncSync(): void {
+    return this.syncSync();
+  }
+
+  public chown(uid: number, gid: number, cb: CallbackOneArg): void {
+    try {
+      this.chownSync(uid, gid);
+      cb(null);
+    } catch (e) {
+      cb(e);
+    }
+  }
+
+  public chownSync(uid: number, gid: number): void {
+    throw new ApiError(ErrorCode.ENOTSUP);
+  }
+
+  public chmod(mode: number, cb: CallbackOneArg): void {
+    try {
+      this.chmodSync(mode);
+      cb(null);
+    } catch (e) {
+      cb(e);
+    }
+  }
+
+  public chmodSync(mode: number): void {
+    throw new ApiError(ErrorCode.ENOTSUP);
+  }
+
+  public utimes(atime: Date, mtime: Date, cb: CallbackOneArg): void {
+    try {
+      this.utimesSync(atime, mtime);
+      cb(null);
+    } catch (e) {
+      cb(e);
+    }
+  }
+  public utimesSync(atime: Date, mtime: Date): void {
+    throw new ApiError(ErrorCode.ENOTSUP);
+  }
+
+  /**
+   * **Core**: Asynchronous sync. Must be implemented by subclasses of this
+   * class.
+   * @param [Function(BrowserFS.ApiError)] cb
+   */
+  public sync(cb: CallbackOneArg): void {
+    try {
+      this.syncSync();
+      cb();
+    } catch (e) {
+      cb(e);
+    }
+  }
+
+  /**
+   * **Core**: Synchronous sync.
+   */
+  public syncSync(): void {
+    throw new ApiError(ErrorCode.ENOTSUP);
+  }
+
+  /**
+   * **Core**: Asynchronous close. Must be implemented by subclasses of this
+   * class.
+   * @param [Function(BrowserFS.ApiError)] cb
+   */
+  public close(cb: CallbackOneArg): void {
+    try {
+      this.closeSync();
+      cb();
+    } catch (e) {
+      cb(e);
+    }
+  }
+
+  /**
+   * **Core**: Synchronous close.
+   */
+  public closeSync(): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
 }

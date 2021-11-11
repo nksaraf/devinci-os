@@ -1,8 +1,9 @@
 import { ApiError, ErrorCode } from '../fs/core/api_error';
-import { BaseFile } from '../fs/core/file';
 import type { File } from '../fs/core/file';
 import type { CallbackOneArg, CallbackTwoArgs } from '../fs/core/file_system';
 import type stats from '../fs/core/stats';
+import InMemoryFileSystem from '../fs/backend/InMemory';
+import VirtualFile from '../fs/generic/virtual_file';
 
 declare var Buffer: any;
 
@@ -13,17 +14,15 @@ let id = 0;
 // Pipes have a waiting mechanism,
 // A read with not callback until it actually gets the data
 export class Pipe {
+  writeBufferSync(buffer: Buffer, offset: number, length: number, position: number): number {
+    throw new Error('Method not implemented.');
+  }
   bufs: Buffer[] = [];
   id = id++;
   refcount: number = 1; // maybe more accurately a reader count
   readWaiter: Function = undefined;
   writeWaiter: Function = undefined;
   closed: boolean = false;
-
-  writeString(s: string): void {
-    let b = new Buffer(s);
-    this.writeBuffer(b, 0, b.length, 0, (err: Error, len?: number) => {});
-  }
 
   get bufferLength(): number {
     let len = 0;
@@ -56,7 +55,13 @@ export class Pipe {
     }
   }
 
-  read(buf: Buffer, off: number, len: number, pos: number, cb: CallbackTwoArgs<number>): void {
+  readBuffer(
+    buf: Buffer,
+    off: number,
+    len: number,
+    pos: number,
+    cb: CallbackTwoArgs<number>,
+  ): void {
     if (off !== 0) {
       console.log('ERROR: Pipe.read w/ non-zero offset');
     }
@@ -78,7 +83,7 @@ export class Pipe {
     };
   }
 
-  readSync(buf: Buffer, off: number, len: number, pos: number): number {
+  readBufferSync(buf: Buffer, off: number, len: number, pos: number): number {
     return this.copy(buf, off, len, pos);
   }
 
@@ -120,7 +125,7 @@ export class Pipe {
 
   // if any writers are blocked (because the buffer was at
   // capacity) unblock them
-  private releaseWriter(): void {
+  protected releaseWriter(): void {
     if (this.writeWaiter) {
       let waiter = this.writeWaiter;
       this.writeWaiter = undefined;
@@ -128,7 +133,9 @@ export class Pipe {
     }
   }
 
-  private releaseReader(): void {
+  // tell readers that something was written finally,
+  // and they can now read it
+  protected releaseReader(): void {
     if (this.readWaiter) {
       let waiter = this.readWaiter;
       this.readWaiter = undefined;
@@ -143,9 +150,55 @@ export class Pipe {
   }
 }
 
+export class MessageChannelPipe extends Pipe {
+  port: MessagePort;
+  constructor(port: MessagePort) {
+    super();
+    this.port.onmessage = (e: MessageEvent) => {
+      this.onBufferReceived();
+    };
+  }
+
+  writeBuffer(
+    b: Buffer,
+    offset: number,
+    length: number,
+    pos: number,
+    cb: CallbackTwoArgs<number>,
+  ): void {
+    this.appendBuffer(b);
+    // call backs readers who were blocked on this pipe
+    this.releaseReader();
+
+    if (this.bufferLength <= CUTOFF) {
+      cb(undefined, b.length);
+    } else {
+      if (this.writeWaiter) {
+        console.log('ERROR: expected no other write waiter');
+      }
+      this.writeWaiter = () => {
+        cb(undefined, b.length);
+      };
+    }
+  }
+
+  appendBuffer(buffer: Buffer) {
+    this.port.postMessage(buffer, [buffer]);
+  }
+
+  onBufferReceived() {}
+}
+
 export function isPipe(f: File): f is PipeFile {
   return f instanceof PipeFile;
 }
+
+enum PipeMode {
+  Read = 1,
+  Write = 2,
+}
+
+export class PipeFileSystem extends InMemoryFileSystem {}
 
 /**
  * A file that is backed by a pipe.
@@ -153,16 +206,12 @@ export function isPipe(f: File): f is PipeFile {
  * Writes are directed to the pipe
  * Reads are read from the pipe as data becomes available.
  */
-export class PipeFile extends BaseFile implements File {
-  pipe: Pipe;
+export class PipeFile extends VirtualFile implements File {
   writeListener: CallbackTwoArgs<string>;
 
-  constructor(pipe?: Pipe) {
-    super();
-    if (!pipe) {
-      pipe = new Pipe();
-    }
-    this.pipe = pipe;
+  constructor(public pipe: Pipe, public mode: PipeMode, public port: MessagePort) {
+    let fd = kernel.process.getNextFD();
+    super(fd, kernel.process, '/dev/fd/' + fd, mode === PipeMode.Read ? 'r' : 'w');
   }
 
   writeSync(buffer: Buffer, offset: number, length: number, position: number): number {
@@ -178,17 +227,29 @@ export class PipeFile extends BaseFile implements File {
     this.writeListener = cb;
   }
 
-  read(buf: Buffer, off: number, len: number, pos: number, cb: CallbackOneArg): void {
+  readBuffer(buf: Buffer, off: number, len: number, pos: number, cb: CallbackOneArg): void {
+    if (this.mode !== PipeMode.Read) {
+      console.log('ERROR: PipeFile.read called on non-read pipe');
+    }
+
     if (pos !== -1) {
       return cb(new ApiError(ErrorCode.ESPIPE));
     }
-    this.pipe.read(buf, off, len, pos, cb);
+
+    this.pipe.readBuffer(buf, off, len, pos, cb);
   }
 
-  write(buf: Buffer, offset: number, len: number, pos: number, cb: CallbackTwoArgs<number>): void {
-    if (pos !== -1) {
-      return cb(new ApiError(ErrorCode.ESPIPE));
+  writeBuffer(
+    buf: Buffer,
+    offset: number,
+    len: number,
+    pos: number,
+    cb: CallbackTwoArgs<number>,
+  ): void {
+    if (this.mode !== PipeMode.Read) {
+      console.log('ERROR: PipeFile.read called on non-read pipe');
     }
+
     this.pipe.writeBuffer(buf, offset, len, pos, cb);
 
     if (this.writeListener) {
@@ -200,8 +261,11 @@ export class PipeFile extends BaseFile implements File {
     throw new Error('TODO: PipeFile.stat not implemented');
   }
 
-  readSync(buffer: Buffer, offset: number, length: number, position: number): number {
-    return this.pipe.readSync(buffer, offset, length, position);
+  readBufferSync(buffer: Buffer, offset: number, length: number, position: number): number {
+    return this.pipe.readBufferSync(buffer, offset, length, position);
+  }
+  writeBufferSync(buffer: Buffer, offset: number, length: number, position: number): number {
+    return this.pipe.writeBufferSync(buffer, offset, length, position);
   }
 
   ref(): void {
@@ -215,20 +279,36 @@ export class PipeFile extends BaseFile implements File {
   getPos(): number {
     throw new Error('Method not implemented.');
   }
+
   statSync(): stats {
     throw new Error('Method not implemented.');
   }
+
   close(cb: CallbackOneArg): void {
     this.pipe.close();
     cb();
   }
+
   closeSync(): void {
     this.pipe.close();
   }
+
   truncate(len: number, cb: CallbackOneArg): void {
     throw new Error('Method not implemented.');
   }
+
   truncateSync(len: number): void {
     throw new Error('Method not implemented.');
   }
+}
+
+function createPipe() {
+  const messageChannel = new MessageChannel();
+  const [port1, port2] = [messageChannel.port1, messageChannel.port2];
+
+  new MessageChannelPipe(port1);
+
+  kernel.proc
+
+  const pipe = new Pipe();
 }

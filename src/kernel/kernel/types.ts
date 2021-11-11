@@ -12,4 +12,5 @@ export enum KernelFlags {
   SERVICE_WORKER = 16,
   DISABLE_NET = 32,
   BOOTLOADER = 64,
+  MAIN = 128,
 }

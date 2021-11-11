@@ -7,6 +7,7 @@
   import type { WindowAPI } from '__/stores/window.store';
   import TrafficLights from 'os/ui/Window/TrafficLights.svelte';
   import ExpandSvg from '@ui/components/SVG/traffic-lights/ExpandSVG.svelte';
+  import { PTYMasterFile, TTY } from 'os/kernel/kernel/tty';
 
   let divEl: HTMLDivElement = null;
 
@@ -17,6 +18,8 @@
     terminal.loadAddon(new WebLinksAddon());
 
     terminal.open(divEl);
+
+    let file = new TTY(terminal);
   });
 
   export let args;

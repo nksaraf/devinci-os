@@ -1,5 +1,5 @@
 import Global from '../global';
-import { constants } from './constants';
+import { constants } from '../kernel/constants';
 import type { InternalAsyncWrapBinding } from './bindings/async_wrap';
 import { InternalFS } from './bindings/fs';
 import type { Kernel } from '../kernel';

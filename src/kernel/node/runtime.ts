@@ -16,6 +16,11 @@ export class NodeHost {
   private static getInternalBinding;
   static internalUrl = '/@node';
   static async bootstrap(kernel: Kernel) {
+    // nodeConsole = Object.assign({}, console, {
+    //   log: (...args) => {
+    //     NodeHost.kernel.process.stdout.writeString(args.join(' ') + '\n');
+    //   }
+    // })
     let httpFS = await createFileSystemBackend(HTTPRequest, {
       index: '/node/index.json',
       baseUrl: '/node/',

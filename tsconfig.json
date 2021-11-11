@@ -30,7 +30,8 @@
       "@ui/*": ["./packages/macos-ui/src/*"],
       "os/*": ["./src/*"],
       "browserfs": ["./packages/browserfs/index.ts"],
-      "browserfs/*": ["./packages/browserfs/*"]
+      "browserfs/*": ["./packages/browserfs/*"],
+      "devinci": [],
     },
     "types": ["vite-plugin-pwa/client", "node"],
     /**

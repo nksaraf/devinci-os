@@ -1,14 +1,22 @@
 import type * as fs from 'fs';
+import { constants } from 'os/kernel/kernel/constants';
 
 /**
  * Indicates the type of the given file. Applied to 'mode'.
  */
 export enum FileType {
-  FILE = 0x8000,
-  DIRECTORY = 0x4000,
-  SYMLINK = 0xa000,
+  FILE = constants.fs.S_IFREG,
+  DIRECTORY = constants.fs.S_IFDIR,
+  SYMLINK = constants.fs.S_IFLNK,
+  SOCKET = constants.fs.S_IFSOCK,
+  CHARACTER_DEVICE = constants.fs.S_IFCHR,
+  BLOCK_DEVICE = constants.fs.S_IFBLK,
+  FIFO = constants.fs.S_IFIFO,
+  PIPE = constants.fs.S_IPIPE,
+  VIRTUAL = 0xe000,
 }
 
+const FileTypeCheck = constants.fs.S_IFMT;
 /**
  * Emulation of Node's `fs.Stats` object.
  *
@@ -172,21 +180,21 @@ export default class Stats implements fs.Stats {
    * @return [Boolean] True if this item is a file.
    */
   public isFile(): boolean {
-    return (this.mode & 0xf000) === FileType.FILE;
+    return (this.mode & FileTypeCheck) === FileType.FILE;
   }
 
   /**
    * @return [Boolean] True if this item is a directory.
    */
   public isDirectory(): boolean {
-    return (this.mode & 0xf000) === FileType.DIRECTORY;
+    return (this.mode & FileTypeCheck) === FileType.DIRECTORY;
   }
 
   /**
    * @return [Boolean] True if this item is a symbolic link (only valid through lstat)
    */
   public isSymbolicLink(): boolean {
-    return (this.mode & 0xf000) === FileType.SYMLINK;
+    return (this.mode & FileTypeCheck) === FileType.SYMLINK;
   }
 
   /**
@@ -194,24 +202,24 @@ export default class Stats implements fs.Stats {
    * up the type of the file, which is encoded in mode.
    */
   public chmod(mode: number): void {
-    this.mode = (this.mode & 0xf000) | mode;
+    this.mode = (this.mode & FileTypeCheck) | mode;
   }
 
   // We don't support the following types of files.
 
   public isSocket(): boolean {
-    return false;
+    return (this.mode & FileTypeCheck) === FileType.SOCKET;
   }
 
   public isBlockDevice(): boolean {
-    return false;
+    return (this.mode & FileTypeCheck) === FileType.BLOCK_DEVICE;
   }
 
   public isCharacterDevice(): boolean {
-    return false;
+    return (this.mode & FileTypeCheck) === FileType.CHARACTER_DEVICE;
   }
 
   public isFIFO(): boolean {
-    return false;
+    return (this.mode & FileTypeCheck) === FileType.FIFO;
   }
 }

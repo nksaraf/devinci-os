@@ -7,10 +7,14 @@
 import { Pipe } from './pipe';
 import { BaseFile } from '../fs/core/file';
 import type { File } from '../fs/core/file';
-import type { CallbackOneArg, CallbackTwoArgs } from '../fs/core/file_system';
+import { BaseFileSystem } from '../fs/core/file_system';
+import type { CallbackOneArg, CallbackTwoArgs, IFileSystem } from '../fs/core/file_system';
 import { ApiError, ErrorCode } from '../fs/core/api_error';
 import type stats from '../fs/core/stats';
 import type { Kernel } from './kernel';
+import VirtualFile from '../fs/generic/virtual_file';
+import { SyncKeyValueFile, SyncKeyValueFileSystem } from '../fs/generic/key_value_filesystem';
+import type { FileFlagString } from '../fs/core/file_flag';
 
 export interface AcceptCallback {
   (err: Error, s?: SocketFile, remoteAddr?: string, remotePort?: number): void;
@@ -31,12 +35,31 @@ export interface Incoming {
   cb: AcceptCallback;
 }
 
-export class Network {
+export class Network extends BaseFileSystem implements IFileSystem {
+  channel: BroadcastChannel;
+  getName(): string {
+    throw new Error('Method not implemented.');
+  }
+  isReadOnly(): boolean {
+    throw new Error('Method not implemented.');
+  }
+  supportsProps(): boolean {
+    throw new Error('Method not implemented.');
+  }
+  supportsSynch(): boolean {
+    throw new Error('Method not implemented.');
+  }
   kernel: Kernel;
   ports: { [port: number]: SocketFile } = {};
-  socket() {
-    return new SocketFile(this.kernel);
+  constructor() {
+    super();
+    this.channel = new BroadcastChannel('network');
   }
+  // createFileSync(p: string, flag: FileFlagString, mode: number): File {}
+  socket() {
+    return new SocketFile();
+  }
+
   // Client side of BSD Sockets.
   // An open socket file descriptor is passed in with the address and port of
   // the socket to connect to
@@ -58,18 +81,37 @@ export class Network {
     }
 
     // this is kind of a IP + DNS search
-    let listener = this.ports[port];
+    this.lookup(addr, port, (err, serverProxySocket) => {
+      if (!serverProxySocket.isListening) {
+        onConnect(new ApiError(ErrorCode.ECONNREFUSED));
+        return;
+      }
+
+      // actual server interaction
+      serverProxySocket.doAccept(clientSocket, addr, port, onConnect);
+    });
 
     // is a socket but not listening (probably client side)
-    if (!listener.isListening) {
-      onConnect(new ApiError(ErrorCode.ECONNREFUSED));
+  }
+
+  lookup(addr: string, port: number, cb: (err: Error) => void): void {
+    if (addr === '0.0.0.0') addr = '127.0.0.1';
+
+    if (addr !== 'localhost' && addr !== '127.0.0.1') {
+      console.log('TODO connect(): only localhost supported for now');
+      cb(new ApiError(ErrorCode.ECONNREFUSED));
       return;
     }
 
-    // actual server interaction
-    listener.doAccept(clientSocket, addr, port, onConnect);
+    if (!(port in this.ports)) {
+      cb(new ApiError(ErrorCode.ECONNREFUSED));
+      return;
+    }
+
+    cb(null);
   }
 
+  /// server side of BSD sockets
   unbind(s: File, addr: string, port: number): any {
     if (!(port in this.ports)) return;
     if (s !== this.ports[port]) {
@@ -90,7 +132,11 @@ export class Network {
   }
 }
 
-export class SocketFile extends BaseFile implements File {
+// class SocketFileSystem extends SyncKeyValueFileSystem {
+//   openFileSync('/sockets/')
+// }
+
+export class SocketFile extends VirtualFile implements File {
   kernel: Kernel;
   isListening: boolean = false;
   refCount: number = 1;
@@ -103,18 +149,14 @@ export class SocketFile extends BaseFile implements File {
   outgoing: Pipe = undefined;
   incoming: Pipe = undefined;
 
-  incomingQueue: Incoming[] = [];
-  acceptQueue: AcceptCallback[] = [];
+  waitingClients: Incoming[] = [];
+  waitingForNewClients: AcceptCallback[] = [];
 
-  constructor(kernel: Kernel) {
-    super();
+  constructor() {
+    let sockfd = kernel.process.getNextFD();
+    super(sockfd, kernel.process, '/sockets/' + sockfd, 'w+');
     this.kernel = kernel;
-    this.sockfd = this.kernel.process.getNextFD();
-    this.kernel.process.files[this.sockfd] = this;
-  }
-
-  writeSync(buffer: Buffer, offset: number, length: number, position: number): number {
-    throw new Error('Method not implemented.');
+    kernel.process.files[sockfd] = this;
   }
 
   listen(cb: (err: number) => void): void {
@@ -124,16 +166,16 @@ export class SocketFile extends BaseFile implements File {
 
   accept(cb: AcceptCallback): void {
     // if no connection requests are in queue, the accept will block
-    if (!this.incomingQueue.length) {
-      this.acceptQueue.push(cb);
+    if (!this.waitingClients.length) {
+      this.waitingForNewClients.push(cb);
       return;
     }
 
     // if there are connection requests in queue, we can now accept the first
-    let queued = this.incomingQueue.shift();
+    let queued = this.waitingClients.shift();
 
     let remote = queued.socket;
-    let local = new SocketFile(this.kernel);
+    let local = new SocketFile();
     local.addr = queued.addr;
     local.port = queued.port;
 
@@ -167,8 +209,8 @@ export class SocketFile extends BaseFile implements File {
     // if accept queue is empty, i.e nobody is waiting to accept,
     // just add the incoming request to the incoming queue
     // when a server side socket will be ready accept, it will see this request
-    if (!this.acceptQueue.length) {
-      this.incomingQueue.push({
+    if (!this.waitingForNewClients.length) {
+      this.waitingClients.push({
         socket: remote,
         addr: remoteAddr,
         port: remotePort,
@@ -179,9 +221,9 @@ export class SocketFile extends BaseFile implements File {
 
     // if there were accept calls blocking,
     // we can now accept the incoming request
-    let acceptCB = this.acceptQueue.shift();
+    let acceptCB = this.waitingForNewClients.shift();
 
-    let local = new SocketFile(this.kernel);
+    let local = new SocketFile();
     local.addr = remoteAddr;
     local.port = remotePort;
 
@@ -208,10 +250,21 @@ export class SocketFile extends BaseFile implements File {
   }
 
   connect(addr: string, port: number, cb: ConnectCallback): void {
-    this.kernel.net.connect(this, addr, port, cb);
+    this.kernel.net.connect(this, addr, port, () => {
+      let writeStream = new Pipe();
+      let readStream = new Pipe();
+
+      this.incoming = null;
+      this.outgoing = null;
+
+      cb(null);
+      // local -> outgoing -> remote
+      // local.outgoing = outgoing;
+      // remote.incoming = outgoing;
+    });
   }
 
-  read(
+  readBuffer(
     buf: Buffer,
     offset: number,
     length = buf.length,
@@ -220,10 +273,10 @@ export class SocketFile extends BaseFile implements File {
   ): number {
     if (position !== -1) return cb(new ApiError(ErrorCode.ESPIPE));
 
-    this.incoming.read(buf, 0, length, undefined, cb);
+    this.incoming.readBuffer(buf, 0, length, undefined, cb);
   }
 
-  write(
+  writeBuffer(
     buf: Buffer,
     offset: number,
     length: number,
@@ -235,7 +288,7 @@ export class SocketFile extends BaseFile implements File {
   }
 
   readSync(buf: Buffer, offset: number, length: number, pos: number): number {
-    return this.incoming.readSync(buf, offset, length, pos);
+    return this.incoming.readBufferSync(buf, offset, length, pos);
   }
 
   ref(): void {
@@ -255,28 +308,5 @@ export class SocketFile extends BaseFile implements File {
 
   stat(cb: (err: any, stats: any) => void): void {
     throw new Error('TODO: SocketFile.stat not implemented');
-  }
-
-  readdir(cb: (err: any, files: string[]) => void): void {
-    setTimeout(cb, 0, 'cant readdir on normal file');
-  }
-
-  getPos(): number {
-    throw new Error('Method not implemented.');
-  }
-  statSync(): stats {
-    throw new Error('Method not implemented.');
-  }
-  close(cb: CallbackOneArg): void {
-    throw new Error('Method not implemented.');
-  }
-  closeSync(): void {
-    throw new Error('Method not implemented.');
-  }
-  truncate(len: number, cb: CallbackOneArg): void {
-    throw new Error('Method not implemented.');
-  }
-  truncateSync(len: number): void {
-    throw new Error('Method not implemented.');
   }
 }

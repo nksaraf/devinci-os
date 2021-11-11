@@ -2,7 +2,11 @@ import { ApiError, ErrorCode } from './api_error';
 import type Stats from './stats';
 import type { File } from './file';
 import type { FileFlagString } from './file_flag';
-import { pathExistsAction, pathNotExistsAction, ActionType } from './file_flag';
+import {
+  pathExistsAction,
+  pathNotExistsAction as getActionTypeIfNotExists,
+  ActionType,
+} from './file_flag';
 import * as path from 'path';
 import { fail } from './util';
 // import wasmUrl from 'asc:./fs.asm';
@@ -13,7 +17,7 @@ import { fail } from './util';
 
 export type CallbackOneArg = (e?: ApiError | null) => any;
 export type CallbackTwoArgs<T> = (e: ApiError | null | undefined, rv?: T) => any;
-export type BFSThreeArgCallback<T, U> = (e: ApiError | null | undefined, arg1?: T, arg2?: U) => any;
+export type CallbackThreeArgs<T, U> = (e: ApiError | null | undefined, arg1?: T, arg2?: U) => any;
 
 /**
  * Interface for a filesystem. **All** BrowserFS FileSystems should implement
@@ -446,6 +450,8 @@ export class BaseFileSystem {
   /**
    * Create the file at path p with the given mode. Then, open it with the given
    * flag.
+   *
+   * SHOULD BE IMPLEMENTED FOR ALL NEW FILESYSTEMS
    */
   public createFile(
     p: string,
@@ -460,7 +466,7 @@ export class BaseFileSystem {
     const mustBeFile = (e: ApiError, stats?: Stats): void => {
       if (e) {
         // File does not exist.
-        switch (pathNotExistsAction(flag)) {
+        switch (getActionTypeIfNotExists(flag)) {
           case ActionType.CREATE_FILE:
             // Ensure parent exists.
             return this.stat(path.dirname(p), false, (e: ApiError, parentStats?: Stats) => {
@@ -512,6 +518,7 @@ export class BaseFileSystem {
     };
     this.stat(p, false, mustBeFile);
   }
+
   public rename(oldPath: string, newPath: string, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
@@ -547,7 +554,7 @@ export class BaseFileSystem {
       stats = this.statSync(p, false);
     } catch (e) {
       // File does not exist.
-      switch (pathNotExistsAction(flag)) {
+      switch (getActionTypeIfNotExists(flag)) {
         case ActionType.CREATE_FILE:
           // Ensure parent exists.
           const parentStats = this.statSync(path.dirname(p), false);
@@ -583,35 +590,45 @@ export class BaseFileSystem {
         throw new ApiError(ErrorCode.EINVAL, 'Invalid FileFlag object.');
     }
   }
+
   public unlink(p: string, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
+
   public unlinkSync(p: string): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
+
   public rmdir(p: string, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
+
   public rmdirSync(p: string): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
+
   public mkdir(p: string, mode: number, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
+
   public mkdirSync(p: string, mode: number): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
+
   public readdir(p: string, cb: CallbackTwoArgs<string[]>): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
+
   public readdirSync(p: string): string[] {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
+
   public exists(p: string, cb: (exists: boolean) => void): void {
     this.stat(p, null, function (err) {
       cb(!err);
     });
   }
+
   public existsSync(p: string): boolean {
     try {
       this.statSync(p, true);
@@ -620,6 +637,7 @@ export class BaseFileSystem {
       return false;
     }
   }
+
   public realpath(p: string, cache: { [path: string]: string }, cb: CallbackTwoArgs<string>): void {
     if (this.supportsLinks()) {
       // The path could contain symlinks. Split up the path,
@@ -641,6 +659,7 @@ export class BaseFileSystem {
       });
     }
   }
+
   public realpathSync(p: string, cache: { [path: string]: string }): string {
     if (this.supportsLinks()) {
       // The path could contain symlinks. Split up the path,
@@ -661,6 +680,7 @@ export class BaseFileSystem {
       }
     }
   }
+
   public truncate(p: string, len: number, cb: CallbackOneArg): void {
     this.open(p, 'r+', 0x1a4, function (er: ApiError, fd?: File) {
       if (er) {
@@ -673,6 +693,7 @@ export class BaseFileSystem {
       });
     });
   }
+
   public truncateSync(p: string, len: number): void {
     const fd = this.openSync(p, 'r+', 0x1a4);
     // Need to safely close FD, regardless of whether or not truncate succeeds.
@@ -684,6 +705,7 @@ export class BaseFileSystem {
       fd.closeSync();
     }
   }
+
   public readFile(
     fname: string,
     encoding: BufferEncoding,
@@ -726,6 +748,7 @@ export class BaseFileSystem {
       });
     });
   }
+
   public readFileSync(fname: string, encoding: BufferEncoding, flag: FileFlagString): any {
     // Get file.
     const fd = this.openSync(fname, flag, 0x1a4);

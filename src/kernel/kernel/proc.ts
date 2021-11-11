@@ -1,7 +1,7 @@
 import type { Kernel } from './kernel';
 import { PipeFile } from './pipe';
 import type { File } from '../fs/core/file';
-import { BaseFileSystem } from '../fs/core/file_system';
+import { BaseFileSystem, SynchronousFileSystem } from '../fs/core/file_system';
 import type { IFileSystem } from '../fs/core/file_system';
 export enum ProcessState {
   Starting,
@@ -11,22 +11,10 @@ export enum ProcessState {
 }
 import Global from '../global';
 import type TTYFile from './tty';
-
-export class ProcessFileSystem extends BaseFileSystem implements IFileSystem {
-  static Name = 'procfs';
-  getName(): string {
-    return ProcessFileSystem.Name;
-  }
-  isReadOnly(): boolean {
-    throw new Error('Method not implemented.');
-  }
-  supportsProps(): boolean {
-    throw new Error('Method not implemented.');
-  }
-  supportsSynch(): boolean {
-    throw new Error('Method not implemented.');
-  }
-}
+import { checkFlag } from './checkFlag';
+import { KernelFlags } from './types';
+import { wrap } from 'comlink';
+import type VirtualFile from '../fs/generic/virtual_file';
 
 export interface Environment {
   [name: string]: string;
@@ -38,6 +26,7 @@ interface ProcessOptions {
   name: string;
   args: string[];
   env: Environment;
+  worker?: Worker;
   kernel: Kernel;
   pid: number;
   files: { [key: number]: File };
@@ -49,25 +38,30 @@ export class Process {
   env: { [key: string]: string };
   args: string[];
   tty: TTYFile;
-  stdin: File;
-  stdout: File;
-  stderr: File;
+  stdin: VirtualFile;
+  stdout: VirtualFile;
+  stderr: VirtualFile;
   pid: number;
+  state: ProcessState = ProcessState.Starting;
+
   chdir(path: string): void {
     this.cwd = path;
   }
 
   private nextFd = 3;
+
   files: { [key: number]: File } = {};
+
   constructor(options: ProcessOptions) {
-    // this.cwd = options.cwd ?? '/';
+    this.cwd = options.cwd ?? '/';
     this.kernel = options.kernel;
-    // this.env = options.env;
-    // this.args = options.args;
+    this.worker = options.worker;
+    this.env = options.env;
+    this.args = options.args;
     // this.stdin = options.files[0];
     // this.stdout = options.files[1];
     // this.stderr = options.files[2];
-    // this.pid = options.pid;
+    this.pid = options.pid;
     // this.files = options.files;
 
     this.exec('/bin/sh', ['sh']);
@@ -84,6 +78,28 @@ export class Process {
   exec(command: string, args: string[]): void {
     console.log(`exec: ${command} ${args.join(' ')}`);
   }
+
+  async run() {
+    if (this.state === ProcessState.Starting) {
+      this.state = ProcessState.Running;
+    }
+  }
+}
+
+class WorkerProcess extends Process {
+  worker: Worker;
+
+  constructor(options: ProcessOptions) {
+    super(options);
+    this.worker = options.worker;
+  }
+
+  async run() {
+    if (this.worker) {
+      let cmd = this.args[0];
+      return await wrap<{ main: () => Promise<void> }>(this.worker)[cmd]();
+    }
+  }
 }
 
 /**
@@ -93,14 +109,32 @@ export class Process {
  *  * Processes are created and managed by the kernel.
  *  * as processes are executed, they are run on workers
  */
-export class ProcessManager {
+export class ProcessManager extends SynchronousFileSystem implements IFileSystem {
   getProcess(pid: number): Process {
     return this.processes[pid];
   }
   processes: { [key: number]: Process } = {};
   kernel: Kernel;
   constructor(kernel: Kernel) {
+    super();
     this.kernel = kernel;
+  }
+
+  getName(): string {
+    throw new Error('Method not implemented.');
+  }
+  isReadOnly(): boolean {
+    throw new Error('Method not implemented.');
+  }
+  supportsProps(): boolean {
+    throw new Error('Method not implemented.');
+  }
+  supportsSynch(): boolean {
+    throw new Error('Method not implemented.');
+  }
+
+  readdirSync(p: string): string[] {
+    throw new Error('Method not implemented.');
   }
 
   nextPid: number = -1;
@@ -109,23 +143,44 @@ export class ProcessManager {
     return ++this.nextPid;
   }
 
-  getpid() {}
-
-  init(): number {
-    let pid = this.spawn({
-      parent: null,
-      cwd: '/',
-      name: 'init',
-      args: [],
-      env: {},
-    });
-
-    Global.kernel = this.kernel;
-
-    return pid;
+  async init(): Promise<Process> {
+    if (checkFlag(this.kernel.mode, KernelFlags.WORKER)) {
+      return await this.spawn({
+        parent: null,
+        cwd: '/',
+        name: 'init',
+        args: [],
+        env: {},
+      });
+    } else {
+      return await this.spawn({
+        parent: null,
+        cwd: '/',
+        name: 'init',
+        args: [],
+        env: {},
+      });
+    }
   }
 
-  spawn({
+  async addWorker(options: Partial<ProcessOptions>) {
+    options.worker.addEventListener('message', console.log);
+    let proc = new WorkerProcess({
+      args: [],
+      env: {},
+      files: {},
+      ...options,
+      parent: this.kernel.process,
+      kernel: this.kernel,
+      pid: this.getNextPid(),
+      cwd: '/',
+      name: 'worker',
+    });
+    this.processes[proc.pid] = proc;
+    return proc;
+  }
+
+  async spawn({
     files,
     env = {},
     parent,
@@ -140,7 +195,7 @@ export class ProcessManager {
     args: string[];
     env: Environment;
     files?: { [key: number]: File };
-  }): number {
+  }): Promise<Process> {
     let pid = this.getNextPid();
 
     // sparse map of files
@@ -156,9 +211,9 @@ export class ProcessManager {
     } else if (!files || !parent) {
       // if no files or no parent (init process)
       files = {};
-      files[0] = new PipeFile();
-      files[1] = new PipeFile();
-      files[2] = new PipeFile();
+      // files[0] = new PipeFile();
+      // files[1] = new PipeFile();
+      // files[2] = new PipeFile();
     }
 
     let proc = new Process({
@@ -174,7 +229,13 @@ export class ProcessManager {
 
     this.processes[pid] = proc;
 
-    return pid;
+    await proc.run();
+
+    return proc;
+  }
+
+  listProcesses(): Process[] {
+    
   }
 }
 

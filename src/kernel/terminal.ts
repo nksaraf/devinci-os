@@ -2,9 +2,9 @@ import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
 // import { WebglAddon } from 'xterm-addon-webgl';
 import { Terminal as XtermTerminal } from 'xterm';
-import WasmTerminalConfig from './terminal/wasm-terminal-config';
-import TTY from './tty';
+import TTYFile from './kernel/tty';
 import Shell from './shell/shell';
+import type WasmTerminalConfig from './terminal/wasm-terminal-config';
 
 export interface IDisposable {
   dispose(): void;
@@ -14,7 +14,7 @@ const MOBILE_KEYBOARD_EVENTS = ['click', 'tap'];
 
 interface TerminalOptions {
   config: WasmTerminalConfig;
-  tty: TTY;
+  tty: TTYFile;
   shell: Shell;
 }
 
@@ -25,7 +25,7 @@ export default class Terminal {
   fitAddon: FitAddon;
 
   config: TerminalOptions;
-  tty: TTY;
+  tty: TTYFile;
   shell: Shell;
 
   isOpen: boolean;
@@ -65,7 +65,7 @@ export default class Terminal {
     this.config = config;
 
     // Create our Shell and tty
-    this.tty = new TTY(this.xterm);
+    this.tty = new TTYFile(this.xterm);
     this.shell = new Shell(this.config, this.tty);
 
     this.disposables.push(this.xterm.onData(this.shell.handleTermData));

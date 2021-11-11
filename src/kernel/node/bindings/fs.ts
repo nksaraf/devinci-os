@@ -1,7 +1,7 @@
 import type MountableFileSystem from 'os/kernel/fs/backend/MountableFileSystem';
 import type PreloadFile from 'os/kernel/fs/generic/preload_file';
 import type { Kernel } from 'os/kernel/kernel';
-import { constants } from '../constants';
+import { constants } from '../../kernel/constants';
 
 const wrap = <T>(f: () => T, req: undefined): T => {
   let result: T | undefined = undefined;
@@ -147,6 +147,7 @@ export class InternalFS {
     asyncify(InternalFS._close, req, ctx, fd);
   }
 
+
   static statValues = new Float64Array([
     1458881089, // device ID
     33207, // mode | protection
@@ -247,3 +248,4 @@ interface FSSyncContext {
 type BufferType = Uint8Array;
 type Stream = object;
 type StringOrBuffer = string | BufferType;
+Float64Array.BYTES_PER_ELEMENT

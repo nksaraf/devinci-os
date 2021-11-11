@@ -63,8 +63,6 @@ export interface MountableFileSystemOptions {
  * With no mounted file systems, `MountableFileSystem` acts as a simple `InMemory` filesystem.
  */
 export default class MountableFileSystem extends BaseFileSystem implements IFileSystem {
-  public static readonly Name = 'MountableFileSystem';
-
   public static readonly Options: FileSystemOptions = {};
 
   /**

@@ -1,15 +1,13 @@
 import type { Kernel } from './kernel';
-import type { Process as OSProcess } from './proc';
 
 declare global {
-  export var kernel: OSProcess;
+  export var kernel: Kernel;
   namespace NodeJS {
-    interface Process {
-    
-    }
+    interface Process {}
   }
 }
 
 export async function main() {
-  kernel.stdout.write(Buffer.from('Hello, world!\n', 'utf-8'));
+  let buffer = Buffer.from('Hello, world!\n', 'utf-8');
+  kernel.process.stdout.write(buffer, 0, buffer.length, 0, console.log);
 }

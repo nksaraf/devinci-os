@@ -6,7 +6,7 @@ import WASICommand from './terminal/command/wasi-command';
 import CallbackCommand from './terminal/command/callback-command';
 import IoDeviceWindow from './terminal/io-device-window/io-device-window';
 import { WASIExitError } from './wasi';
-import { FileSystem } from './fs';
+import { VirtualFileSystem } from './fs';
 /**
 
  This function removes the ansi escape characters
@@ -35,7 +35,7 @@ const cleanStdout = (stdout: string) => {
 
 export default class Process {
   commandOptions: CommandOptions;
-  fs: FileSystem;
+  fs: VirtualFileSystem;
   ioDevices: IoDevices;
   originalWasmFsJson: any;
   dataCallback: Function;

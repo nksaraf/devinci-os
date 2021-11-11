@@ -12,8 +12,8 @@ import {
 } from './shell-utils';
 import ShellHistory from './shell-history';
 
-import type TTY from 'os/kernel/kernel/tty';
 import CommandRunner from '../terminal/command-runner/command-runner';
+import { Process } from '../kernel/proc';
 
 type AutoCompleteHandler = (index: number, tokens: string[]) => string[];
 
@@ -27,8 +27,9 @@ type AutoCompleteHandler = (index: number, tokens: string[]) => string[];
  * - Interpret text within the tty to launch processes and interpret programs
  */
 
-export default class Shell {
-  tty: TTY;
+function shellMain() {}
+
+export default class Shell extends Process {
   history: ShellHistory;
   commandRunner?: CommandRunner;
 
@@ -39,13 +40,14 @@ export default class Shell {
   _activeCharPrompt?: ActiveCharPrompt;
 
   constructor(
-    wasmTty: TTY,
     options: { historySize: number; maxAutocompleteEntries: number } = {
       historySize: 10,
       maxAutocompleteEntries: 100,
     },
   ) {
-    this.tty = wasmTty;
+    super({
+      name: 'shell',
+    });
     this.history = new ShellHistory(options.historySize);
     this.commandRunner = undefined;
 
@@ -65,7 +67,7 @@ export default class Shell {
     }
 
     try {
-      this._activePrompt = this.tty.read('$ ');
+      this._activePrompt = this.tty.prompt('$ ');
       this._active = true;
       let line = await this._activePrompt.promise;
       if (this.commandRunner) {

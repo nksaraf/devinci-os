@@ -6,13 +6,18 @@ import {
   FileSystemOptions,
 } from '../core/file_system';
 import { ApiError, ErrorCode } from '../core/api_error';
-import { FileFlagString } from '../core/file_flag';
+import {
+  FileFlagString,
+  getFlagString,
+  isAppendable,
+  isReadable,
+  isWriteable,
+} from '../core/file_flag';
 import { buffer2ArrayBuffer, arrayBuffer2Buffer, emptyBuffer } from '../core/util';
 import { File, BaseFile } from '../core/file';
-import { default as Stats } from '../../node/fs/node_fs_statsfs_stats';
 import PreloadFile from '../generic/preload_file';
 import global from '../../global';
-import fs from '../../node/fs/node_fs/node_fs';
+import Stats from '../core/stats';
 
 /**
  * @hidden
@@ -110,7 +115,7 @@ interface IFileDescriptorArgument extends ISpecialArgument {
   // The path to the file.
   path: string;
   // The flag of the open file descriptor.
-  flag: string;
+  flag: FileFlagString;
 }
 
 /**
@@ -155,7 +160,7 @@ class FileDescriptorArgumentConverter {
                   data: data,
                   stat: stat,
                   path: p,
-                  flag: getFlagString(flag),
+                  flag: flag,
                 });
               }
             },
@@ -169,7 +174,7 @@ class FileDescriptorArgumentConverter {
             data: new ArrayBuffer(0),
             stat: stat,
             path: p,
-            flag: getFlagString(flag),
+            flag: flag,
           });
         }
       }
@@ -199,7 +204,7 @@ class FileDescriptorArgumentConverter {
       remoteStats = Stats.fromBuffer(transferrableObjectToBuffer(remoteFd.stat));
 
     // Write data if the file is writable.
-    const flag = FileFlagString.getFileFlag(remoteFd.flag);
+    const flag = remoteFd.flag;
     if (isWriteable(flag)) {
       // Appendable: Write to end of file.
       // Writeable: Replace entire contents of file.
@@ -340,7 +345,7 @@ function statsRemote2Local(stats: IStatsArgument): Stats {
  * @hidden
  */
 interface IFileFlagArgument extends ISpecialArgument {
-  flagStr: string;
+  flagStr: FileFlagString;
 }
 
 /**
@@ -349,7 +354,7 @@ interface IFileFlagArgument extends ISpecialArgument {
 function fileFlagLocal2Remote(flag: FileFlagString): IFileFlagArgument {
   return {
     type: SpecialArgType.FILEFLAG,
-    flagStr: getFlagString(flag),
+    flagStr: flag,
   };
 }
 
@@ -357,7 +362,7 @@ function fileFlagLocal2Remote(flag: FileFlagString): IFileFlagArgument {
  * @hidden
  */
 function fileFlagRemote2Local(remoteFlag: IFileFlagArgument): FileFlagString {
-  return FileFlagString.getFileFlag(remoteFlag.flagStr);
+  return remoteFlag.flagStr;
 }
 
 /**
@@ -470,7 +475,7 @@ class WorkerFile extends PreloadFile<WorkerFS> {
       data: bufferToTransferrableObject(this.getBuffer()),
       stat: bufferToTransferrableObject(this.getStats().toBuffer()),
       path: this.getPath(),
-      flag: this.getFlag().getFlagString(),
+      flag: this.getFlag(),
     };
   }
 
@@ -573,8 +578,8 @@ export default class WorkerFS extends BaseFileSystem implements IFileSystem {
           } else if (arg instanceof BaseFile) {
             // Pass in p and flags from original request.
             cb(null, fdConverter.toRemoteArg(<File>arg, requestArgs[0], requestArgs[1], cb));
-          } else if (arg instanceof FileFlagString) {
-            cb(null, fileFlagLocal2Remote(arg));
+          } else if (typeof arg === 'string') {
+            cb(null, fileFlagLocal2Remote(arg as FileFlagString));
           } else if (arg instanceof Buffer) {
             cb(null, bufferLocal2Remote(arg));
           } else if (arg instanceof Error) {
@@ -896,7 +901,7 @@ export default class WorkerFS extends BaseFileSystem implements IFileSystem {
               return new WorkerFile(
                 this,
                 fdArg.path,
-                FileFlagString.getFileFlag(fdArg.flag),
+                fdArg.flag,
                 Stats.fromBuffer(transferrableObjectToBuffer(fdArg.stat)),
                 fdArg.id,
                 transferrableObjectToBuffer(fdArg.data),
@@ -948,12 +953,12 @@ export default class WorkerFS extends BaseFileSystem implements IFileSystem {
           return apiErrorLocal2Remote(arg);
         } else if (arg instanceof WorkerFile) {
           return (<WorkerFile>arg).toRemoteArg();
-        } else if (arg instanceof FileFlagString) {
-          return fileFlagLocal2Remote(arg);
         } else if (arg instanceof Buffer) {
           return bufferLocal2Remote(arg);
         } else if (arg instanceof Error) {
           return errorLocal2Remote(arg);
+        } else if (typeof arg === 'string') {
+          return fileFlagLocal2Remote(arg as FileFlagString);
         } else {
           return 'Unknown argument';
         }

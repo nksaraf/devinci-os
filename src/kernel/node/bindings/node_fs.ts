@@ -4,7 +4,7 @@ import type {
   IFileSystem,
   CallbackOneArg,
   CallbackTwoArgs,
-  BFSThreeArgCallback,
+  CallbackThreeArgs,
 } from '../../fs/core/file_system';
 import { FileFlagString } from '../../fs/core/file_flag';
 import type { FileFlagString } from '../../fs/core/file_flag';
@@ -873,7 +873,7 @@ export default class NodeFileSystem {
     buffer: Buffer,
     offset: number,
     length: number,
-    cb?: BFSThreeArgCallback<number, Buffer>,
+    cb?: CallbackThreeArgs<number, Buffer>,
   ): void;
   public write(
     fd: number,
@@ -881,21 +881,21 @@ export default class NodeFileSystem {
     offset: number,
     length: number,
     position: number | null,
-    cb?: BFSThreeArgCallback<number, Buffer>,
+    cb?: CallbackThreeArgs<number, Buffer>,
   ): void;
-  public write(fd: number, data: any, cb?: BFSThreeArgCallback<number, string>): void;
+  public write(fd: number, data: any, cb?: CallbackThreeArgs<number, string>): void;
   public write(
     fd: number,
     data: any,
     position: number | null,
-    cb?: BFSThreeArgCallback<number, string>,
+    cb?: CallbackThreeArgs<number, string>,
   ): void;
   public write(
     fd: number,
     data: any,
     position: number | null,
     encoding: BufferEncoding,
-    cb?: BFSThreeArgCallback<number, string>,
+    cb?: CallbackThreeArgs<number, string>,
   ): void;
   public write(
     fd: number,
@@ -903,7 +903,7 @@ export default class NodeFileSystem {
     arg3?: any,
     arg4?: any,
     arg5?: any,
-    cb: BFSThreeArgCallback<number, any> = nopCb,
+    cb: CallbackThreeArgs<number, any> = nopCb,
   ): void {
     let buffer: Buffer,
       offset: number,
@@ -1017,7 +1017,7 @@ export default class NodeFileSystem {
     length: number,
     position: number | null,
     encoding: string,
-    cb?: BFSThreeArgCallback<string, number>,
+    cb?: CallbackThreeArgs<string, number>,
   ): void;
   public read(
     fd: number,
@@ -1025,7 +1025,7 @@ export default class NodeFileSystem {
     offset: number,
     length: number,
     position: number | null,
-    cb?: BFSThreeArgCallback<number, Buffer>,
+    cb?: CallbackThreeArgs<number, Buffer>,
   ): void;
   public read(
     fd: number,
@@ -1033,13 +1033,13 @@ export default class NodeFileSystem {
     arg3: any,
     arg4: any,
     arg5?: any,
-    cb: BFSThreeArgCallback<string, number> | BFSThreeArgCallback<number, Buffer> = nopCb,
+    cb: CallbackThreeArgs<string, number> | CallbackThreeArgs<number, Buffer> = nopCb,
   ): void {
     let position: number | null,
       offset: number,
       length: number,
       buffer: Buffer,
-      newCb: BFSThreeArgCallback<number, Buffer>;
+      newCb: CallbackThreeArgs<number, Buffer>;
     if (typeof arg2 === 'number') {
       // legacy interface
       // (fd, length, position, encoding, callback)
@@ -1056,14 +1056,14 @@ export default class NodeFileSystem {
         if (err) {
           return (<Function>cb)(err);
         }
-        (<BFSThreeArgCallback<string, number>>cb)(err, buf!.toString(encoding), bytesRead!);
+        (<CallbackThreeArgs<string, number>>cb)(err, buf!.toString(encoding), bytesRead!);
       }, 3);
     } else {
       buffer = arg2;
       offset = arg3;
       length = arg4;
       position = arg5;
-      newCb = wrapCb(<BFSThreeArgCallback<number, Buffer>>cb, 3);
+      newCb = wrapCb(<CallbackThreeArgs<number, Buffer>>cb, 3);
     }
 
     try {

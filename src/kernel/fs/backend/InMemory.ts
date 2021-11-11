@@ -56,11 +56,7 @@ export default class InMemoryFileSystem extends SyncKeyValueFileSystem {
     cb(null, new InMemoryFileSystem());
   }
 
-  public static CreateSync(): InMemoryFileSystem {
-    return new InMemoryFileSystem();
-  }
-
-  private constructor() {
+  constructor() {
     super({ store: new InMemoryStore() });
   }
 }
