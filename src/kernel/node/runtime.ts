@@ -8,29 +8,39 @@ import * as buffer from 'buffer';
 import { createFileSystemBackend } from '../fs/create-fs';
 
 export class NodeHost {
-  static kernel: Kernel;
-  static fs: typeof import('fs');
-  private static moduleCache: Map<string, any>;
-  private static globalProxy: typeof globalThis;
-  private static primordials: any = {};
-  private static getInternalBinding;
-  static internalUrl = '/@node';
-  static async bootstrap(kernel: Kernel) {
-    // nodeConsole = Object.assign({}, console, {
-    //   log: (...args) => {
-    //     NodeHost.kernel.process.stdout.writeString(args.join(' ') + '\n');
-    //   }
-    // })
+  kernel: Kernel;
+  fs: typeof import('fs');
+  constructor() {
+    this.require = this.require.bind(this);
+    this.resolve = this.resolve.bind(this);
+  }
+  private moduleCache: Map<string, any>;
+  private globalProxy: typeof globalThis;
+  private primordials: any = {};
+  private getInternalBinding;
+  private internalUrl: string;
+  async bootstrapFromHttp(kernel: Kernel) {
     let httpFS = await createFileSystemBackend(HTTPRequest, {
-      index: '/node/index.json',
+      index: `/node/index.json`,
       baseUrl: '/node/',
       preferXHR: true,
     });
 
     kernel.fs.mount('/@node', httpFS);
+    this.bootstrap(kernel, '/@node');
+  }
+  async bootstrap(kernel: Kernel, src = '/@node') {
+    // nodeConsole = Object.assign({}, console, {
+    //   log: (...args) => {
+    //     this.kernel.process.stdout.writeString(args.join(' ') + '\n');
+    //   }
+    // })
 
-    NodeHost.kernel = kernel;
-    NodeHost.globalProxy = new Proxy({} as any, {
+    this.kernel = kernel;
+
+    this.internalUrl = src;
+
+    this.globalProxy = new Proxy({} as any, {
       has: () => true,
       get: (o, k) => (k in o ? o[k] : globalThis[k]),
       set: (o, k, v) => {
@@ -39,30 +49,30 @@ export class NodeHost {
       },
     });
 
-    NodeHost.getInternalBinding = createInternalBindings(kernel);
+    this.getInternalBinding = createInternalBindings(kernel);
 
     // globals that remain same for all requires
-    Object.assign(NodeHost.globalProxy, {
+    Object.assign(this.globalProxy, {
       process: process,
-      require: NodeHost.require,
+      require: this.require,
       console,
-      global: NodeHost.globalProxy,
-      primordials: NodeHost.primordials,
-      getInternalBinding: NodeHost.getInternalBinding,
+      global: this.globalProxy,
+      primordials: this.primordials,
+      getInternalBinding: this.getInternalBinding,
     });
 
-    NodeHost.moduleCache = new Map<string, any>();
+    this.moduleCache = new Map<string, any>();
 
     // patching some things we dont want to have Node load for us
-    NodeHost.moduleCache.set(`${NodeHost.internalUrl}/buffer.js`, buffer);
-    NodeHost.moduleCache.set(`${NodeHost.internalUrl}/internal/console/global.js`, console);
-    NodeHost.moduleCache.set(`${NodeHost.internalUrl}/v8.js`, {});
+    this.moduleCache.set(`${this.internalUrl}/buffer.js`, buffer);
+    this.moduleCache.set(`${this.internalUrl}/internal/console/global.js`, console);
+    this.moduleCache.set(`${this.internalUrl}/v8.js`, {});
 
-    NodeHost.require('internal/per_context/primordials');
-    console.log(NodeHost.primordials);
+    this.require('internal/per_context/primordials');
+    console.log(this.primordials);
 
-    let loadersExport = NodeHost.require('internal/bootstrap/loaders');
-    Object.assign(NodeHost.globalProxy, {
+    let loadersExport = this.require('internal/bootstrap/loaders');
+    Object.assign(this.globalProxy, {
       internalBinding: loadersExport.internalBinding,
     });
 
@@ -70,48 +80,48 @@ export class NodeHost {
     // Node.require('internal/bootstrap/node');
 
     // load filesystem for others to use
-    NodeHost.fs = NodeHost.require('fs');
-    NodeHost.require('stream');
+    this.fs = this.require('fs');
+    this.require('stream');
   }
 
-  static require(fileName: string) {
-    const __filename = NodeHost.resolve(fileName);
+  require(fileName: string) {
+    const __filename = this.resolve(fileName);
     // console.log(__filename);
 
-    if (NodeHost.moduleCache.has(__filename || fileName))
-      return NodeHost.moduleCache.get(__filename || fileName);
+    if (this.moduleCache.has(__filename || fileName))
+      return this.moduleCache.get(__filename || fileName);
 
     if (!__filename) throw new Error(`File not found ${JSON.stringify(fileName)}`);
 
-    let result = NodeHost.loadModule(__filename);
+    let result = this.loadModule(__filename);
     return result;
   }
 
-  private static loadModule(__filename: string) {
-    let contents = NodeHost.kernel.fs.readFileSync(__filename, 'utf8', 'r');
+  private loadModule(__filename: string) {
+    let contents = this.kernel.fs.readFileSync(__filename, 'utf-8', 'r');
 
-    let result = NodeHost.eval(contents);
+    let result = this.eval(contents);
     console.log(__filename, result);
 
-    NodeHost.moduleCache.set(__filename, result);
+    this.moduleCache.set(__filename, result);
     return result;
   }
 
-  static resolve(fileName: string) {
-    return `${NodeHost.internalUrl}/${fileName}.js`;
+  resolve(fileName: string) {
+    return `${this.internalUrl}/${fileName}.js`;
   }
 
-  static eval(source: string) {
+  eval(source: string) {
     const module = { exports: {} };
     const exports = module.exports;
 
-    Object.assign(NodeHost.globalProxy, {
+    Object.assign(this.globalProxy, {
       module,
       exports,
       __filename: '',
       __dirname: '',
       window: undefined,
-      globalThis: NodeHost.globalProxy,
+      globalThis: this.globalProxy,
       importScripts: undefined,
     });
 
@@ -119,7 +129,7 @@ export class NodeHost {
       { module },
       {
         has: () => true,
-        get: (o, k) => (k in o ? o[k] : NodeHost.globalProxy[k]),
+        get: (o, k) => (k in o ? o[k] : this.globalProxy[k]),
         set: (o, k, v) => {
           o[k] = v;
           return true;
@@ -156,4 +166,4 @@ export class NodeHost {
   }
 }
 
-Global.Node = NodeHost;
+Global.Node = this;

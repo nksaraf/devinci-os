@@ -20,6 +20,15 @@
       rel="stylesheet"
     />
 
+    <!-- Workbench Configuration -->
+    <meta id="vscode-workbench-web-configuration" data-settings="{}" />
+
+    <!-- Workbench Auth Session -->
+    <meta id="vscode-workbench-auth-session" data-settings="{}" />
+
+    <!-- Builtin Extensions (running out of sources) -->
+    <meta id="vscode-workbench-builtin-extensions" data-settings="[]" />
+
     <meta property="og:title" content="macOS in Svelte" />
     <meta property="og:description" content="A painting of macOS Big Sur in HTML, CSS and JS" />
     <meta property="og:image" content="https://macos.now.sh/assets/cover-image.png" />
@@ -27,6 +36,21 @@
     <meta name="twitter:card" content="summary_large_image" />
 
     <link rel="prefetch" href="/assets/sounds/mac-startup-sound.mp3" />
+
+    <script>
+      window.require = {
+        baseUrl: `${window.location.href}/src`,
+      };
+    </script>
+    <script src="/vs/loader.js"></script>
+    <script>
+      window.require.toUrl = (str) => {
+        return window.require.getConfig().baseUrl + str;
+      };
+    </script>
+    <script>
+      performance.mark('code/willLoadWorkbenchMain');
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,5 +1,5 @@
 import { svelte } from '@sveltejs/vite-plugin-svelte';
-import { defineConfig } from 'vite';
+import { Alias, defineConfig } from 'vite';
 import { prefetch } from './prefetch-plugin';
 import { VitePWA } from 'vite-plugin-pwa';
 import replace from '@rollup/plugin-replace';
@@ -8,7 +8,11 @@ import { presetUno, presetAttributify } from 'unocss';
 import presetIcons from '@unocss/preset-icons';
 import { dynamicImport } from 'vite-plugin-dynamic-import';
 import UnpluginIcons from 'unplugin-icons/vite';
+import path from 'path';
+import resolve from '@rollup/plugin-node-resolve';
 
+let basePath = path.resolve(__dirname);
+console.log(basePath);
 import { asc } from './build/rollup-plugin-asc';
 
 const replacePlugin = () => {
@@ -135,13 +139,26 @@ export default defineConfig({
   ],
 
   resolve: {
-    alias: {
-      '__/stores': new URL('./src/stores/', import.meta.url).pathname,
-      __: new URL('./packages/macos-ui/src/', import.meta.url).pathname,
-      '@ui': new URL('./packages/macos-ui/src/', import.meta.url).pathname,
-      path: new URL('./src/kernel/path/path.ts', import.meta.url).pathname,
-      os: new URL('./src/', import.meta.url).pathname,
-    },
+    alias: [
+      {
+        find: /^vs\/css\!(.*)/,
+        replacement: '$1.css',
+        customResolver: resolve({
+          extensions: ['.css'],
+        }),
+      },
+      { find: 'vs/base/common/marked/marked', replacement: 'marked' },
+      { find: 'vs/base/browser/dompurify/dompurify', replacement: 'dompurify' },
+      { find: 'vs', replacement: new URL('./packages/vscode/src/vs/', import.meta.url).pathname },
+      { find: '__/stores', replacement: new URL('./src/stores/', import.meta.url).pathname },
+      { find: '__', replacement: new URL('./packages/macos-ui/src/', import.meta.url).pathname },
+      { find: '@ui', replacement: new URL('./packages/macos-ui/src/', import.meta.url).pathname },
+      {
+        find: 'path',
+        replacement: new URL('./src/kernel/path/path.ts', import.meta.url).pathname,
+      },
+      { find: 'os', replacement: new URL('./src/', import.meta.url).pathname },
+    ] as Alias[],
   },
   server: {
     fs: {
@@ -152,5 +169,27 @@ export default defineConfig({
   assetsInclude: ['packages/macos-ui/public/**/*', ''],
   build: {
     minify: 'terser',
+  },
+  esbuild: {
+    banner: `let require = {
+			toUrl: (s) => {
+				let meta = import.meta
+				// if (s.length > 0 && typeof global !== 'undefined') {
+				// 	try {
+				// 		console.log(global.require.resolve(s))
+				// 	} catch (e) {
+				// 		console.log('ERROR', e)
+				// 	}
+				// }
+				if (s === 'bootstrap-fork') {
+					return "${basePath}/src/bootstrap-vite-fork.js"
+				}
+				return "${basePath}/" + (s.length === 0 ? 'package.json' : s);
+			},
+			__$__nodeRequire: import.meta.env.SSR ? ((...args) => global.require(...args)) : undefined
+		};`,
+  },
+  optimizeDeps: {
+    include: ['./node_modules/readable-stream/readable-browser.js'],
   },
 });

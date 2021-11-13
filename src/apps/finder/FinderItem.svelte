@@ -68,11 +68,11 @@
       ? 'text-shadow text-white'
       : 'text-gray-700'} {onDesktop ? 'font-bold text-sm' : 'text-sm'}"
   >
-    {item.name}
+    <span>{item.name}</span>
   </div>
 </div>
 
-<style>
+<style style="scss">
   .finder-item {
     display: flex;
     flex-direction: column;
@@ -86,6 +86,11 @@
 
   .finder-item-name {
     padding: 0.025rem 0.5rem;
+    max-width: 100%;
+    text-align: center;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .finder-item-name.selected {

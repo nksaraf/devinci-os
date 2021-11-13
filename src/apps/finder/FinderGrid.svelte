@@ -17,15 +17,15 @@
   let items = [];
 
   async function readFiles() {
-    // items = fs.readdirSync(path).map((file) => {
-    //   let stats = fs.statSync(`${path}/${file}`);
-    //   return {
-    //     name: file,
-    //     path: `${path}/${file}`,
-    //     type: stats.isDirectory() ? 'folder' : 'file',
-    //     size: stats.size,
-    //   };
-    // });
+    items = kernel.fs.readdirSync(path).map((file) => {
+      let stats = kernel.fs.statSync(`${path}/${file}`, false);
+      return {
+        name: file,
+        path: `${path}/${file}`,
+        type: stats.isDirectory() ? 'folder' : 'file',
+        size: stats.size,
+      };
+    });
   }
 
   onMount(() => {

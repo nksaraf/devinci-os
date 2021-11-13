@@ -5,18 +5,13 @@ import type stats from '../fs/core/stats';
 import InMemoryFileSystem from '../fs/backend/InMemory';
 import VirtualFile from '../fs/generic/virtual_file';
 
-declare var Buffer: any;
-
 const CUTOFF = 8192;
 
 let id = 0;
 
 // Pipes have a waiting mechanism,
 // A read with not callback until it actually gets the data
-export class Pipe {
-  writeBufferSync(buffer: Buffer, offset: number, length: number, position: number): number {
-    throw new Error('Method not implemented.');
-  }
+export class InMemoryPipe {
   bufs: Buffer[] = [];
   id = id++;
   refcount: number = 1; // maybe more accurately a reader count
@@ -150,7 +145,7 @@ export class Pipe {
   }
 }
 
-export class MessageChannelPipe extends Pipe {
+export class MessageChannelPipe extends InMemoryPipe {
   port: MessagePort;
   constructor(port: MessagePort) {
     super();
@@ -209,13 +204,12 @@ export class PipeFileSystem extends InMemoryFileSystem {}
 export class PipeFile extends VirtualFile implements File {
   writeListener: CallbackTwoArgs<string>;
 
-  constructor(public pipe: Pipe, public mode: PipeMode, public port: MessagePort) {
-    let fd = kernel.process.getNextFD();
-    super(fd, kernel.process, '/dev/fd/' + fd, mode === PipeMode.Read ? 'r' : 'w');
+  supportsSynch(): boolean {
+    return false;
   }
 
-  writeSync(buffer: Buffer, offset: number, length: number, position: number): number {
-    throw new Error('Method not implemented.');
+  constructor(public pipe: InMemoryPipe, public mode: PipeMode) {
+    super('/dev/pipe/' + 0, mode === PipeMode.Read ? 'r' : 'w');
   }
 
   addEventListener(evName: string, cb: CallbackTwoArgs<string>): void {
@@ -246,7 +240,7 @@ export class PipeFile extends VirtualFile implements File {
     pos: number,
     cb: CallbackTwoArgs<number>,
   ): void {
-    if (this.mode !== PipeMode.Read) {
+    if (this.mode !== PipeMode.Write) {
       console.log('ERROR: PipeFile.read called on non-read pipe');
     }
 
@@ -259,13 +253,6 @@ export class PipeFile extends VirtualFile implements File {
 
   stat(cb: (err: any, stats: any) => void): void {
     throw new Error('TODO: PipeFile.stat not implemented');
-  }
-
-  readBufferSync(buffer: Buffer, offset: number, length: number, position: number): number {
-    return this.pipe.readBufferSync(buffer, offset, length, position);
-  }
-  writeBufferSync(buffer: Buffer, offset: number, length: number, position: number): number {
-    return this.pipe.writeBufferSync(buffer, offset, length, position);
   }
 
   ref(): void {
@@ -300,15 +287,4 @@ export class PipeFile extends VirtualFile implements File {
   truncateSync(len: number): void {
     throw new Error('Method not implemented.');
   }
-}
-
-function createPipe() {
-  const messageChannel = new MessageChannel();
-  const [port1, port2] = [messageChannel.port1, messageChannel.port2];
-
-  new MessageChannelPipe(port1);
-
-  kernel.proc
-
-  const pipe = new Pipe();
 }

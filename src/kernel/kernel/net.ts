@@ -4,7 +4,7 @@
 
 'use strict';
 
-import { Pipe } from './pipe';
+import { InMemoryPipe } from './pipe';
 import { BaseFile } from '../fs/core/file';
 import type { File } from '../fs/core/file';
 import { BaseFileSystem } from '../fs/core/file_system';
@@ -146,8 +146,8 @@ export class SocketFile extends VirtualFile implements File {
 
   peer: SocketFile = undefined;
 
-  outgoing: Pipe = undefined;
-  incoming: Pipe = undefined;
+  outgoing: InMemoryPipe = undefined;
+  incoming: InMemoryPipe = undefined;
 
   waitingClients: Incoming[] = [];
   waitingForNewClients: AcceptCallback[] = [];
@@ -179,8 +179,8 @@ export class SocketFile extends VirtualFile implements File {
     local.addr = queued.addr;
     local.port = queued.port;
 
-    let outgoing = new Pipe();
-    let incoming = new Pipe();
+    let outgoing = new InMemoryPipe();
+    let incoming = new InMemoryPipe();
 
     // local -> outgoing -> remote
     local.outgoing = outgoing;
@@ -227,8 +227,8 @@ export class SocketFile extends VirtualFile implements File {
     local.addr = remoteAddr;
     local.port = remotePort;
 
-    let outgoing = new Pipe();
-    let incoming = new Pipe();
+    let outgoing = new InMemoryPipe();
+    let incoming = new InMemoryPipe();
 
     // local -> outgoing -> remote
     local.outgoing = outgoing;
@@ -251,8 +251,8 @@ export class SocketFile extends VirtualFile implements File {
 
   connect(addr: string, port: number, cb: ConnectCallback): void {
     this.kernel.net.connect(this, addr, port, () => {
-      let writeStream = new Pipe();
-      let readStream = new Pipe();
+      let writeStream = new InMemoryPipe();
+      let readStream = new InMemoryPipe();
 
       this.incoming = null;
       this.outgoing = null;

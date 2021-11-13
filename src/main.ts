@@ -4,11 +4,10 @@ import MacOS from 'os/ui/OS/OS.svelte';
 import { createKernel } from './kernel/kernel';
 import type { Kernel } from './kernel/kernel';
 import { KernelFlags } from './kernel/kernel/types';
-import { SocketFile } from './kernel/kernel/net';
 import { FileType } from './kernel/fs/core/stats';
-import NodeWorker from './node-worker?worker';
 import { NodeHost } from './kernel/node/runtime';
-import { wrap } from 'comlink';
+import { extractContents } from './kernel/kernel/tar';
+import { createVSCode } from 'vs/devinci/workbench';
 
 export const initKernel = async () => {
   console.log(new ReadableStream());
@@ -17,17 +16,22 @@ export const initKernel = async () => {
   let kernel = await createKernel({
     mode: KernelFlags.PRIVILEGED | KernelFlags.UI | KernelFlags.MAIN,
   });
+
   console.log(kernel);
-  await NodeHost.bootstrap(kernel);
-  let net = NodeHost.require('net');
+  let res = await fetch('/node-lib.tar');
+  let buffer = await res.arrayBuffer();
+  let contents = await extractContents(kernel.fs, new Uint8Array(buffer), '/@node');
+  const node = new NodeHost();
+
+  await node.bootstrap(kernel, '/@node');
+  let net = node.require('net');
   console.log(new net.Socket());
 
   console.log(kernel.fs.openSync('/hello.txt', 'w+', FileType.FILE));
   // Step 1: Create a server socket
   server(kernel);
 
-  let process = await kernel.proc.addWorker({ args: ['main'], worker: new NodeWorker() });
-  await process.run();
+  // await process.run();
 
   return kernel;
 };
@@ -50,10 +54,18 @@ function server(kernel: Kernel) {
   });
 }
 
-initKernel();
+initKernel()
+  .then(() => {})
+  .finally(() => {
+    const desktop = new MacOS({
+      target: document.getElementById('root'),
+    });
+    // createVSCode(document.getElementById('root'), {});
+  });
+
 // initKernel().then((kernel) => {
 // console.log(kernel);
-const desktop = new MacOS({
-  target: document.getElementById('root'),
-});
+// const desktop = new MacOS({
+//   target: document.getElementById('root'),
 // });
+// // });

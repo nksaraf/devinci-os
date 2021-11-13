@@ -4,22 +4,32 @@
   import { Terminal } from 'xterm';
   import 'xterm/css/xterm.css';
   import { WebLinksAddon } from 'xterm-addon-web-links';
+  import { WebglAddon } from 'xterm-addon-webgl';
+  import { FitAddon } from 'xterm-addon-fit';
   import type { WindowAPI } from '__/stores/window.store';
   import TrafficLights from 'os/ui/Window/TrafficLights.svelte';
   import ExpandSvg from '@ui/components/SVG/traffic-lights/ExpandSVG.svelte';
-  import { PTYMasterFile, TTY } from 'os/kernel/kernel/tty';
 
   let divEl: HTMLDivElement = null;
 
   onMount(() => {
-    const terminal = new Terminal({});
+    const terminal = new Terminal({
+      cursorStyle: 'bar',
+      fontFamily: 'monospace',
+    });
+    let fitAddon = new FitAddon();
     // Load WebLinksAddon on terminal, this is all that's needed to get web links
     // working in the terminal.
     terminal.loadAddon(new WebLinksAddon());
+    terminal.loadAddon(fitAddon);
 
     terminal.open(divEl);
 
-    let file = new TTY(terminal);
+    fitAddon.fit();
+
+    terminal.loadAddon(new WebglAddon());
+
+    // initTTY(terminal);
   });
 
   export let args;
@@ -45,7 +55,9 @@
     <div class="i-vscode-icons-file-type-vscode mr-3" />
     <div class="font-bold">{'/jsh'}</div>
   </div>
-  <div class="flex-1"><div class="h-full"><div bind:this={divEl} class="h-full" /></div></div>
+  <div class="flex-1 bg-black">
+    <div class="h-full"><div bind:this={divEl} class="h-full" /></div>
+  </div>
 </div>
 
 <style lang="scss">

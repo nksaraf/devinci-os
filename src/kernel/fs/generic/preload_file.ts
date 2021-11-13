@@ -38,7 +38,7 @@ export default abstract class PreloadFile<T extends IFileSystem>
    *   specified, we assume it is a new file.
    */
   constructor(_fs: T, _path: string, _flag: FileFlagString, _stat: Stats, contents?: Buffer) {
-    super(kernel.process.getNextFD(), kernel.process, _path, _flag, _stat);
+    super(_path, _flag, _stat);
     this._fs = _fs;
     this._buffer = contents ? contents : emptyBuffer();
     // Note: This invariant is *not* maintained once the file starts getting
@@ -56,6 +56,10 @@ export default abstract class PreloadFile<T extends IFileSystem>
    * NONSTANDARD: Get the underlying buffer for this file. !!DO NOT MUTATE!! Will mess up dirty tracking.
    */
   public getBuffer(): Buffer {
+    return this._buffer;
+  }
+
+  public getBufferSync(): Buffer {
     return this._buffer;
   }
 

@@ -10,5 +10,6 @@ declare var global: any;
 /**
  * @hidden
  */
-const toExport: any = typeof(window) !== 'undefined' ? window : typeof(self) !== 'undefined' ? self : global;
-export default toExport;
+export const Global: any =
+  typeof window !== 'undefined' ? window : typeof self !== 'undefined' ? self : global;
+export default Global;

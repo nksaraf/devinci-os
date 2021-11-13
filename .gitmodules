@@ -1,3 +1,6 @@
 [submodule "packages/macos-ui"]
 	path = packages/macos-ui
 	url = https://github.com/devinci-os/macos-web.git
+[submodule "packages/vscode"]
+	path = packages/vscode
+	url = https://github.com/nksara/openvscode-server.git

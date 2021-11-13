@@ -1,19 +1,18 @@
 import type { Kernel } from './kernel';
-import { PipeFile } from './pipe';
 import type { File } from '../fs/core/file';
-import { BaseFileSystem, SynchronousFileSystem } from '../fs/core/file_system';
+import { SynchronousFileSystem } from '../fs/core/file_system';
 import type { IFileSystem } from '../fs/core/file_system';
+import Global from 'os/kernel/global';
 export enum ProcessState {
   Starting,
   Running,
   Interruptable,
   Zombie,
 }
-import Global from '../global';
-import type TTYFile from './tty';
-import { checkFlag } from './checkFlag';
-import { KernelFlags } from './types';
-import { wrap } from 'comlink';
+// import { checkFlag } from './checkFlag';
+// import { KernelFlags } from './types';
+// import { wrap } from 'comlink';
+import { PTYSlaveFile, TTY, TTYDevice } from './tty';
 import type VirtualFile from '../fs/generic/virtual_file';
 
 export interface Environment {
@@ -37,11 +36,20 @@ export class Process {
   kernel: Kernel;
   env: { [key: string]: string };
   args: string[];
-  tty: TTYFile;
-  stdin: VirtualFile;
-  stdout: VirtualFile;
-  stderr: VirtualFile;
+  tty: TTY;
+
+  get stdin() {
+    return this.files[0];
+  }
+  get stdout() {
+    return this.files[1];
+  }
+  get stderr() {
+    return this.files[2];
+  }
+
   pid: number;
+  parent: number;
   state: ProcessState = ProcessState.Starting;
 
   chdir(path: string): void {
@@ -50,29 +58,21 @@ export class Process {
 
   private nextFd = 3;
 
-  files: { [key: number]: File } = {};
+  files: { [key: number]: VirtualFile } = {};
 
-  constructor(options: ProcessOptions) {
-    this.cwd = options.cwd ?? '/';
-    this.kernel = options.kernel;
-    this.worker = options.worker;
-    this.env = options.env;
-    this.args = options.args;
-    // this.stdin = options.files[0];
-    // this.stdout = options.files[1];
-    // this.stderr = options.files[2];
-    this.pid = options.pid;
-    // this.files = options.files;
-
-    this.exec('/bin/sh', ['sh']);
-
-    // this.files[0] = this.kernel.fs.openFileSync('/dev/stdin', 'r');
-    // this.files[1] = new TTYFile();
-    // this.files[2] = new TTYFile();
+  constructor(args: string[]) {
+    this.kernel = kernel;
+    this.args = args;
+    this.cwd = '/';
+    this.env = {};
+    this.pid = this.kernel.proc.getNextPid();
+    this.parent = null;
+    // this.exec('/bin/sh', ['sh']);
   }
 
-  getNextFD() {
-    return this.nextFd++;
+  addFile(file: VirtualFile, fd: number = this.nextFd++): number {
+    this.files[fd] = file;
+    return fd;
   }
 
   exec(command: string, args: string[]): void {
@@ -86,21 +86,20 @@ export class Process {
   }
 }
 
-class WorkerProcess extends Process {
-  worker: Worker;
+// class WorkerProcess extends Process {
+//   worker: Worker;
 
-  constructor(options: ProcessOptions) {
-    super(options);
-    this.worker = options.worker;
-  }
+//   constructor() {
+//     this.worker = options.worker;
+//   }
 
-  async run() {
-    if (this.worker) {
-      let cmd = this.args[0];
-      return await wrap<{ main: () => Promise<void> }>(this.worker)[cmd]();
-    }
-  }
-}
+//   async run() {
+//     if (this.worker) {
+//       let cmd = this.args[0];
+//       return await wrap<{ main: () => Promise<void> }>(this.worker)[cmd]();
+//     }
+//   }
+// }
 
 /**
  * Manages the OS processes.
@@ -109,11 +108,11 @@ class WorkerProcess extends Process {
  *  * Processes are created and managed by the kernel.
  *  * as processes are executed, they are run on workers
  */
-export class ProcessManager extends SynchronousFileSystem implements IFileSystem {
-  getProcess(pid: number): Process {
-    return this.processes[pid];
+export class WorkerManager extends SynchronousFileSystem implements IFileSystem {
+  getWorker(pid: number): Process {
+    return this.workers[pid];
   }
-  processes: { [key: number]: Process } = {};
+  workers: { [key: number]: Process } = {};
   kernel: Kernel;
   constructor(kernel: Kernel) {
     super();
@@ -144,105 +143,111 @@ export class ProcessManager extends SynchronousFileSystem implements IFileSystem
   }
 
   async init(): Promise<Process> {
-    if (checkFlag(this.kernel.mode, KernelFlags.WORKER)) {
-      return await this.spawn({
-        parent: null,
-        cwd: '/',
-        name: 'init',
-        args: [],
-        env: {},
-      });
-    } else {
-      return await this.spawn({
-        parent: null,
-        cwd: '/',
-        name: 'init',
-        args: [],
-        env: {},
-      });
-    }
+    let initProcess = new Process(['init']);
+    let device = new TTYDevice();
+    device.on('output', console.log);
+
+    Global.sendData = (data) => {
+      debugger;
+      for (var i = 0; i < data.length; i++) {
+        device.emit('data', data[i]);
+      }
+      device.emit('data', '\n');
+    };
+
+    initProcess.tty = new TTY(device);
+    initProcess.tty.startReading();
+    let file = new PTYSlaveFile(initProcess.tty);
+    initProcess.addFile(file, 0);
+    initProcess.addFile(file, 1);
+    initProcess.addFile(file, 2);
+    return initProcess;
+    // if (checkFlag(this.kernel.mode, KernelFlags.WORKER)) {
+    //   return await this.spawn({
+    //     parent: null,
+    //     cwd: '/',
+    //     name: 'init',
+    //     args: [],
+    //     env: {},
+    //   });
+    // } else {
+    //   return await this.spawn({
+    //     parent: null,
+    //     cwd: '/',
+    //     name: 'init',
+    //     args: [],
+    //     env: {},
+    //   });
+    // }
   }
 
-  async addWorker(options: Partial<ProcessOptions>) {
-    options.worker.addEventListener('message', console.log);
-    let proc = new WorkerProcess({
-      args: [],
-      env: {},
-      files: {},
-      ...options,
-      parent: this.kernel.process,
-      kernel: this.kernel,
-      pid: this.getNextPid(),
-      cwd: '/',
-      name: 'worker',
-    });
-    this.processes[proc.pid] = proc;
-    return proc;
-  }
+  // async addWorker(options: Partial<ProcessOptions>) {
+  //   options.worker.addEventListener('message', console.log);
+  //   let proc = new WorkerProcess({
+  //     args: [],
+  //     env: {},
+  //     files: {},
+  //     ...options,
+  //     parent: this.kernel.process,
+  //     kernel: this.kernel,
+  //     pid: this.getNextPid(),
+  //     cwd: '/',
+  //     name: 'worker',
+  //   });
+  //   this.workers[proc.pid] = proc;
+  //   return proc;
+  // }
 
-  async spawn({
-    files,
-    env = {},
-    parent,
-    name,
-    args,
-    cwd = '/',
-    ...props
-  }: {
-    parent: Process;
-    cwd: string;
-    name: string;
-    args: string[];
-    env: Environment;
-    files?: { [key: number]: File };
-  }): Promise<Process> {
-    let pid = this.getNextPid();
+  // async spawn({
+  //   files,
+  //   env = {},
+  //   parent,
+  //   name,
+  //   args,
+  //   cwd = '/',
+  //   ...props
+  // }: {
+  //   parent: Process;
+  //   cwd: string;
+  //   name: string;
+  //   args: string[];
+  //   env: Environment;
+  //   files?: { [key: number]: File };
+  // }): Promise<Process> {
+  //   let pid = this.getNextPid();
 
-    // sparse map of files
-    // if a task is a child of another task and has been
-    // created by a call to spawn(2), inherit the parent's
-    // file descriptors.
-    if (files && parent) {
-      files = {
-        ...parent.files,
-        ...files,
-      };
-      // }
-    } else if (!files || !parent) {
-      // if no files or no parent (init process)
-      files = {};
-      // files[0] = new PipeFile();
-      // files[1] = new PipeFile();
-      // files[2] = new PipeFile();
-    }
+  //   // sparse map of files
+  //   // if a task is a child of another task and has been
+  //   // created by a call to spawn(2), inherit the parent's
+  //   // file descriptors.
+  //   if (files && parent) {
+  //     files = {
+  //       ...parent.files,
+  //       ...files,
+  //     };
+  //     // }
+  //   } else if (!files || !parent) {
+  //     // if no files or no parent (init process)
+  //     files = {};
+  //     // files[0] = new PipeFile();
+  //     // files[1] = new PipeFile();
+  //     // files[2] = new PipeFile();
+  //   }
 
-    let proc = new Process({
-      parent,
-      pid,
-      cwd,
-      name,
-      args,
-      env,
-      files,
-      kernel: this.kernel,
-    });
+  //   let proc = new Process([]);
 
-    this.processes[pid] = proc;
+  //   this.workers[pid] = proc;
 
-    await proc.run();
+  //   await proc.run();
 
-    return proc;
-  }
-
-  listProcesses(): Process[] {
-    
-  }
+  //   return proc;
+  // }
 }
 
-function parseEnvVar(s: string): [string, string] {
-  let eq = s.indexOf('=');
-  if (eq === -1) {
-    return [s, ''];
-  }
-  return [s.slice(0, eq), s.slice(eq + 1)];
-}
+// function parseEnvVar(s: string): [string, string] {
+//   let eq = s.indexOf('=');
+//   if (eq === -1) {
+//     return [s, ''];
+//   }
+//   return [s.slice(0, eq), s.slice(eq + 1)];
+// }

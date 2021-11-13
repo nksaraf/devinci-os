@@ -1,1 +1,0 @@
-export { expose } from 'comlink';

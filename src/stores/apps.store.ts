@@ -6,6 +6,7 @@ import { openWindows } from './window.store';
 import type { WindowConfig } from './window.store';
 import editor from 'os/apps/editor/editor';
 import terminal from 'os/apps/terminal/terminal';
+import vscode from 'os/apps/vscode/vscode';
 
 export type AppID = string;
 
@@ -38,6 +39,7 @@ installApp(calculator());
 installApp(calendar());
 installApp(editor());
 installApp(terminal());
+installApp(vscode());
 
 /** Which app is currently focused */
 export const activeApp = writable<AppID>('');

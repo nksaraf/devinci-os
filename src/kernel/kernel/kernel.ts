@@ -1,6 +1,6 @@
 import '../node/polyfill';
 import type { VirtualFileSystem } from '../fs/create-fs';
-import type { ProcessManager } from './proc';
+import type { WorkerManager } from './proc';
 import type { Network } from './net';
 import mitt from 'mitt';
 import { KernelFlags } from './types';
@@ -14,7 +14,7 @@ import { checkFlag } from './checkFlag';
 // The kernel should be run on
 export class Kernel {
   fs: VirtualFileSystem;
-  proc: ProcessManager;
+  proc: WorkerManager;
   net: Network;
   events: ReturnType<typeof mitt>;
   sw: ServiceWorker;
@@ -77,19 +77,17 @@ export class Kernel {
     // }
 
     // lazy loading whatever we can
-    const { ProcessManager } = await import('./proc');
-    this.proc = new ProcessManager(this);
+    const { WorkerManager } = await import('./proc');
+    this.proc = new WorkerManager(this);
     this.events.emit('kernel:pm:loaded', this.proc);
     this.fs.mount('/proc', this.proc);
 
     if (checkFlag(this.mode, KernelFlags.MAIN)) {
       this.events.emit('kernel:main:' + this.id);
-      // lazy loading whatever we can
     } else if (checkFlag(this.mode, KernelFlags.WORKER)) {
       this.events.emit('kernel:worker:' + this.id);
     }
 
-    // if (!((mode & KernelFlags.DISABLE_NET) === KernelFlags.DISABLE_NET)) {
     const { Network } = await import('./net');
     this.net = new Network();
     this.net.kernel = this;
@@ -101,50 +99,28 @@ export class Kernel {
     let proc = await this.proc.init();
     this.process = proc;
     this.events.emit('kernel:proc:pid', { id: proc.pid, proc, process: this.process });
-    // }
 
     this.events.emit('kernel:boot:success');
 
-    //     controller.enqueue('hello');
-    //     controller.enqueue('world');
-    //     controller.close();
-    //   },
-    // });
-
-    // readable
-    //   .getReader()
-    //   .read()
-    //   .then((result) => {
-    //     console.log('stream', result);
-    //   });
-    // const allChunks = [];
-    // for await (const chunk of readable) {
-    //   allChunks.push(chunk);
-    // }
-    // console.log(allChunks.join(' '));
-
-    // setTimeout(() => {
     chanel.postMessage('kernel:ready');
-    // }, 1000);
 
-    // Global.kernel = this;
     return this;
   }
 
-  // async initServiceWorker() {
-  //   const { setupWorker, rest } = await import('msw');
-  //   const worker = setupWorker(
-  //     rest.get('/user', (req, res, ctx) => {
-  //       return res(
-  //         ctx.json({
-  //           message: 'Hello, world!',
-  //         }),
-  //       );
-  //     }),
-  //   );
-  //   // Start the Mock Service Worker
-  //   worker.start({
-  //     onUnhandledRequest: 'bypass',
-  //   });
-  // }
+  async initServiceWorker() {
+    const { setupWorker, rest } = await import('msw');
+    const worker = setupWorker(
+      rest.get('/user', (req, res, ctx) => {
+        return res(
+          ctx.json({
+            message: 'Hello, world!',
+          }),
+        );
+      }),
+    );
+    // Start the Mock Service Worker
+    worker.start({
+      onUnhandledRequest: 'bypass',
+    });
+  }
 }

@@ -3,8 +3,8 @@ import { createWindowConfig } from '__/stores/window.store';
 
 export default () =>
   createAppConfig({
-    id: 'editor',
-    title: 'Editor',
+    id: 'vscode',
+    title: 'VSCode',
     window: () => {
       return createWindowConfig({
         trafficLights: false,
@@ -12,7 +12,7 @@ export default () =>
         args: {
           path: '/home/index.js',
         },
-        loadComponent: async () => (await import('./Editor.svelte')).default,
+        loadComponent: async () => (await import('./VSCode.svelte')).default,
       });
     },
     dock: {},

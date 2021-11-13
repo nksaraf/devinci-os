@@ -16,7 +16,7 @@
     </header>
     <section style="flex: 1; overflow:scroll;max-width: 100%;" bg-white>
       <FinderGrid
-        path="/home"
+        path="/"
         flow="row"
         align="left"
         cols={6}

@@ -28,7 +28,6 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
 
   // any file that has a class open is a file descriptor, so it has an attached process and id
   protected process: Process;
-  public fd: number;
   /**
    * Creates a file with the given path and, optionally, the given contents. Note
    * that, if contents is specified, it will be mutated by the file!
@@ -44,18 +43,15 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
    *   specified, we assume it is a new file.
    */
   constructor(
-    fd: number = -1,
-    proc: Process = kernel.process,
     _path: string = '/dev/null',
     _flag: FileFlagString = 'r',
     _stat?: Stats,
+    fileType: FileType = FileType.VIRTUAL,
     // contents?: Buffer,
   ) {
     super();
     this._path = _path;
     this._flag = _flag;
-    this.fd = fd;
-    this.process = proc;
     // this._buffer = contents ? contents : emptyBuffer();
     // Note: This invariant is *not* maintained once the file starts getting
     // modified.
@@ -66,7 +62,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
     //     `Invalid buffer: Buffer is ${this._buffer.length} long, yet Stats object specifies that file is ${this._stat.size} long.`,
     //   );
     // }
-    this._stat = _stat ?? new Stats(FileType.VIRTUAL, 0);
+    this._stat = _stat ?? new Stats(fileType, 0);
   }
 
   /**
@@ -346,7 +342,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
     //   length = this._stat.size - position;
     // }
 
-    const rv = this.readBufferSync(buffer, offset, position, position + length);
+    const rv = this.readBufferSync(buffer, offset, length, position);
 
     this._stat.atimeMs = Date.now();
     this.advancePos(rv);
@@ -379,7 +375,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
       position = this.getPos();
     }
 
-    this.readBuffer(buffer, offset, position, position + length, (err, rv) => {
+    this.readBuffer(buffer, offset, length, position, (err, rv) => {
       if (err) {
         cb(err);
       }
@@ -453,5 +449,29 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
    */
   protected resetDirty() {
     this._dirty = false;
+  }
+
+  public async readString(): Promise<string> {
+    return new Promise((res, rej) => {
+      let buffer = Buffer.alloc(100);
+      this.readBuffer(buffer, 0, length, 0, (err, readLength) => {
+        if (err) {
+          rej(err);
+        }
+        res(buffer.toString('utf8', 0, readLength));
+      });
+    });
+  }
+
+  public async writeString(str: string): Promise<number> {
+    return new Promise((res, rej) => {
+      let string = Buffer.from(str, 'utf8');
+      this.writeBuffer(string, 0, length, null, (err, length) => {
+        if (err) {
+          rej(err);
+        }
+        res(length);
+      });
+    });
   }
 }

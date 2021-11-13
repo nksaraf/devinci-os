@@ -4,7 +4,7 @@
 
 'use strict';
 
-import { Pipe, PipeFile, isPipe } from './pipe';
+import { InMemoryPipe, PipeFile, isPipe } from './pipe';
 import { SocketFile, isSocket } from './net
 
 import { ExitCallback, OutputCallback, SyscallContext, SyscallResult, Syscall, ConnectCallback, IKernel, ITask, IFile, Environment } from './types';
@@ -1244,7 +1244,7 @@ export class Syscalls {
 	}
 
 	pipe2(task: ITask, flags: number, cb: (err: number, fd1: number, fd2: number) => void): void {
-		let pipe = new Pipe();
+		let pipe = new InMemoryPipe();
 		let n1 = task.addFile(new PipeFile(pipe));
 		let n2 = task.addFile(new PipeFile(pipe));
 		cb(0, n1, n2);
@@ -1377,7 +1377,7 @@ export class Syscalls {
 			cb(-constants.EBADF);
 			return;
 		}
-		if (file instanceof Pipe) {
+		if (file instanceof InMemoryPipe) {
 			console.log('TODO futimes: on pipe?');
 			cb(-constants.ENOSYS);
 			return;

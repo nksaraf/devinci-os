@@ -1,15 +1,10 @@
 <script lang="ts">
-  import type * as monaco from 'monaco-editor';
   import { getContext, onMount } from 'svelte';
-  import editorWorker from '../../../node_modules/monaco-editor/esm/vs/editor/editor.worker?worker';
-  import jsonWorker from '../../../node_modules/monaco-editor/esm/vs/language/json/json.worker?worker';
-  import cssWorker from '../../../node_modules/monaco-editor/esm/vs/language/css/css.worker?worker';
-  import htmlWorker from '../../../node_modules/monaco-editor/esm/vs/language/html/html.worker?worker';
-  import tsWorker from '../../../node_modules/monaco-editor/esm/vs/language/typescript/ts.worker?worker';
   // import fs from 'os/kernel/fs';
   import TrafficLights from 'os/ui/Window/TrafficLights.svelte';
   import type { WindowAPI } from '__/stores/window.store';
   import ExpandSvg from '@ui/components/SVG/traffic-lights/ExpandSVG.svelte';
+  import { createVSCode } from 'vs/devinci/workbench';
 
   let divEl: HTMLDivElement = null;
   let editor: monaco.editor.IStandaloneCodeEditor;
@@ -23,25 +18,25 @@
 
   onMount(async () => {
     // @ts-ignore
-    self.MonacoEnvironment = {
-      getWorker: function (_moduleId: any, label: string) {
-        if (label === 'json') {
-          return new jsonWorker();
-        }
-        if (label === 'css' || label === 'scss' || label === 'less') {
-          return new cssWorker();
-        }
-        if (label === 'html' || label === 'handlebars' || label === 'razor') {
-          return new htmlWorker();
-        }
-        if (label === 'typescript' || label === 'javascript') {
-          return new tsWorker();
-        }
-        return new editorWorker();
-      },
-    };
+    // self.MonacoEnvironment = {
+    //   getWorker: function (_moduleId: any, label: string) {
+    //     if (label === 'json') {
+    //       return new jsonWorker();
+    //     }
+    //     if (label === 'css' || label === 'scss' || label === 'less') {
+    //       return new cssWorker();
+    //     }
+    //     if (label === 'html' || label === 'handlebars' || label === 'razor') {
+    //       return new htmlWorker();
+    //     }
+    //     if (label === 'typescript' || label === 'javascript') {
+    //       return new tsWorker();
+    //     }
+    //     return new editorWorker();
+    //   },
+    // };
 
-    Monaco = await import('monaco-editor');
+    // Monaco = await import('monaco-editor');
 
     function writeFile(e) {
       kernel.fs.writeFile(args.path, editor.getValue(), 'utf8', 'w', 0x777, console.log);
@@ -49,17 +44,8 @@
 
     let disposables = [];
 
-    let data = kernel.fs.readFileSync(args.path, 'utf8', 'r');
-    editor = Monaco.editor.create(divEl, {
-      value: data as string,
-      fontSize: 14,
-      theme: 'vs-light',
-      language: 'javascript',
-      cursorStyle: 'line-thin',
-      automaticLayout: true,
-    });
-
-    disposables.push(editor.onDidChangeModelContent(writeFile));
+    // let dat /da = kernel.fs.readFileSync(args.path, 'utf8', 'r');
+    createVSCode(divEl, {});
 
     return () => {
       disposables.forEach((d) => d.dispose());
