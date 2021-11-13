@@ -5,6 +5,7 @@ export default () =>
   createAppConfig({
     id: 'editor',
     title: 'Editor',
+
     window: () => {
       return createWindowConfig({
         trafficLights: false,
@@ -15,5 +16,7 @@ export default () =>
         loadComponent: async () => (await import('./Editor.svelte')).default,
       });
     },
-    dock: {},
+    dock: {
+      icon: '/assets/app-icons/editor/256.png',
+    },
   });

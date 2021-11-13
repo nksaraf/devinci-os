@@ -7,7 +7,23 @@ import { KernelFlags } from './kernel/kernel/types';
 import { FileType } from './kernel/fs/core/stats';
 import { NodeHost } from './kernel/node/runtime';
 import { extractContents } from './kernel/kernel/tar';
-import { createVSCode } from 'vs/devinci/workbench';
+
+import calculator from 'os/apps/calculator/calculator';
+import calendar from 'os/apps/calendar/calendar';
+import finder from 'os/apps/finder/finder';
+import editor from 'os/apps/editor/editor';
+import terminal from 'os/apps/terminal/terminal';
+import vscode from 'os/apps/vscode/vscode';
+import wallpaper from 'os/apps/wallpaper/wallpaper';
+import { installApp } from './stores/apps.store';
+
+installApp(finder());
+installApp(calculator());
+installApp(calendar());
+installApp(editor());
+installApp(terminal());
+installApp(vscode());
+installApp(wallpaper());
 
 export const initKernel = async () => {
   console.log(new ReadableStream());
@@ -18,12 +34,22 @@ export const initKernel = async () => {
   });
 
   console.log(kernel);
-  let res = await fetch('/node-lib.tar');
-  let buffer = await res.arrayBuffer();
-  let contents = await extractContents(kernel.fs, new Uint8Array(buffer), '/@node');
-  const node = new NodeHost();
+  // console.time('unpacking node');
+  // let res = await fetch('/node-lib.tar');
+  // let buffer = await res.arrayBuffer();
+  // await extractContents(kernel.fs, new Uint8Array(buffer), '/@node');
+  // const node = new NodeHost();
+  // await node.bootstrap(kernel, '/@node');
+  // console.timeEnd('unpacking node');
 
-  await node.bootstrap(kernel, '/@node');
+  console.time('unpacking node');
+  // let res = await fetch('/node-lib.tar');
+  // let buffer = await res.arrayBuffer();
+  // await extractContents(kernel.fs, new Uint8Array(buffer), '/@node');
+  const node = new NodeHost();
+  await node.bootstrapFromHttp(kernel);
+  console.timeEnd('unpacking node');
+
   let net = node.require('net');
   console.log(new net.Socket());
 

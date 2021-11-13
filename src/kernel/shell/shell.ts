@@ -26,9 +26,6 @@ type AutoCompleteHandler = (index: number, tokens: string[]) => string[];
  * - Output text to the tty -> terminal
  * - Interpret text within the tty to launch processes and interpret programs
  */
-
-function shellMain() {}
-
 export default class Shell extends Process {
   history: ShellHistory;
   commandRunner?: CommandRunner;

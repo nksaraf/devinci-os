@@ -12,7 +12,7 @@ export enum ProcessState {
 // import { checkFlag } from './checkFlag';
 // import { KernelFlags } from './types';
 // import { wrap } from 'comlink';
-import { PTYSlaveFile, TTY, TTYDevice } from './tty';
+import { TTY, TTYDevice } from './tty';
 import type VirtualFile from '../fs/generic/virtual_file';
 
 export interface Environment {
@@ -144,11 +144,11 @@ export class WorkerManager extends SynchronousFileSystem implements IFileSystem 
 
   async init(): Promise<Process> {
     let initProcess = new Process(['init']);
+
     let device = new TTYDevice();
     device.on('output', console.log);
 
     Global.sendData = (data) => {
-      debugger;
       for (var i = 0; i < data.length; i++) {
         device.emit('data', data[i]);
       }
@@ -157,10 +157,10 @@ export class WorkerManager extends SynchronousFileSystem implements IFileSystem 
 
     initProcess.tty = new TTY(device);
     initProcess.tty.startReading();
-    let file = new PTYSlaveFile(initProcess.tty);
-    initProcess.addFile(file, 0);
-    initProcess.addFile(file, 1);
-    initProcess.addFile(file, 2);
+    initProcess.addFile(initProcess.tty, 0);
+    initProcess.addFile(initProcess.tty, 1);
+    initProcess.addFile(initProcess.tty, 2);
+
     return initProcess;
     // if (checkFlag(this.kernel.mode, KernelFlags.WORKER)) {
     //   return await this.spawn({

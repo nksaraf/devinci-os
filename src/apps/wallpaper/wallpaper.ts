@@ -3,8 +3,9 @@ import { createAppConfig } from 'os/stores/apps.store';
 export default () =>
   createAppConfig({
     title: 'Wallpaper',
-    id: 'wallpaper',
+    id: 'wallpapers',
     window: {
-      loadComponent: async () => (await import('./Finder.svelte')).default,
+      loadComponent: async () =>
+        (await import('@ui/components/apps/WallpaperApp/WallpaperSelectorApp.svelte')).default,
     },
   });

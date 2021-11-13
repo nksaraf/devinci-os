@@ -798,29 +798,29 @@ export class TTY extends VirtualFile implements File {
  * It acts an an interface for the shell and terminal to read/write from,
  * and communicate with one another
  */
-export class PTYSlaveFile extends VirtualFile implements File {
-  constructor(private _tty: TTY) {
-    super();
-    this._flag = 'w+';
-  }
+// export class PTYSlaveFile extends VirtualFile implements File {
+//   constructor(private _tty: TTY) {
+//     super();
+//     this._flag = 'w+';
+//   }
 
-  writeBuffer(
-    buffer: Buffer,
-    offset: number,
-    length: number,
-    position: number,
-    cb: CallbackThreeArgs<number, Buffer>,
-  ): void {
-    this._tty.write(buffer, offset, length, position, () => cb(null, length));
-  }
+//   writeBuffer(
+//     buffer: Buffer,
+//     offset: number,
+//     length: number,
+//     position: number,
+//     cb: CallbackThreeArgs<number, Buffer>,
+//   ): void {
+//     this._tty.write(buffer, offset, length, position, () => cb(null, length));
+//   }
 
-  readBuffer(
-    buffer: Buffer,
-    offset: number,
-    length: number,
-    position: number,
-    cb: CallbackThreeArgs<number, Buffer>,
-  ) {
-    this._tty.read(buffer, offset, length, position, cb);
-  }
-}
+//   readBuffer(
+//     buffer: Buffer,
+//     offset: number,
+//     length: number,
+//     position: number,
+//     cb: CallbackThreeArgs<number, Buffer>,
+//   ) {
+//     this._tty.read(buffer, offset, length, position, cb);
+//   }
+// }

@@ -1,12 +1,6 @@
 import { derived, writable } from 'svelte/store';
-import calculator from 'os/apps/calculator/calculator';
-import calendar from 'os/apps/calendar/calendar';
-import finder from 'os/apps/finder/finder';
 import { openWindows } from './window.store';
 import type { WindowConfig } from './window.store';
-import editor from 'os/apps/editor/editor';
-import terminal from 'os/apps/terminal/terminal';
-import vscode from 'os/apps/vscode/vscode';
 
 export type AppID = string;
 
@@ -33,13 +27,6 @@ export function installApp(config: AppConfig) {
     return newApps;
   });
 }
-
-installApp(finder());
-installApp(calculator());
-installApp(calendar());
-installApp(editor());
-installApp(terminal());
-installApp(vscode());
 
 /** Which app is currently focused */
 export const activeApp = writable<AppID>('');
