@@ -63,6 +63,8 @@
       "ES2020.String",
       "ES2020.Symbol.WellKnown",
       "ES2020.Intl",
+      "ESNext.WeakRef",
+      "ES2021.String",
       "DOM",
       "DOM.Iterable",
       "WebWorker.ImportScripts"

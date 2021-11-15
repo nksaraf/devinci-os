@@ -1,3 +1,6 @@
+import { checkFlag } from 'os/kernel/kernel/checkFlag';
+import { constants } from 'os/kernel/kernel/constants';
+
 export enum ActionType {
   // Indicates that the code should not do anything.
   NOP = 0,
@@ -78,46 +81,55 @@ export enum ActionType {
 //   /**
 //    * Get the underlying flag string for this flag.
 //    */
-export function getFlagString(flags: FileFlagString): string {
-  return flags;
-}
+// export function getFlagString(flags: FileFlagString): string {
+//   return flags;
+// }
+
+const any = (flag: number, val: number) => {
+  return (flag & val) > 0;
+};
+
+const equal = (flag: number, val: number) => {
+  return (flag & val) === val;
+};
 
 /**
  * Returns true if the file is readable.
  */
 export function isReadable(flags: FileFlagString): boolean {
-  return flags.indexOf('r') !== -1 || flags.indexOf('+') !== -1;
+  return equal(flags, constants.fs.O_RDWR) || equal(flags, constants.fs.O_RDONLY);
 }
 /**
  * Returns true if the file is writeable.
  */
 export function isWriteable(flags: FileFlagString): boolean {
-  return flags.indexOf('w') !== -1 || flags.indexOf('a') !== -1 || flags.indexOf('+') !== -1;
+  return any(flags, constants.fs.O_WRONLY | constants.fs.O_RDWR);
 }
 /**
  * Returns true if the file mode should truncate.
  */
 export function isTruncating(flags: FileFlagString): boolean {
-  return flags.indexOf('w') !== -1;
+  return any(flags, constants.fs.O_WRONLY);
 }
 /**
  * Returns true if the file is appendable.
  */
 export function isAppendable(flags: FileFlagString): boolean {
-  return flags.indexOf('a') !== -1;
+  return any(flags, constants.fs.O_APPEND);
 }
 /**
  * Returns true if the file is open in synchronous mode.
  */
 export function isSynchronous(flags: FileFlagString): boolean {
-  return flags.indexOf('s') !== -1;
+  return checkFlag(flags, constants.fs.O_SYNC);
 }
 /**
  * Returns true if the file is open in exclusive mode.
  */
 export function isExclusive(flags: FileFlagString): boolean {
-  return flags.indexOf('x') !== -1;
+  return checkFlag(flags, constants.fs.O_EXCL);
 }
+
 /**
  * Returns one of the static fields on this object that indicates the
  * appropriate response to the path existing.
@@ -136,7 +148,7 @@ export function pathExistsAction(flags: FileFlagString): ActionType {
  * appropriate response to the path not existing.
  */
 export function pathNotExistsAction(flags: FileFlagString): ActionType {
-  if ((isWriteable(flags) || isAppendable(flags)) && flags !== 'r+') {
+  if (isWriteable(flags) || isAppendable(flags) || any(flags, constants.fs.O_CREAT)) {
     return ActionType.CREATE_FILE;
   } else {
     return ActionType.THROW_EXCEPTION;
@@ -144,7 +156,9 @@ export function pathNotExistsAction(flags: FileFlagString): ActionType {
 }
 // }
 
-export type FileFlagString =
+export type FileFlagString = number;
+
+export type FileFlag =
   | 'r'
   | 'r+'
   | 'rs'

@@ -9,10 +9,7 @@ const {
   globalThis,
 } = primordials;
 
-const {
-  getOptionValue,
-  getEmbedderOptions,
-} = require('internal/options');
+const { getOptionValue, getEmbedderOptions } = require('internal/options');
 const { reconnectZeroFillToggle } = require('internal/buffer');
 
 const { Buffer } = require('buffer');
@@ -35,10 +32,8 @@ function prepareMainThreadExecution(expandArgv1 = false) {
   // overwrite process.env so that the original path gets passed
   // to child processes even when they switch cwd.
   if (process.env.NODE_V8_COVERAGE) {
-    process.env.NODE_V8_COVERAGE =
-      setupCoverageHooks(process.env.NODE_V8_COVERAGE);
+    process.env.NODE_V8_COVERAGE = setupCoverageHooks(process.env.NODE_V8_COVERAGE);
   }
-
 
   setupDebugEnv();
 
@@ -47,7 +42,7 @@ function prepareMainThreadExecution(expandArgv1 = false) {
 
   // Process initial diagnostic reporting configuration, if present.
   initializeReport();
-  initializeReportSignalHandlers();  // Main-thread-only.
+  initializeReportSignalHandlers(); // Main-thread-only.
 
   initializeHeapSnapshotSignalHandlers();
 
@@ -69,12 +64,12 @@ function prepareMainThreadExecution(expandArgv1 = false) {
   initializeSourceMapsHandlers();
   initializeDeprecations();
   initializeWASI();
-  initializeCJSLoader();
-  initializeESMLoader();
+  // initializeCJSLoader();
+  // initializeESMLoader();
 
-  const CJSLoader = require('internal/modules/cjs/loader');
-  assert(!CJSLoader.hasLoadedAnyUserCJSModule);
-  loadPreloadModules();
+  // const CJSLoader = require('internal/modules/cjs/loader');
+  // assert(!CJSLoader.hasLoadedAnyUserCJSModule);
+  // loadPreloadModules();
   initializeFrozenIntrinsics();
 }
 
@@ -85,10 +80,7 @@ function patchProcessObject(expandArgv1) {
   // TODO(joyeecheung): snapshot fast APIs (which need to work with
   // array buffers, whose connection with C++ needs to be rebuilt after
   // deserialization).
-  const {
-    hrtime,
-    hrtimeBigInt
-  } = require('internal/process/per_thread').getFastAPIs(binding);
+  const { hrtime, hrtimeBigInt } = require('internal/process/per_thread').getFastAPIs(binding);
 
   process.hrtime = hrtime;
   process.hrtime.bigint = hrtimeBigInt;
@@ -96,12 +88,11 @@ function patchProcessObject(expandArgv1) {
   ObjectDefineProperty(process, 'argv0', {
     enumerable: true,
     configurable: false,
-    value: process.argv[0]
+    value: process.argv[0],
   });
   process.argv[0] = process.execPath;
 
-  if (expandArgv1 && process.argv[1] &&
-      !StringPrototypeStartsWith(process.argv[1], '-')) {
+  if (expandArgv1 && process.argv[1] && !StringPrototypeStartsWith(process.argv[1], '-')) {
     // Expand process.argv[1] into a full path.
     const path = require('path');
     try {
@@ -133,17 +124,14 @@ function addReadOnlyProcessAlias(name, option, enumerable = true) {
       writable: false,
       configurable: true,
       enumerable,
-      value
+      value,
     });
   }
 }
 
 function setupWarningHandler() {
-  const {
-    onWarning
-  } = require('internal/process/warning');
-  if (getOptionValue('--warnings') &&
-    process.env.NODE_NO_WARNINGS !== '1') {
+  const { onWarning } = require('internal/process/warning');
+  if (getOptionValue('--warnings') && process.env.NODE_NO_WARNINGS !== '1') {
     process.on('warning', onWarning);
   }
 }
@@ -154,16 +142,16 @@ function setupCoverageHooks(dir) {
   const cwd = require('internal/process/execution').tryGetCwd();
   const { resolve } = require('path');
   const coverageDirectory = resolve(cwd, dir);
-  const { sourceMapCacheToObject } =
-    require('internal/source_map/source_map_cache');
+  const { sourceMapCacheToObject } = require('internal/source_map/source_map_cache');
 
   if (process.features.inspector) {
     internalBinding('profiler').setCoverageDirectory(coverageDirectory);
     internalBinding('profiler').setSourceMapCacheGetter(sourceMapCacheToObject);
   } else {
-    process.emitWarning('The inspector is disabled, ' +
-                        'coverage could not be collected',
-                        'Warning');
+    process.emitWarning(
+      'The inspector is disabled, ' + 'coverage could not be collected',
+      'Warning',
+    );
     return '';
   }
   return coverageDirectory;
@@ -186,7 +174,7 @@ function initializeReport() {
     configurable: true,
     get() {
       return report;
-    }
+    },
   });
 }
 
@@ -207,8 +195,7 @@ function initializeReportSignalHandlers() {
 function initializeHeapSnapshotSignalHandlers() {
   const signal = getOptionValue('--heapsnapshot-signal');
 
-  if (!signal)
-    return;
+  if (!signal) return;
 
   require('internal/validators').validateSignalName(signal);
   const { writeHeapSnapshot } = require('v8');
@@ -236,10 +223,7 @@ function setupInspectorHooks() {
   // notification in the inspector agent if it's sent in the middle of
   // bootstrap, and process the notification later here.
   if (internalBinding('config').hasInspector) {
-    const {
-      enable,
-      disable
-    } = require('internal/inspector_async_hook');
+    const { enable, disable } = require('internal/inspector_async_hook');
     internalBinding('inspector').registerAsyncHook(enable, disable);
   }
 }
@@ -273,13 +257,15 @@ function initializeDeprecations() {
     'isUint8Array',
     'isAnyArrayBuffer',
   ]) {
-    utilBinding[name] = pendingDeprecation ?
-      deprecate(types[name],
-                'Accessing native typechecking bindings of Node ' +
-                'directly is deprecated. ' +
-                `Please use \`util.types.${name}\` instead.`,
-                'DEP0103') :
-      types[name];
+    utilBinding[name] = pendingDeprecation
+      ? deprecate(
+          types[name],
+          'Accessing native typechecking bindings of Node ' +
+            'directly is deprecated. ' +
+            `Please use \`util.types.${name}\` instead.`,
+          'DEP0103',
+        )
+      : types[name];
   }
 
   // TODO(joyeecheung): this is a legacy property exposed to process.
@@ -292,18 +278,22 @@ function initializeDeprecations() {
       writable: false,
       enumerable: true,
       configurable: true,
-      value: noBrowserGlobals
+      value: noBrowserGlobals,
     });
   }
 
   if (pendingDeprecation) {
-    process.binding = deprecate(process.binding,
-                                'process.binding() is deprecated. ' +
-                                'Please use public APIs instead.', 'DEP0111');
+    process.binding = deprecate(
+      process.binding,
+      'process.binding() is deprecated. ' + 'Please use public APIs instead.',
+      'DEP0111',
+    );
 
-    process._tickCallback = deprecate(process._tickCallback,
-                                      'process._tickCallback() is deprecated',
-                                      'DEP0134');
+    process._tickCallback = deprecate(
+      process._tickCallback,
+      'process._tickCallback() is deprecated',
+      'DEP0134',
+    );
   }
 
   // Create global.process and global.Buffer as getters so that we have a
@@ -318,7 +308,7 @@ function initializeDeprecations() {
       _process = value;
     },
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   let _Buffer = Buffer;
@@ -330,7 +320,7 @@ function initializeDeprecations() {
       _Buffer = value;
     },
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 }
 
@@ -344,8 +334,7 @@ function setupChildProcessIpcChannel() {
     // Make sure it's not accidentally inherited by child processes.
     delete process.env.NODE_CHANNEL_FD;
 
-    const serializationMode =
-      process.env.NODE_CHANNEL_SERIALIZATION_MODE || 'json';
+    const serializationMode = process.env.NODE_CHANNEL_SERIALIZATION_MODE || 'json';
     delete process.env.NODE_CHANNEL_SERIALIZATION_MODE;
 
     require('child_process')._forkChild(fd, serializationMode);
@@ -365,8 +354,7 @@ function initializeClusterIPC() {
 function initializePolicy() {
   const experimentalPolicy = getOptionValue('--experimental-policy');
   if (experimentalPolicy) {
-    process.emitWarning('Policies are experimental.',
-                        'ExperimentalWarning');
+    process.emitWarning('Policies are experimental.', 'ExperimentalWarning');
     const { pathToFileURL, URL } = require('internal/url');
     // URL here as it is slightly different parsing
     // no bare specifiers for now
@@ -388,15 +376,11 @@ function initializePolicy() {
       const integrityEntries = SRI.parse(experimentalPolicyIntegrity);
       let foundMatch = false;
       for (let i = 0; i < integrityEntries.length; i++) {
-        const {
-          algorithm,
-          value: expected
-        } = integrityEntries[i];
+        const { algorithm, value: expected } = integrityEntries[i];
         const hash = createHash(algorithm);
         hash.update(src);
         const digest = hash.digest();
-        if (digest.length === expected.length &&
-          timingSafeEqual(digest, expected)) {
+        if (digest.length === expected.length && timingSafeEqual(digest, expected)) {
           foundMatch = true;
           break;
         }
@@ -406,16 +390,14 @@ function initializePolicy() {
         throw new ERR_MANIFEST_ASSERT_INTEGRITY(manifestURL, realIntegrities);
       }
     }
-    require('internal/process/policy')
-      .setup(src, manifestURL.href);
+    require('internal/process/policy').setup(src, manifestURL.href);
   }
 }
 
 function initializeWASI() {
   const { NativeModule } = require('internal/bootstrap/loaders');
   const mod = NativeModule.map.get('wasi');
-  mod.canBeRequiredByUsers =
-    getOptionValue('--experimental-wasi-unstable-preview1');
+  mod.canBeRequiredByUsers = getOptionValue('--experimental-wasi-unstable-preview1');
 }
 
 function initializeCJSLoader() {
@@ -424,8 +406,7 @@ function initializeCJSLoader() {
     CJSLoader.Module._initPaths();
   }
   // TODO(joyeecheung): deprecate this in favor of a proper hook?
-  CJSLoader.Module.runMain =
-    require('internal/modules/run_main').executeUserEntryPoint;
+  CJSLoader.Module.runMain = require('internal/modules/run_main').executeUserEntryPoint;
 }
 
 function initializeESMLoader() {
@@ -434,10 +415,8 @@ function initializeESMLoader() {
 
   if (getEmbedderOptions().shouldNotRegisterESMLoader) return;
 
-  const {
-    setImportModuleDynamicallyCallback,
-    setInitializeImportMetaObjectCallback
-  } = internalBinding('module_wrap');
+  const { setImportModuleDynamicallyCallback, setInitializeImportMetaObjectCallback } =
+    internalBinding('module_wrap');
   const esm = require('internal/process/esm_loader');
   // Setup per-isolate callbacks that locate data or callbacks that we keep
   // track of for different ESM modules.
@@ -447,9 +426,7 @@ function initializeESMLoader() {
   // Patch the vm module when --experimental-vm-modules is on.
   // Please update the comments in vm.js when this block changes.
   if (getOptionValue('--experimental-vm-modules')) {
-    const {
-      Module, SourceTextModule, SyntheticModule,
-    } = require('internal/vm/module');
+    const { Module, SourceTextModule, SyntheticModule } = require('internal/vm/module');
     const vm = require('vm');
     vm.Module = Module;
     vm.SourceTextModule = SourceTextModule;
@@ -458,15 +435,13 @@ function initializeESMLoader() {
 }
 
 function initializeSourceMapsHandlers() {
-  const { setSourceMapsEnabled } =
-    require('internal/source_map/source_map_cache');
+  const { setSourceMapsEnabled } = require('internal/source_map/source_map_cache');
   process.setSourceMapsEnabled = setSourceMapsEnabled;
 }
 
 function initializeFrozenIntrinsics() {
   if (getOptionValue('--frozen-intrinsics')) {
-    process.emitWarning('The --frozen-intrinsics flag is experimental',
-                        'ExperimentalWarning');
+    process.emitWarning('The --frozen-intrinsics flag is experimental', 'ExperimentalWarning');
     require('internal/freeze_intrinsics')();
   }
 }
@@ -476,9 +451,7 @@ function loadPreloadModules() {
   const preloadModules = getOptionValue('--require');
   if (preloadModules && preloadModules.length > 0) {
     const {
-      Module: {
-        _preloadModules
-      },
+      Module: { _preloadModules },
     } = require('internal/modules/cjs/loader');
     _preloadModules(preloadModules);
   }
@@ -500,5 +473,5 @@ module.exports = {
   setupInspectorHooks,
   initializeReport,
   initializeCJSLoader,
-  initializeWASI
+  initializeWASI,
 };

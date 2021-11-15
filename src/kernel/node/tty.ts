@@ -5,7 +5,7 @@ export default class TTY {
   public isRaw: boolean = false;
   public columns: number = 80;
   public rows: number = 120;
-  public isTTY: true = true;
+  public isTTY: true = false;
   private _bufferedWrites: Buffer[] = [];
   private _waitingForWrites: boolean = false;
 

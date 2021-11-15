@@ -39,37 +39,19 @@ const stream = require('stream');
 let debug = require('internal/util/debuglog').debuglog('net', (fn) => {
   debug = fn;
 });
-const {
-  isIP,
-  isIPv4,
-  isIPv6,
-  normalizedArgsSymbol,
-  makeSyncWrite
-} = require('internal/net');
+const { isIP, isIPv4, isIPv6, normalizedArgsSymbol, makeSyncWrite } = require('internal/net');
 const assert = require('internal/assert');
-const {
-  UV_EADDRINUSE,
-  UV_EINVAL,
-  UV_ENOTCONN
-} = internalBinding('uv');
+const { UV_EADDRINUSE, UV_EINVAL, UV_ENOTCONN } = internalBinding('uv');
 
 const { Buffer } = require('buffer');
 const { guessHandleType } = internalBinding('util');
 const { ShutdownWrap } = internalBinding('stream_wrap');
-const {
-  TCP,
-  TCPConnectWrap,
-  constants: TCPConstants
-} = internalBinding('tcp_wrap');
-const {
-  Pipe,
-  PipeConnectWrap,
-  constants: PipeConstants
-} = internalBinding('pipe_wrap');
+const { TCP, TCPConnectWrap, constants: TCPConstants } = internalBinding('tcp_wrap');
+const { Pipe, PipeConnectWrap, constants: PipeConstants } = internalBinding('pipe_wrap');
 const {
   newAsyncId,
   defaultTriggerAsyncIdScope,
-  symbols: { async_id_symbol, owner_symbol }
+  symbols: { async_id_symbol, owner_symbol },
 } = require('internal/async_hooks');
 const {
   writevGeneric,
@@ -81,7 +63,7 @@ const {
   setStreamTimeout,
   kBuffer,
   kBufferCb,
-  kBufferGen
+  kBufferGen,
 } = require('internal/stream_base_commons');
 const {
   codes: {
@@ -97,7 +79,7 @@ const {
   },
   errnoException,
   exceptionWithHostPort,
-  uvExceptionWithHostPort
+  uvExceptionWithHostPort,
 } = require('internal/errors');
 const { isUint8Array } = require('internal/util/types');
 const {
@@ -106,13 +88,10 @@ const {
   validateInt32,
   validateNumber,
   validatePort,
-  validateString
+  validateString,
 } = require('internal/validators');
 const kLastWriteQueueSize = Symbol('lastWriteQueueSize');
-const {
-  DTRACE_NET_SERVER_CONNECTION,
-  DTRACE_NET_STREAM_END
-} = require('internal/dtrace');
+const { DTRACE_NET_SERVER_CONNECTION, DTRACE_NET_STREAM_END } = require('internal/dtrace');
 
 // Lazy loaded to improve startup performance.
 let cluster;
@@ -138,26 +117,18 @@ function createHandle(fd, is_server) {
   validateInt32(fd, 'fd', 0);
   const type = guessHandleType(fd);
   if (type === 'PIPE') {
-    return new Pipe(
-      is_server ? PipeConstants.SERVER : PipeConstants.SOCKET
-    );
   }
 
   if (type === 'TCP') {
-    return new TCP(
-      is_server ? TCPConstants.SERVER : TCPConstants.SOCKET
-    );
+    return new TCP(is_server ? TCPConstants.SERVER : TCPConstants.SOCKET);
   }
 
   throw new ERR_INVALID_FD_TYPE(type);
 }
 
-
 function getNewAsyncId(handle) {
-  return (!handle || typeof handle.getAsyncId !== 'function') ?
-    newAsyncId() : handle.getAsyncId();
+  return !handle || typeof handle.getAsyncId !== 'function' ? newAsyncId() : handle.getAsyncId();
 }
-
 
 function isPipeName(s) {
   return typeof s === 'string' && toNumber(s) === false;
@@ -176,7 +147,6 @@ function isPipeName(s) {
 function createServer(options, connectionListener) {
   return new Server(options, connectionListener);
 }
-
 
 // Target API:
 //
@@ -202,7 +172,6 @@ function connect(...args) {
 
   return socket.connect(normalized);
 }
-
 
 // Returns an array [options, cb], where options is an object,
 // cb is either a function or null.
@@ -240,15 +209,12 @@ function normalizeArgs(args) {
   }
 
   const cb = args[args.length - 1];
-  if (typeof cb !== 'function')
-    arr = [options, null];
-  else
-    arr = [options, cb];
+  if (typeof cb !== 'function') arr = [options, null];
+  else arr = [options, cb];
 
   arr[normalizedArgsSymbol] = true;
   return arr;
 }
-
 
 // Called when creating new Socket, or when re-using a closed Socket
 function initSocketHandle(self) {
@@ -266,15 +232,13 @@ function initSocketHandle(self) {
       const bufGen = self[kBufferGen];
       if (bufGen !== null) {
         userBuf = bufGen();
-        if (!isUint8Array(userBuf))
-          return;
+        if (!isUint8Array(userBuf)) return;
         self[kBuffer] = userBuf;
       }
       self._handle.useUserBuffer(userBuf);
     }
   }
 }
-
 
 const kBytesRead = Symbol('kBytesRead');
 const kBytesWritten = Symbol('kBytesWritten');
@@ -283,18 +247,12 @@ const kSetNoDelay = Symbol('kSetNoDelay');
 function Socket(options) {
   if (!(this instanceof Socket)) return new Socket(options);
   if (options?.objectMode) {
-    throw new ERR_INVALID_ARG_VALUE(
-      'options.objectMode',
-      options.objectMode,
-      'is not supported'
-    );
+    throw new ERR_INVALID_ARG_VALUE('options.objectMode', options.objectMode, 'is not supported');
   } else if (options?.readableObjectMode || options?.writableObjectMode) {
     throw new ERR_INVALID_ARG_VALUE(
-      `options.${
-        options.readableObjectMode ? 'readableObjectMode' : 'writableObjectMode'
-      }`,
+      `options.${options.readableObjectMode ? 'readableObjectMode' : 'writableObjectMode'}`,
       options.readableObjectMode || options.writableObjectMode,
-      'is not supported'
+      'is not supported',
     );
   }
 
@@ -314,10 +272,9 @@ function Socket(options) {
   this[kBufferCb] = null;
   this[kBufferGen] = null;
 
-  if (typeof options === 'number')
-    options = { fd: options }; // Legacy interface.
-  else
-    options = { ...options };
+  if (typeof options === 'number') options = { fd: options };
+  // Legacy interface.
+  else options = { ...options };
 
   // Default to *not* allowing half open sockets.
   options.allowHalfOpen = Boolean(options.allowHalfOpen);
@@ -345,17 +302,14 @@ function Socket(options) {
     // `open` may return an error code for valid file descriptors
     // which cannot be opened. This is difficult to test as most
     // un-openable fds will throw on `createHandle`
-    if (err)
-      throw errnoException(err, 'open');
+    if (err) throw errnoException(err, 'open');
 
     this[async_id_symbol] = this._handle.getAsyncId();
 
-    if ((fd === 1 || fd === 2) &&
-        (this._handle instanceof Pipe) && isWindows) {
+    if ((fd === 1 || fd === 2) && this._handle instanceof Pipe && isWindows) {
       // Make stdout and stderr blocking on Windows
       err = this._handle.setBlocking(true);
-      if (err)
-        throw errnoException(err, 'setBlocking');
+      if (err) throw errnoException(err, 'setBlocking');
 
       this._writev = null;
       this._write = makeSyncWrite(fd);
@@ -363,15 +317,19 @@ function Socket(options) {
       // we need to let it do that by turning it into a writable, own
       // property.
       ObjectDefineProperty(this._handle, 'bytesWritten', {
-        value: 0, writable: true
+        value: 0,
+        writable: true,
       });
     }
   }
 
   const onread = options.onread;
-  if (onread !== null && typeof onread === 'object' &&
-      (isUint8Array(onread.buffer) || typeof onread.buffer === 'function') &&
-      typeof onread.callback === 'function') {
+  if (
+    onread !== null &&
+    typeof onread === 'object' &&
+    (isUint8Array(onread.buffer) || typeof onread.buffer === 'function') &&
+    typeof onread.callback === 'function'
+  ) {
     if (typeof onread.buffer === 'function') {
       this[kBuffer] = true;
       this[kBufferGen] = onread.buffer;
@@ -416,23 +374,20 @@ ObjectSetPrototypeOf(Socket, stream.Duplex);
 // Refresh existing timeouts.
 Socket.prototype._unrefTimer = function _unrefTimer() {
   for (let s = this; s !== null; s = s._parent) {
-    if (s[kTimeout])
-      s[kTimeout].refresh();
+    if (s[kTimeout]) s[kTimeout].refresh();
   }
 };
 
-
 // The user has called .end(), and all the bytes have been
 // sent out to the other side.
-Socket.prototype._final = function(cb) {
+Socket.prototype._final = function (cb) {
   // If still connecting - defer handling `_final` until 'connect' will happen
   if (this.pending) {
     debug('_final: not yet connected');
     return this.once('connect', () => this._final(cb));
   }
 
-  if (!this._handle)
-    return cb();
+  if (!this._handle) return cb();
 
   debug('_final: not ended, call shutdown()');
 
@@ -442,17 +397,16 @@ Socket.prototype._final = function(cb) {
   req.callback = cb;
   const err = this._handle.shutdown(req);
 
-  if (err === 1 || err === UV_ENOTCONN)  // synchronous finish
+  if (err === 1 || err === UV_ENOTCONN)
+    // synchronous finish
     return cb();
-  else if (err !== 0)
-    return cb(errnoException(err, 'shutdown'));
+  else if (err !== 0) return cb(errnoException(err, 'shutdown'));
 };
 
 function afterShutdown() {
   const self = this.handle[owner_symbol];
 
-  debug('afterShutdown destroyed=%j', self.destroyed,
-        self._readableState);
+  debug('afterShutdown destroyed=%j', self.destroyed, self._readableState);
 
   this.callback();
 }
@@ -483,8 +437,7 @@ function writeAfterFIN(chunk, encoding, cb) {
 
 Socket.prototype.setTimeout = setStreamTimeout;
 
-
-Socket.prototype._onTimeout = function() {
+Socket.prototype._onTimeout = function () {
   const handle = this._handle;
   const lastWriteQueueSize = this[kLastWriteQueueSize];
   if (lastWriteQueueSize > 0 && handle) {
@@ -501,11 +454,9 @@ Socket.prototype._onTimeout = function() {
   this.emit('timeout');
 };
 
-
-Socket.prototype.setNoDelay = function(enable) {
+Socket.prototype.setNoDelay = function (enable) {
   if (!this._handle) {
-    this.once('connect',
-              enable ? this.setNoDelay : () => this.setNoDelay(enable));
+    this.once('connect', enable ? this.setNoDelay : () => this.setNoDelay(enable));
     return this;
   }
 
@@ -519,41 +470,36 @@ Socket.prototype.setNoDelay = function(enable) {
   return this;
 };
 
-
-Socket.prototype.setKeepAlive = function(setting, msecs) {
+Socket.prototype.setKeepAlive = function (setting, msecs) {
   if (!this._handle) {
     this.once('connect', () => this.setKeepAlive(setting, msecs));
     return this;
   }
 
-  if (this._handle.setKeepAlive)
-    this._handle.setKeepAlive(setting, ~~(msecs / 1000));
+  if (this._handle.setKeepAlive) this._handle.setKeepAlive(setting, ~~(msecs / 1000));
 
   return this;
 };
 
-
-Socket.prototype.address = function() {
+Socket.prototype.address = function () {
   return this._getsockname();
 };
 
-
 ObjectDefineProperty(Socket.prototype, '_connecting', {
-  get: function() {
+  get: function () {
     return this.connecting;
-  }
+  },
 });
 
 ObjectDefineProperty(Socket.prototype, 'pending', {
   get() {
     return !this._handle || this.connecting;
   },
-  configurable: true
+  configurable: true,
 });
 
-
 ObjectDefineProperty(Socket.prototype, 'readyState', {
-  get: function() {
+  get: function () {
     if (this.connecting) {
       return 'opening';
     } else if (this.readable && this.writable) {
@@ -564,36 +510,33 @@ ObjectDefineProperty(Socket.prototype, 'readyState', {
       return 'writeOnly';
     }
     return 'closed';
-  }
+  },
 });
 
-
 ObjectDefineProperty(Socket.prototype, 'bufferSize', {
-  get: function() {
+  get: function () {
     if (this._handle) {
       return this.writableLength;
     }
-  }
+  },
 });
 
 ObjectDefineProperty(Socket.prototype, kUpdateTimer, {
-  get: function() {
+  get: function () {
     return this._unrefTimer;
-  }
+  },
 });
-
 
 function tryReadStart(socket) {
   // Not already reading, start the flow
   debug('Socket._handle.readStart');
   socket._handle.reading = true;
   const err = socket._handle.readStart();
-  if (err)
-    socket.destroy(errnoException(err, 'read'));
+  if (err) socket.destroy(errnoException(err, 'read'));
 }
 
 // Just call handle.readStart until we have enough in the buffer
-Socket.prototype._read = function(n) {
+Socket.prototype._read = function (n) {
   debug('_read');
 
   if (this.connecting || !this._handle) {
@@ -604,46 +547,36 @@ Socket.prototype._read = function(n) {
   }
 };
 
-
-Socket.prototype.end = function(data, encoding, callback) {
-  stream.Duplex.prototype.end.call(this,
-                                   data, encoding, callback);
+Socket.prototype.end = function (data, encoding, callback) {
+  stream.Duplex.prototype.end.call(this, data, encoding, callback);
   DTRACE_NET_STREAM_END(this);
   return this;
 };
 
-
-Socket.prototype.pause = function() {
-  if (this[kBuffer] && !this.connecting && this._handle &&
-      this._handle.reading) {
+Socket.prototype.pause = function () {
+  if (this[kBuffer] && !this.connecting && this._handle && this._handle.reading) {
     this._handle.reading = false;
     if (!this.destroyed) {
       const err = this._handle.readStop();
-      if (err)
-        this.destroy(errnoException(err, 'read'));
+      if (err) this.destroy(errnoException(err, 'read'));
     }
   }
   return stream.Duplex.prototype.pause.call(this);
 };
 
-
-Socket.prototype.resume = function() {
-  if (this[kBuffer] && !this.connecting && this._handle &&
-      !this._handle.reading) {
+Socket.prototype.resume = function () {
+  if (this[kBuffer] && !this.connecting && this._handle && !this._handle.reading) {
     tryReadStart(this);
   }
   return stream.Duplex.prototype.resume.call(this);
 };
 
-
-Socket.prototype.read = function(n) {
-  if (this[kBuffer] && !this.connecting && this._handle &&
-      !this._handle.reading) {
+Socket.prototype.read = function (n) {
+  if (this[kBuffer] && !this.connecting && this._handle && !this._handle.reading) {
     tryReadStart(this);
   }
   return stream.Duplex.prototype.read.call(this, n);
 };
-
 
 // Called when the 'end' event is emitted.
 function onReadableStreamEnd() {
@@ -652,19 +585,14 @@ function onReadableStreamEnd() {
   }
 }
 
+Socket.prototype.destroySoon = function () {
+  if (this.writable) this.end();
 
-Socket.prototype.destroySoon = function() {
-  if (this.writable)
-    this.end();
-
-  if (this.writableFinished)
-    this.destroy();
-  else
-    this.once('finish', this.destroy);
+  if (this.writableFinished) this.destroy();
+  else this.once('finish', this.destroy);
 };
 
-
-Socket.prototype._destroy = function(exception, cb) {
+Socket.prototype._destroy = function (exception, cb) {
   debug('destroy');
 
   this.connecting = false;
@@ -675,8 +603,7 @@ Socket.prototype._destroy = function(exception, cb) {
 
   debug('close');
   if (this._handle) {
-    if (this !== process.stderr)
-      debug('close handle');
+    if (this !== process.stderr) debug('close handle');
     const isException = exception ? true : false;
     // `bytesRead` and `kBytesWritten` should be accessible after `.destroy()`
     this[kBytesRead] = this._handle.bytesRead;
@@ -704,7 +631,7 @@ Socket.prototype._destroy = function(exception, cb) {
   }
 };
 
-Socket.prototype._getpeername = function() {
+Socket.prototype._getpeername = function () {
   if (!this._handle || !this._handle.getpeername) {
     return this._peername || {};
   } else if (!this._peername) {
@@ -719,7 +646,7 @@ function protoGetter(name, callback) {
   ObjectDefineProperty(Socket.prototype, name, {
     configurable: false,
     enumerable: true,
-    get: callback
+    get: callback,
   });
 }
 
@@ -739,8 +666,7 @@ protoGetter('remotePort', function remotePort() {
   return this._getpeername().port;
 });
 
-
-Socket.prototype._getsockname = function() {
+Socket.prototype._getsockname = function () {
   if (!this._handle || !this._handle.getsockname) {
     return {};
   } else if (!this._sockname) {
@@ -751,22 +677,19 @@ Socket.prototype._getsockname = function() {
   return this._sockname;
 };
 
-
 protoGetter('localAddress', function localAddress() {
   return this._getsockname().address;
 });
-
 
 protoGetter('localPort', function localPort() {
   return this._getsockname().port;
 });
 
-
-Socket.prototype[kAfterAsyncWrite] = function() {
+Socket.prototype[kAfterAsyncWrite] = function () {
   this[kLastWriteQueueSize] = 0;
 };
 
-Socket.prototype._writeGeneric = function(writev, data, encoding, cb) {
+Socket.prototype._writeGeneric = function (writev, data, encoding, cb) {
   // If we are still connecting, then buffer this for later.
   // The Writable logic will buffer up any more writes while
   // waiting for this one to be done.
@@ -789,24 +712,18 @@ Socket.prototype._writeGeneric = function(writev, data, encoding, cb) {
   this._unrefTimer();
 
   let req;
-  if (writev)
-    req = writevGeneric(this, data, cb);
-  else
-    req = writeGeneric(this, data, encoding, cb);
-  if (req.async)
-    this[kLastWriteQueueSize] = req.bytes;
+  if (writev) req = writevGeneric(this, data, cb);
+  else req = writeGeneric(this, data, encoding, cb);
+  if (req.async) this[kLastWriteQueueSize] = req.bytes;
 };
 
-
-Socket.prototype._writev = function(chunks, cb) {
+Socket.prototype._writev = function (chunks, cb) {
   this._writeGeneric(true, chunks, '', cb);
 };
 
-
-Socket.prototype._write = function(data, encoding, cb) {
+Socket.prototype._write = function (data, encoding, cb) {
   this._writeGeneric(false, data, encoding, cb);
 };
-
 
 // Legacy alias. Having this is probably being overly cautious, but it doesn't
 // really hurt anyone either. This can probably be removed safely if desired.
@@ -820,13 +737,11 @@ protoGetter('bytesWritten', function bytesWritten() {
   const encoding = this._pendingEncoding;
   const writableBuffer = this.writableBuffer;
 
-  if (!writableBuffer)
-    return undefined;
+  if (!writableBuffer) return undefined;
 
   for (const el of writableBuffer) {
-    bytes += el.chunk instanceof Buffer ?
-      el.chunk.length :
-      Buffer.byteLength(el.chunk, el.encoding);
+    bytes +=
+      el.chunk instanceof Buffer ? el.chunk.length : Buffer.byteLength(el.chunk, el.encoding);
   }
 
   if (ArrayIsArray(data)) {
@@ -834,22 +749,17 @@ protoGetter('bytesWritten', function bytesWritten() {
     for (let i = 0; i < data.length; i++) {
       const chunk = data[i];
 
-      if (data.allBuffers || chunk instanceof Buffer)
-        bytes += chunk.length;
-      else
-        bytes += Buffer.byteLength(chunk.chunk, chunk.encoding);
+      if (data.allBuffers || chunk instanceof Buffer) bytes += chunk.length;
+      else bytes += Buffer.byteLength(chunk.chunk, chunk.encoding);
     }
   } else if (data) {
     // Writes are either a string or a Buffer.
-    if (typeof data !== 'string')
-      bytes += data.length;
-    else
-      bytes += Buffer.byteLength(data, encoding);
+    if (typeof data !== 'string') bytes += data.length;
+    else bytes += Buffer.byteLength(data, encoding);
   }
 
   return bytes;
 });
-
 
 function checkBindError(err, port, handle) {
   // EADDRINUSE may not be reported until we call listen() or connect().
@@ -871,9 +781,7 @@ function checkBindError(err, port, handle) {
   return err;
 }
 
-
-function internalConnect(
-  self, address, port, addressType, localAddress, localPort, flags) {
+function internalConnect(self, address, port, addressType, localAddress, localPort, flags) {
   // TODO return promise from Socket.prototype.connect which
   // wraps _connectReq.
 
@@ -885,12 +793,17 @@ function internalConnect(
     if (addressType === 4) {
       localAddress = localAddress || DEFAULT_IPV4_ADDR;
       err = self._handle.bind(localAddress, localPort);
-    } else { // addressType === 6
+    } else {
+      // addressType === 6
       localAddress = localAddress || DEFAULT_IPV6_ADDR;
       err = self._handle.bind6(localAddress, localPort, flags);
     }
-    debug('binding to localAddress: %s and localPort: %d (addressType: %d)',
-          localAddress, localPort, addressType);
+    debug(
+      'binding to localAddress: %s and localPort: %d (addressType: %d)',
+      localAddress,
+      localPort,
+      addressType,
+    );
 
     err = checkBindError(err, localPort, self._handle);
     if (err) {
@@ -908,10 +821,8 @@ function internalConnect(
     req.localAddress = localAddress;
     req.localPort = localPort;
 
-    if (addressType === 4)
-      err = self._handle.connect(req, address, port);
-    else
-      err = self._handle.connect6(req, address, port);
+    if (addressType === 4) err = self._handle.connect(req, address, port);
+    else err = self._handle.connect6(req, address, port);
   } else {
     const req = new PipeConnectWrap();
     req.address = address;
@@ -933,8 +844,7 @@ function internalConnect(
   }
 }
 
-
-Socket.prototype.connect = function(...args) {
+Socket.prototype.connect = function (...args) {
   let normalized;
   // If passed an array, it's treated as an array of arguments that have
   // already been normalized (so we don't normalize more than once). This has
@@ -952,8 +862,7 @@ Socket.prototype.connect = function(...args) {
   if (options.port === undefined && options.path == null)
     throw new ERR_MISSING_ARGS(['options', 'port', 'path']);
 
-  if (this.write !== Socket.prototype.write)
-    this.write = Socket.prototype.write;
+  if (this.write !== Socket.prototype.write) this.write = Socket.prototype.write;
 
   if (this.destroyed) {
     this._handle = null;
@@ -966,9 +875,7 @@ Socket.prototype.connect = function(...args) {
   debug('pipe', pipe, path);
 
   if (!this._handle) {
-    this._handle = pipe ?
-      new Pipe(PipeConstants.SOCKET) :
-      new TCP(TCPConstants.SOCKET);
+    this._handle = pipe ? new Pipe(PipeConstants.SOCKET) : new TCP(TCPConstants.SOCKET);
     initSocketHandle(this);
   }
 
@@ -982,15 +889,12 @@ Socket.prototype.connect = function(...args) {
 
   if (pipe) {
     validateString(path, 'options.path');
-    defaultTriggerAsyncIdScope(
-      this[async_id_symbol], internalConnect, this, path
-    );
+    defaultTriggerAsyncIdScope(this[async_id_symbol], internalConnect, this, path);
   } else {
     lookupAndConnect(this, options);
   }
   return this;
 };
-
 
 function lookupAndConnect(self, options) {
   const { localAddress, localPort } = options;
@@ -1007,8 +911,7 @@ function lookupAndConnect(self, options) {
 
   if (typeof port !== 'undefined') {
     if (typeof port !== 'number' && typeof port !== 'string') {
-      throw new ERR_INVALID_ARG_TYPE('options.port',
-                                     ['number', 'string'], port);
+      throw new ERR_INVALID_ARG_TYPE('options.port', ['number', 'string'], port);
     }
     validatePort(port);
   }
@@ -1022,25 +925,26 @@ function lookupAndConnect(self, options) {
         defaultTriggerAsyncIdScope(
           self[async_id_symbol],
           internalConnect,
-          self, host, port, addressType, localAddress, localPort
+          self,
+          host,
+          port,
+          addressType,
+          localAddress,
+          localPort,
         );
     });
     return;
   }
 
-  if (options.lookup !== undefined)
-    validateFunction(options.lookup, 'options.lookup');
+  if (options.lookup !== undefined) validateFunction(options.lookup, 'options.lookup');
 
   if (dns === undefined) dns = require('dns');
   const dnsopts = {
     family: options.family,
-    hints: options.hints || 0
+    hints: options.hints || 0,
   };
 
-  if (!isWindows &&
-      dnsopts.family !== 4 &&
-      dnsopts.family !== 6 &&
-      dnsopts.hints === 0) {
+  if (!isWindows && dnsopts.family !== 4 && dnsopts.family !== 6 && dnsopts.hints === 0) {
     dnsopts.hints = dns.ADDRCONFIG;
   }
 
@@ -1048,7 +952,7 @@ function lookupAndConnect(self, options) {
   debug('connect: dns options', dnsopts);
   self._host = host;
   const lookup = options.lookup || dns.lookup;
-  defaultTriggerAsyncIdScope(self[async_id_symbol], function() {
+  defaultTriggerAsyncIdScope(self[async_id_symbol], function () {
     lookup(host, dnsopts, function emitLookup(err, ip, addressType) {
       self.emit('lookup', err, ip, addressType, host);
 
@@ -1066,29 +970,30 @@ function lookupAndConnect(self, options) {
         err = new ERR_INVALID_IP_ADDRESS(ip);
         process.nextTick(connectErrorNT, self, err);
       } else if (addressType !== 4 && addressType !== 6) {
-        err = new ERR_INVALID_ADDRESS_FAMILY(addressType,
-                                             options.host,
-                                             options.port);
+        err = new ERR_INVALID_ADDRESS_FAMILY(addressType, options.host, options.port);
         process.nextTick(connectErrorNT, self, err);
       } else {
         self._unrefTimer();
         defaultTriggerAsyncIdScope(
           self[async_id_symbol],
           internalConnect,
-          self, ip, port, addressType, localAddress, localPort
+          self,
+          ip,
+          port,
+          addressType,
+          localAddress,
+          localPort,
         );
       }
     });
   });
 }
 
-
 function connectErrorNT(self, err) {
   self.destroy(err);
 }
 
-
-Socket.prototype.ref = function() {
+Socket.prototype.ref = function () {
   if (!this._handle) {
     this.once('connect', this.ref);
     return this;
@@ -1101,8 +1006,7 @@ Socket.prototype.ref = function() {
   return this;
 };
 
-
-Socket.prototype.unref = function() {
+Socket.prototype.unref = function () {
   if (!this._handle) {
     this.once('connect', this.unref);
     return this;
@@ -1114,7 +1018,6 @@ Socket.prototype.unref = function() {
 
   return this;
 };
-
 
 function afterConnect(status, handle, req, readable, writable) {
   let self = handle[owner_symbol];
@@ -1149,20 +1052,14 @@ function afterConnect(status, handle, req, readable, writable) {
 
     // Start the first read, or get an immediate EOF.
     // this doesn't actually consume any bytes, because len=0.
-    if (readable && !self.isPaused())
-      self.read(0);
-
+    if (readable && !self.isPaused()) self.read(0);
   } else {
     self.connecting = false;
     let details;
     if (req.localAddress && req.localPort) {
       details = req.localAddress + ':' + req.localPort;
     }
-    const ex = exceptionWithHostPort(status,
-                                     'connect',
-                                     req.address,
-                                     req.port,
-                                     details);
+    const ex = exceptionWithHostPort(status, 'connect', req.address, req.port, details);
     if (details) {
       ex.localAddress = req.localAddress;
       ex.localPort = req.localPort;
@@ -1189,8 +1086,7 @@ function addAbortSignalOption(self, options) {
 }
 
 function Server(options, connectionListener) {
-  if (!(this instanceof Server))
-    return new Server(options, connectionListener);
+  if (!(this instanceof Server)) return new Server(options, connectionListener);
 
   EventEmitter.call(this);
 
@@ -1222,8 +1118,9 @@ function Server(options, connectionListener) {
 ObjectSetPrototypeOf(Server.prototype, EventEmitter.prototype);
 ObjectSetPrototypeOf(Server, EventEmitter);
 
-
-function toNumber(x) { return (x = Number(x)) >= 0 ? x : false; }
+function toNumber(x) {
+  return (x = Number(x)) >= 0 ? x : false;
+}
 
 // Returns handle if it can be created, or error code if it can't
 function createServerHandle(address, port, addressType, fd, flags) {
@@ -1242,8 +1139,7 @@ function createServerHandle(address, port, addressType, fd, flags) {
     }
 
     err = handle.open(fd);
-    if (err)
-      return err;
+    if (err) return err;
 
     assert(!address && !port);
   } else if (port === -1 && addressType === -1) {
@@ -1310,8 +1206,7 @@ function setupListenHandle(address, port, addressType, backlog, fd, flags) {
       }
     }
 
-    if (rval === null)
-      rval = createServerHandle(address, port, addressType, fd, flags);
+    if (rval === null) rval = createServerHandle(address, port, addressType, fd, flags);
 
     if (typeof rval === 'number') {
       const error = uvExceptionWithHostPort(rval, 'listen', address, port);
@@ -1334,11 +1229,7 @@ function setupListenHandle(address, port, addressType, backlog, fd, flags) {
     const ex = uvExceptionWithHostPort(err, 'listen', address, port);
     this._handle.close();
     this._handle = null;
-    defaultTriggerAsyncIdScope(this[async_id_symbol],
-                               process.nextTick,
-                               emitErrorNT,
-                               this,
-                               ex);
+    defaultTriggerAsyncIdScope(this[async_id_symbol], process.nextTick, emitErrorNT, this, ex);
     return;
   }
 
@@ -1346,31 +1237,23 @@ function setupListenHandle(address, port, addressType, backlog, fd, flags) {
   this._connectionKey = addressType + ':' + address + ':' + port;
 
   // Unref the handle if the server was unref'ed prior to listening
-  if (this._unref)
-    this.unref();
+  if (this._unref) this.unref();
 
-  defaultTriggerAsyncIdScope(this[async_id_symbol],
-                             process.nextTick,
-                             emitListeningNT,
-                             this);
+  defaultTriggerAsyncIdScope(this[async_id_symbol], process.nextTick, emitListeningNT, this);
 }
 
-Server.prototype._listen2 = setupListenHandle;  // legacy alias
+Server.prototype._listen2 = setupListenHandle; // legacy alias
 
 function emitErrorNT(self, err) {
   self.emit('error', err);
 }
 
-
 function emitListeningNT(self) {
   // Ensure handle hasn't closed
-  if (self._handle)
-    self.emit('listening');
+  if (self._handle) self.emit('listening');
 }
 
-
-function listenInCluster(server, address, port, addressType,
-                         backlog, fd, exclusive, flags) {
+function listenInCluster(server, address, port, addressType, backlog, fd, exclusive, flags) {
   exclusive = !!exclusive;
 
   if (cluster === undefined) cluster = require('cluster');
@@ -1410,8 +1293,7 @@ function listenInCluster(server, address, port, addressType,
   }
 }
 
-
-Server.prototype.listen = function(...args) {
+Server.prototype.listen = function (...args) {
   const normalized = normalizeArgs(args);
   let options = normalized[0];
   const cb = normalized[1];
@@ -1425,8 +1307,7 @@ Server.prototype.listen = function(...args) {
   }
   const backlogFromArgs =
     // (handle, backlog) or (path, backlog) or (port, backlog)
-    toNumber(args.length > 1 && args[1]) ||
-    toNumber(args.length > 2 && args[2]);  // (port, host, backlog)
+    toNumber(args.length > 1 && args[1]) || toNumber(args.length > 2 && args[2]); // (port, host, backlog)
 
   options = options._handle || options.handle || options;
   const flags = getFlags(options.ipv6Only);
@@ -1448,9 +1329,12 @@ Server.prototype.listen = function(...args) {
   // that is, listen(), listen(null), listen(cb), or listen(null, cb)
   // or (options[, cb]) where options.port is explicitly set as undefined or
   // null, bind to an arbitrary unused port
-  if (args.length === 0 || typeof args[0] === 'function' ||
-      (typeof options.port === 'undefined' && 'port' in options) ||
-      options.port === null) {
+  if (
+    args.length === 0 ||
+    typeof args[0] === 'function' ||
+    (typeof options.port === 'undefined' && 'port' in options) ||
+    options.port === null
+  ) {
     options.port = 0;
   }
   // ([port][, host][, backlog][, cb]) where port is specified
@@ -1462,12 +1346,11 @@ Server.prototype.listen = function(...args) {
     backlog = options.backlog || backlogFromArgs;
     // start TCP server listening on host:port
     if (options.host) {
-      lookupAndListen(this, options.port | 0, options.host, backlog,
-                      options.exclusive, flags);
-    } else { // Undefined host, listens on unspecified address
+      lookupAndListen(this, options.port | 0, options.host, backlog, options.exclusive, flags);
+    } else {
+      // Undefined host, listens on unspecified address
       // Default addressType 4 will be used to search for primary server
-      listenInCluster(this, null, options.port | 0, 4,
-                      backlog, undefined, options.exclusive);
+      listenInCluster(this, null, options.port | 0, 4, backlog, undefined, options.exclusive);
     }
     return this;
   }
@@ -1475,10 +1358,9 @@ Server.prototype.listen = function(...args) {
   // (path[, backlog][, cb]) or (options[, cb])
   // where path or options.path is a UNIX domain socket or Windows pipe
   if (options.path && isPipeName(options.path)) {
-    const pipeName = this._pipeName = options.path;
+    const pipeName = (this._pipeName = options.path);
     backlog = options.backlog || backlogFromArgs;
-    listenInCluster(this, pipeName, -1, -1,
-                    backlog, undefined, options.exclusive);
+    listenInCluster(this, pipeName, -1, -1, backlog, undefined, options.exclusive);
 
     if (!this._handle) {
       // Failed and an error shall be emitted in the next tick.
@@ -1487,10 +1369,8 @@ Server.prototype.listen = function(...args) {
     }
 
     let mode = 0;
-    if (options.readableAll === true)
-      mode |= PipeConstants.UV_READABLE;
-    if (options.writableAll === true)
-      mode |= PipeConstants.UV_WRITABLE;
+    if (options.readableAll === true) mode |= PipeConstants.UV_READABLE;
+    if (options.writableAll === true) mode |= PipeConstants.UV_WRITABLE;
     if (mode !== 0) {
       const err = this._handle.fchmod(mode);
       if (err) {
@@ -1502,9 +1382,8 @@ Server.prototype.listen = function(...args) {
     return this;
   }
 
-  if (!(('port' in options) || ('path' in options))) {
-    throw new ERR_INVALID_ARG_VALUE('options', options,
-                                    'must have the property "port" or "path"');
+  if (!('port' in options || 'path' in options)) {
+    throw new ERR_INVALID_ARG_VALUE('options', options, 'must have the property "port" or "path"');
   }
 
   throw new ERR_INVALID_ARG_VALUE('options', options);
@@ -1517,21 +1396,20 @@ function lookupAndListen(self, port, address, backlog, exclusive, flags) {
       self.emit('error', err);
     } else {
       addressType = ip ? addressType : 4;
-      listenInCluster(self, ip, port, addressType,
-                      backlog, undefined, exclusive, flags);
+      listenInCluster(self, ip, port, addressType, backlog, undefined, exclusive, flags);
     }
   });
 }
 
 ObjectDefineProperty(Server.prototype, 'listening', {
-  get: function() {
+  get: function () {
     return !!this._handle;
   },
   configurable: true,
-  enumerable: true
+  enumerable: true,
 });
 
-Server.prototype.address = function() {
+Server.prototype.address = function () {
   if (this._handle && this._handle.getsockname) {
     const out = {};
     const err = this._handle.getsockname(out);
@@ -1566,7 +1444,7 @@ function onconnection(err, clientHandle) {
     allowHalfOpen: self.allowHalfOpen,
     pauseOnCreate: self.pauseOnConnect,
     readable: true,
-    writable: true
+    writable: true,
   });
 
   self._connections++;
@@ -1583,15 +1461,11 @@ function onconnection(err, clientHandle) {
  * @returns {Server}
  */
 
-Server.prototype.getConnections = function(cb) {
+Server.prototype.getConnections = function (cb) {
   const self = this;
 
   function end(err, connections) {
-    defaultTriggerAsyncIdScope(self[async_id_symbol],
-                               process.nextTick,
-                               cb,
-                               err,
-                               connections);
+    defaultTriggerAsyncIdScope(self[async_id_symbol], process.nextTick, cb, err, connections);
   }
 
   if (!this._usingWorkers) {
@@ -1620,8 +1494,7 @@ Server.prototype.getConnections = function(cb) {
   return this;
 };
 
-
-Server.prototype.close = function(cb) {
+Server.prototype.close = function (cb) {
   if (typeof cb === 'function') {
     if (!this._handle) {
       this.once('close', function close() {
@@ -1651,8 +1524,7 @@ Server.prototype.close = function(cb) {
     this._connections++;
 
     // Poll workers
-    for (let n = 0; n < this._workers.length; n++)
-      this._workers[n].close(onWorkerClose);
+    for (let n = 0; n < this._workers.length; n++) this._workers[n].close(onWorkerClose);
   } else {
     this._emitCloseIfDrained();
   }
@@ -1660,31 +1532,23 @@ Server.prototype.close = function(cb) {
   return this;
 };
 
-Server.prototype._emitCloseIfDrained = function() {
+Server.prototype._emitCloseIfDrained = function () {
   debug('SERVER _emitCloseIfDrained');
 
   if (this._handle || this._connections) {
-    debug('SERVER handle? %j   connections? %d',
-          !!this._handle, this._connections);
+    debug('SERVER handle? %j   connections? %d', !!this._handle, this._connections);
     return;
   }
 
-  defaultTriggerAsyncIdScope(this[async_id_symbol],
-                             process.nextTick,
-                             emitCloseNT,
-                             this);
+  defaultTriggerAsyncIdScope(this[async_id_symbol], process.nextTick, emitCloseNT, this);
 };
-
 
 function emitCloseNT(self) {
   debug('SERVER: emit close');
   self.emit('close');
 }
 
-
-Server.prototype[EventEmitter.captureRejectionSymbol] = function(
-  err, event, sock) {
-
+Server.prototype[EventEmitter.captureRejectionSymbol] = function (err, event, sock) {
   switch (event) {
     case 'connection':
       sock.destroy(err);
@@ -1694,20 +1558,27 @@ Server.prototype[EventEmitter.captureRejectionSymbol] = function(
   }
 };
 
-
 // Legacy alias on the C++ wrapper object. This is not public API, so we may
 // want to runtime-deprecate it at some point. There's no hurry, though.
 ObjectDefineProperty(TCP.prototype, 'owner', {
-  get() { return this[owner_symbol]; },
-  set(v) { return this[owner_symbol] = v; }
+  get() {
+    return this[owner_symbol];
+  },
+  set(v) {
+    return (this[owner_symbol] = v);
+  },
 });
 
 ObjectDefineProperty(Socket.prototype, '_handle', {
-  get() { return this[kHandle]; },
-  set(v) { return this[kHandle] = v; }
+  get() {
+    return this[kHandle];
+  },
+  set(v) {
+    return (this[kHandle] = v);
+  },
 });
 
-Server.prototype._setupWorker = function(socketList) {
+Server.prototype._setupWorker = function (socketList) {
   this._usingWorkers = true;
   this._workers.push(socketList);
   socketList.once('exit', (socketList) => {
@@ -1716,20 +1587,18 @@ Server.prototype._setupWorker = function(socketList) {
   });
 };
 
-Server.prototype.ref = function() {
+Server.prototype.ref = function () {
   this._unref = false;
 
-  if (this._handle)
-    this._handle.ref();
+  if (this._handle) this._handle.ref();
 
   return this;
 };
 
-Server.prototype.unref = function() {
+Server.prototype.unref = function () {
   this._unref = true;
 
-  if (this._handle)
-    this._handle.unref();
+  if (this._handle) this._handle.unref();
 
   return this;
 };
@@ -1740,11 +1609,13 @@ let warnSimultaneousAccepts = true;
 if (isWindows) {
   let simultaneousAccepts;
 
-  _setSimultaneousAccepts = function(handle) {
+  _setSimultaneousAccepts = function (handle) {
     if (warnSimultaneousAccepts) {
       process.emitWarning(
         'net._setSimultaneousAccepts() is deprecated and will be removed.',
-        'DeprecationWarning', 'DEP0121');
+        'DeprecationWarning',
+        'DEP0121',
+      );
       warnSimultaneousAccepts = false;
     }
     if (handle === undefined) {
@@ -1752,8 +1623,7 @@ if (isWindows) {
     }
 
     if (simultaneousAccepts === undefined) {
-      simultaneousAccepts = (process.env.NODE_MANY_ACCEPTS &&
-                             process.env.NODE_MANY_ACCEPTS !== '0');
+      simultaneousAccepts = process.env.NODE_MANY_ACCEPTS && process.env.NODE_MANY_ACCEPTS !== '0';
     }
 
     if (handle._simultaneousAccepts !== simultaneousAccepts) {
@@ -1762,11 +1632,13 @@ if (isWindows) {
     }
   };
 } else {
-  _setSimultaneousAccepts = function() {
+  _setSimultaneousAccepts = function () {
     if (warnSimultaneousAccepts) {
       process.emitWarning(
         'net._setSimultaneousAccepts() is deprecated and will be removed.',
-        'DeprecationWarning', 'DEP0121');
+        'DeprecationWarning',
+        'DEP0121',
+      );
       warnSimultaneousAccepts = false;
     }
   };

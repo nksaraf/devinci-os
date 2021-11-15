@@ -1,11 +1,11 @@
 import Stats, { FileType } from '../core/stats';
 import { ApiError, ErrorCode } from '../core/api_error';
-import { BaseFile, SynchronousBaseFile } from '../core/file';
+import { SynchronousBaseFile } from '../core/file';
 import { isReadable, isAppendable, isSynchronous, isWriteable } from '../core/file_flag';
 import type { FileFlagString } from '../core/file_flag';
 import type { CallbackOneArg, CallbackTwoArgs } from '../core/file_system';
 import type { Process } from 'os/kernel/kernel/proc';
-import { emptyBuffer } from '../core/util';
+import { Buffer } from 'buffer';
 // import { emptyBuffer } from '../core/util';
 
 /**

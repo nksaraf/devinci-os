@@ -2,7 +2,7 @@
 /// <reference path="../../types/env.ts" />
 {
   // stack trace manipulation
-  type StackFrame = { func?: string, file: string, line: number, column: number };
+  type StackFrame = { func?: string; file: string; line: number; column: number };
   type StackTrace = {};
   const getStackTrace = () => new Error().stack;
 
@@ -10,7 +10,9 @@
   let env: Environment;
   const fscache: { [name: string]: any } = {};
 
-  const errAny = (e: any): never => { throw e; };
+  const errAny = (e: any): never => {
+    throw e;
+  };
 
   const err = (message: string, code?: string): never => {
     const e = new Error(message);
@@ -20,9 +22,9 @@
 
   const errNotImpl = (name: string): never => {
     console.error(`${name} not implemented`);
-    err("not implemented");
-    throw "not implemented";
-  }
+    err('not implemented');
+    throw 'not implemented';
+  };
 
   // rescue required browser/worker-specific globals
   const URL = selfAny.URL;
@@ -41,16 +43,17 @@
   const console = selfAny.console;
 
   const writeBack = (absolutePath: string, content: ByteBuffer | null | undefined) => {
-    postMessage({ f: "WRITE", x: { path: absolutePath, content: content } });
-  }
+    postMessage({ f: 'WRITE', x: { path: absolutePath, content: content } });
+  };
 
   const isDirIndicator = (absolutePath: string) => `<title>Index of ${absolutePath}`;
 
-  const isDir = (absolutePath: string, buffer: ByteBuffer | undefined): boolean => !!buffer && arr2str(buffer).includes(isDirIndicator(absolutePath));
+  const isDir = (absolutePath: string, buffer: ByteBuffer | undefined): boolean =>
+    !!buffer && arr2str(buffer).includes(isDirIndicator(absolutePath));
 
   const rawReadHttpServer = (absolutePath: string): ByteBuffer | undefined => {
     const request = new XMLHttpRequest();
-    request.responseType = "arraybuffer";
+    request.responseType = 'arraybuffer';
     request.open('GET', absolutePath, false);
     request.send(null);
     if (request.status === 200) {
@@ -59,14 +62,15 @@
     }
     return undefined;
   };
-  const throwENOENT = (absolutePath: string) => err(`ENOENT: no such file or directory, scandir '${absolutePath}'`, "ENOENT");
-  const throwENOTDIR = (absolutePath: string) => err(`ENOTDIR: not a directory, scandir '${absolutePath}'`, "ENOTDIR");
+  const throwENOENT = (absolutePath: string) =>
+    err(`ENOENT: no such file or directory, scandir '${absolutePath}'`, 'ENOENT');
+  const throwENOTDIR = (absolutePath: string) =>
+    err(`ENOTDIR: not a directory, scandir '${absolutePath}'`, 'ENOTDIR');
 
   const readFileSync = (absolutePath: string): ByteBuffer => {
     const data = fscache[absolutePath];
     if (data !== undefined) {
-      if (data === null)
-        return throwENOENT(absolutePath);
+      if (data === null) return throwENOENT(absolutePath);
       return data.slice(); // Return a mutable copy.
     }
 
@@ -74,62 +78,63 @@
     {
       if (absolutePath in env.fs)
         return env.fs[absolutePath] === null
-          ? err("TODO: correct message")
-          : (env.fs[absolutePath] === undefined
-            ? throwENOENT(absolutePath)
-            : env.fs[absolutePath] as any);
+          ? err('TODO: correct message')
+          : env.fs[absolutePath] === undefined
+          ? throwENOENT(absolutePath)
+          : (env.fs[absolutePath] as any);
     }
 
     // - try server
-    if (!("__NOHTTP" in env.fs)) {
+    if (!('__NOHTTP' in env.fs)) {
       const result = rawReadHttpServer(absolutePath);
       if (!result) {
         fscache[absolutePath] = null;
         return throwENOENT(absolutePath);
       }
-      if (isDir(absolutePath, result)) err("TODO: correct message");
+      if (isDir(absolutePath, result)) err('TODO: correct message');
       fscache[absolutePath] = result;
-      return env.fs[absolutePath] = result;
+      return (env.fs[absolutePath] = result);
     }
 
     // - fail
     fscache[absolutePath] = null;
     return throwENOENT(absolutePath);
-  }
+  };
 
   const readDirSync = (absolutePath: string): string[] => {
     const data = fscache[absolutePath];
     if (data !== undefined) {
-      if (data === null)
-        throwENOENT(absolutePath);
+      if (data === null) throwENOENT(absolutePath);
       return data;
     }
 
     // evidence for file-ness?
-    if (absolutePath in env.fs && env.fs[absolutePath] !== null && env.fs[absolutePath] !== undefined)
+    if (
+      absolutePath in env.fs &&
+      env.fs[absolutePath] !== null &&
+      env.fs[absolutePath] !== undefined
+    )
       throwENOTDIR(absolutePath);
-    const envFsExists = Object.keys(env.fs).some(x => x.startsWith(absolutePath));
+    const envFsExists = Object.keys(env.fs).some((x) => x.startsWith(absolutePath));
     // known files?
     let files = Object.keys(env.fs)
-      .filter(x => x.startsWith(absolutePath + '/'))
-      .map(x => x.slice(absolutePath.length + 1))
-      .filter(x => !x.includes('/'));
+      .filter((x) => x.startsWith(absolutePath + '/'))
+      .map((x) => x.slice(absolutePath.length + 1))
+      .filter((x) => !x.includes('/'));
 
     // - try server
-    if (!("__NOHTTP" in env.fs)) {
+    if (!('__NOHTTP' in env.fs)) {
       const result = rawReadHttpServer(absolutePath);
       if (result !== undefined) {
-        if (!isDir(absolutePath, result))
-          throwENOTDIR(absolutePath);
+        if (!isDir(absolutePath, result)) throwENOTDIR(absolutePath);
         // add files
         const raw = arr2str(result);
         let matches = raw.match(/>[^<>]+<\/a><\/td>/g) || [];
-        matches = matches.map(x => x.slice(1, -9));
-        matches = matches.map(x => x.endsWith('/') ? x.slice(0, -1) : x);
-        matches = matches.filter(x => x !== "..");
+        matches = matches.map((x) => x.slice(1, -9));
+        matches = matches.map((x) => (x.endsWith('/') ? x.slice(0, -1) : x));
+        matches = matches.filter((x) => x !== '..');
         files.push(...matches);
-      }
-      else if (!envFsExists) {
+      } else if (!envFsExists) {
         fscache[absolutePath] = null;
         throwENOENT(absolutePath);
       }
@@ -140,7 +145,7 @@
     files = files.filter((f, i) => i === 0 || f !== files[i - 1]);
     fscache[absolutePath] = files;
     return files;
-  }
+  };
 
   const existsFolderSync = (absolutePath: string): boolean => {
     try {
@@ -148,7 +153,7 @@
     } catch {
       return false;
     }
-  }
+  };
 
   const existsSync = (absolutePath: string): boolean => {
     try {
@@ -177,13 +182,13 @@
       }
       return parts;
     }
-    path = normalizeArray(path.split('/').filter(p => !!p)).join('/');
+    path = normalizeArray(path.split('/').filter((p) => !!p)).join('/');
     return '/' + path;
   };
 
   // ENTRY POINT
   selfAny.onmessage = function (msg: MessageEvent) {
-    if (msg.data.type !== "start") return;
+    if (msg.data.type !== 'start') return;
     env = msg.data.env;
 
     // BOOT
@@ -292,44 +297,51 @@
       'internal/streams/lazy_transform',
       'internal/streams/BufferList',
       'internal/streams/legacy',
-      'internal/streams/destroy'
+      'internal/streams/destroy',
     ];
     const natives: { [name: string]: string } = {};
     for (const nativesKey of nativesKeys)
-      natives[nativesKey] = arr2str(readFileSync(`/node/${nativesKey}.js`) || err(`missing native '${nativesKey}'`));
-    natives["config"] = '\n{"target_defaults":{"cflags":[],"default_configuration":"Release","defines":[],"include_dirs":[],"libraries":[]},"variables":{"asan":0,"coverage":false,"debug_devtools":"node","force_dynamic_crt":0,"host_arch":"x64","icu_data_file":"icudt59l.dat","icu_data_in":"..\\\\..\\\\deps/icu-small\\\\source/data/in\\\\icudt59l.dat","icu_endianness":"l","icu_gyp_path":"tools/icu/icu-generic.gyp","icu_locales":"en,root","icu_path":"deps/icu-small","icu_small":true,"icu_ver_major":"59","node_byteorder":"little","node_enable_d8":false,"node_enable_v8_vtunejit":false,"node_install_npm":true,"node_module_version":57,"node_no_browser_globals":false,"node_prefix":"/usr/local","node_release_urlbase":"https://nodejs.org/download/release/","node_shared":false,"node_shared_cares":false,"node_shared_http_parser":false,"node_shared_libuv":false,"node_shared_openssl":false,"node_shared_zlib":false,"node_tag":"","node_use_bundled_v8":true,"node_use_dtrace":false,"node_use_etw":true,"node_use_lttng":false,"node_use_openssl":true,"node_use_perfctr":true,"node_use_v8_platform":true,"node_without_node_options":false,"openssl_fips":"","openssl_no_asm":0,"shlib_suffix":"so.57","target_arch":"x64","v8_enable_gdbjit":0,"v8_enable_i18n_support":1,"v8_enable_inspector":1,"v8_no_strict_aliasing":1,"v8_optimized_debug":0,"v8_promise_internal_field_count":1,"v8_random_seed":0,"v8_use_snapshot":true,"want_separate_host_toolset":0,"want_separate_host_toolset_mkpeephole":0}}'
-      .replace(/"/g, `'`);
+      natives[nativesKey] = arr2str(
+        readFileSync(`/node/${nativesKey}.js`) || err(`missing native '${nativesKey}'`),
+      );
+    natives['config'] =
+      '\n{"target_defaults":{"cflags":[],"default_configuration":"Release","defines":[],"include_dirs":[],"libraries":[]},"variables":{"asan":0,"coverage":false,"debug_devtools":"node","force_dynamic_crt":0,"host_arch":"x64","icu_data_file":"icudt59l.dat","icu_data_in":"..\\\\..\\\\deps/icu-small\\\\source/data/in\\\\icudt59l.dat","icu_endianness":"l","icu_gyp_path":"tools/icu/icu-generic.gyp","icu_locales":"en,root","icu_path":"deps/icu-small","icu_small":true,"icu_ver_major":"59","node_byteorder":"little","node_enable_d8":false,"node_enable_v8_vtunejit":false,"node_install_npm":true,"node_module_version":57,"node_no_browser_globals":false,"node_prefix":"/usr/local","node_release_urlbase":"https://nodejs.org/download/release/","node_shared":false,"node_shared_cares":false,"node_shared_http_parser":false,"node_shared_libuv":false,"node_shared_openssl":false,"node_shared_zlib":false,"node_tag":"","node_use_bundled_v8":true,"node_use_dtrace":false,"node_use_etw":true,"node_use_lttng":false,"node_use_openssl":true,"node_use_perfctr":true,"node_use_v8_platform":true,"node_without_node_options":false,"openssl_fips":"","openssl_no_asm":0,"shlib_suffix":"so.57","target_arch":"x64","v8_enable_gdbjit":0,"v8_enable_i18n_support":1,"v8_enable_inspector":1,"v8_no_strict_aliasing":1,"v8_optimized_debug":0,"v8_promise_internal_field_count":1,"v8_random_seed":0,"v8_use_snapshot":true,"want_separate_host_toolset":0,"want_separate_host_toolset_mkpeephole":0}}'.replace(
+        /"/g,
+        `'`,
+      );
     //env.fs["__NOHTTP"] = null;
 
     const newContext = (target: any = {}) =>
       new Proxy(target, {
         has: () => true,
         get: (_, k) => {
-          if (k in target)
-            return target[k];
-          if (typeof k === "string" && /^[_a-zA-Z]+$/.test(k)) {
+          if (k in target) return target[k];
+          if (typeof k === 'string' && /^[_a-zA-Z]+$/.test(k)) {
             try {
               return eval(k);
             } catch (e) {
-              if (e instanceof ReferenceError)
-                return undefined; // TODO: this is a workaround for `typeof ...` - would throw ReferenceError otherwise! :(
+              if (e instanceof ReferenceError) return undefined; // TODO: this is a workaround for `typeof ...` - would throw ReferenceError otherwise! :(
               throw e;
             }
           }
           return eval(k as string);
-        }
+        },
       });
     const theContext = newContext({});
 
     class ContextifyScript {
-      public constructor(private code: string, private options: { displayErrors: boolean, filename: string, lineOffset: number }) {
-      }
+      public constructor(
+        private code: string,
+        private options: { displayErrors: boolean; filename: string; lineOffset: number },
+      ) {}
 
       public runInThisContext(): any {
         // try {
 
         // sinful code
-        return eval("(() => { with (theContext) { return eval(this.code + `\\n//# sourceURL=${this.options.filename}`); } })()");
+        return eval(
+          '(() => { with (theContext) { return eval(this.code + `\\n//# sourceURL=${this.options.filename}`); } })()',
+        );
 
         // } catch (e) {
         //   debugger;
@@ -338,9 +350,7 @@
     }
 
     class ChannelWrap {
-      public constructor() {
-
-      }
+      public constructor() {}
     }
 
     class TTY {
@@ -360,14 +370,14 @@
             // }
           };
           selfAny.onmessage = (msg: MessageEvent) => {
-            if (msg.data.type !== "stdin") return;
+            if (msg.data.type !== 'stdin') return;
             // onChar(msg.data.ch);
-            (this as any).owner.emit("keypress", msg.data.ch, msg.data.key);
+            (this as any).owner.emit('keypress', msg.data.ch, msg.data.key);
           };
         }
       }
 
-      public onread(nread: number, buffer: Buffer): void { };
+      public onread(nread: number, buffer: Buffer): void {}
       public reading: boolean = false;
 
       public getWindowSize(size: [number, number]): any /*error*/ {
@@ -375,37 +385,37 @@
         size[1] = 30; // rows
       }
 
-      public readStart(): any /*error?*/ {
+      public readStart(): any /*error?*/ {}
 
+      public readStop(): any /*no clue*/ {}
+
+      public setBlocking(blocking: boolean): void {}
+
+      public setRawMode(rawMode: boolean): void {}
+
+      public writeAsciiString(req: any, data: any) {
+        errNotImpl('writeAsciiString');
       }
 
-      public readStop(): any /*no clue*/ {
-
+      public writeBuffer(req: any, data: any) {
+        errNotImpl('writeBuffer');
       }
 
-      public setBlocking(blocking: boolean): void {
-
+      public writeLatin1String(req: any, data: any) {
+        errNotImpl('writeLatin1String');
       }
 
-      public setRawMode(rawMode: boolean): void {
-
+      public writeUcs2String(req: any, data: any) {
+        errNotImpl('writeUcs2String');
       }
-
-      public writeAsciiString(req: any, data: any) { errNotImpl('writeAsciiString'); }
-
-      public writeBuffer(req: any, data: any) { errNotImpl('writeBuffer'); }
-
-      public writeLatin1String(req: any, data: any) { errNotImpl('writeLatin1String'); }
-
-      public writeUcs2String(req: any, data: any) { errNotImpl('writeUcs2String'); }
 
       public writeUtf8String(req: any, data: string) {
         switch (this._fd) {
           case 1: // stdout
-            postMessage({ f: "stdout", x: data });
+            postMessage({ f: 'stdout', x: data });
             break;
           case 2: // stderr
-            postMessage({ f: "stderr", x: data });
+            postMessage({ f: 'stderr', x: data });
             break;
         }
       }
@@ -438,7 +448,8 @@
       private __handle: number | null;
 
       public start(delay: number): void {
-        if (this.__handle === null) this.__handle = setInterval(() => this[Timer.kOnTimeout](), delay);
+        if (this.__handle === null)
+          this.__handle = setInterval(() => this[Timer.kOnTimeout](), delay);
       }
 
       public stop(): void {
@@ -454,42 +465,35 @@
       }
     }
 
-    class TCP {
-    }
+    class TCP {}
 
-    class ShutdownWrap {
-    }
+    class ShutdownWrap {}
 
     class WriteWrap {
-      public constructor() {
-      }
+      public constructor() {}
     }
 
-    class PerformanceEntry {
-    }
+    class PerformanceEntry {}
 
     class HTTPParser {
       public static readonly RESPONSE = 0;
-      public reinitialize(_: number): void {
-      }
+      public reinitialize(_: number): void {}
     }
 
     class FSReqWrap {
-      public oncomplete(a: any = null, b: any = null) { }
+      public oncomplete(a: any = null, b: any = null) {}
     }
 
     function faker<T>(name: string, target: any): T {
       return new Proxy(target, {
         has: (_target, key): boolean => {
-          if (key in target)
-            return true;
+          if (key in target) return true;
           console.warn(`${name}.${String(key)} has`);
           return false;
         },
 
         get: (_target, key): any => {
-          if (key in target)
-            return target[key];
+          if (key in target) return target[key];
           console.warn(`${name}.${String(key)} get`);
           return undefined;
         },
@@ -501,11 +505,11 @@
           }
           console.warn(`${name}.${String(key)} set to ${value}`);
           return false;
-        }
+        },
       }) as T;
     }
 
-    let cwd = "/mnt";
+    let cwd = '/mnt';
 
     const statValues = new Float64Array([
       1458881089, // device ID
@@ -522,22 +526,34 @@
       1506412651257.9966, // last modification
       1506412651257.9966, // last iNode modification?
       1484478676521.9932, // creation time?
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+    ]);
 
     let global: NodeJS.Global = self as any;
     global.global = global;
 
     const runMicrotasks = () => {
       const proc: any = process;
-      if (proc._needImmediateCallback)
-        proc._immediateCallback();
+      if (proc._needImmediateCallback) proc._immediateCallback();
       else {
-        if (_handleWrapQueue.length === 0)
-          proc.exit(0);
+        if (_handleWrapQueue.length === 0) proc.exit(0);
       }
     };
 
-    type FileDescriptor = { s: ByteBuffer, isDir: boolean, _path: string };
+    type FileDescriptor = { s: ByteBuffer; isDir: boolean; _path: string };
 
     const nextTick = (cb: () => void): void => (process as any).nextTick(cb);
 
@@ -546,13 +562,13 @@
 
       _getActiveRequests: () => [], // TODO
 
-      _rawDebug: (x: any) => postMessage({ f: "error", x: { f: "_rawDebug", x: x } }),
+      _rawDebug: (x: any) => postMessage({ f: 'error', x: { f: '_rawDebug', x: x } }),
 
       _setupDomainUse: (domain: any, stack: any) => [],
 
-      _setupProcessObject: (pushValueToArrayFunction: Function) => { },
+      _setupProcessObject: (pushValueToArrayFunction: Function) => {},
 
-      _setupPromises: () => { },
+      _setupPromises: () => {},
 
       _setupNextTick: (_tickCallback: any, _runMicrotasks: any) => {
         _runMicrotasks.runMicrotasks = runMicrotasks;
@@ -560,16 +576,16 @@
         return [0, 0];
       },
 
-      argv: ["node", ...msg.data.args],
+      argv: ['node', ...msg.data.args],
 
       binding: (name: string): any => {
         switch (name) {
-          case "async_wrap":
+          case 'async_wrap':
             return faker(name, {
-              clearIdStack: () => { },
-              asyncIdStackSize: () => { },
-              pushAsyncIds: () => { },
-              popAsyncIds: () => { },
+              clearIdStack: () => {},
+              asyncIdStackSize: () => {},
+              pushAsyncIds: () => {},
+              popAsyncIds: () => {},
               async_hook_fields: [0],
               async_uid_fields: [0],
               constants: {
@@ -584,11 +600,11 @@
                 kCurrentAsyncId: 0,
                 kInitTriggerId: 0,
               },
-              setupHooks: () => { }
+              setupHooks: () => {},
             }); // TODO
 
           // TODO: use browserify's Buffer
-          case "buffer":
+          case 'buffer':
             return faker(name, {
               byteLengthUtf8: (s: string) => {
                 return s.length; // TODO
@@ -602,9 +618,8 @@
 
                 proto.hexSlice = function (start: number, end: number) {
                   const slice = this.slice(start, end);
-                  let result = "";
-                  for (let i = 0; i < slice.byteLength; ++i)
-                    result += slice[i].toString(16);
+                  let result = '';
+                  for (let i = 0; i < slice.byteLength; ++i) result += slice[i].toString(16);
                   return result;
                 };
 
@@ -634,16 +649,25 @@
                   }
                   for (var i = 0; i < length; ++i) {
                     const parsed = parseInt(string.substr(i * 2, 2), 16);
-                    if (Number.isNaN(parsed))
-                      return i;
+                    if (Number.isNaN(parsed)) return i;
                     this[offset + i] = parsed;
                   }
                   return i;
                 };
               },
 
-              copy: (source: Buffer, target: Buffer, targetStart: number, sourceStart: number, sourceEnd: number) => {
-                for (let i = sourceStart || 0, j = targetStart || 0; i < (sourceEnd || source.length); i++ , j++)
+              copy: (
+                source: Buffer,
+                target: Buffer,
+                targetStart: number,
+                sourceStart: number,
+                sourceEnd: number,
+              ) => {
+                for (
+                  let i = sourceStart || 0, j = targetStart || 0;
+                  i < (sourceEnd || source.length);
+                  i++, j++
+                )
                   target[j] = source[i];
               },
 
@@ -671,25 +695,36 @@
               */
             }); // TODO
 
-          case "cares_wrap":
+          case 'cares_wrap':
             return faker(name, {
-              GetAddrInfoReqWrap: () => { },
+              GetAddrInfoReqWrap: () => {},
 
-              GetNameInfoReqWrap: () => { },
+              GetNameInfoReqWrap: () => {},
 
-              QueryReqWrap: () => { },
+              QueryReqWrap: () => {},
 
               ChannelWrap: ChannelWrap,
 
-              isIP: () => { },
+              isIP: () => {},
 
-              getaddrinfo: function (addr_info_wrap: { family: number, hostname: string, callback: Function, oncomplete: (result: { 0: number, 1: string[] }) => void }, hostname: string, family: number, hints: number, verbatim: boolean) {
-                addr_info_wrap.oncomplete({ 0: 0, 1: [addr_info_wrap.hostname] })
+              getaddrinfo: function (
+                addr_info_wrap: {
+                  family: number;
+                  hostname: string;
+                  callback: Function;
+                  oncomplete: (result: { 0: number; 1: string[] }) => void;
+                },
+                hostname: string,
+                family: number,
+                hints: number,
+                verbatim: boolean,
+              ) {
+                addr_info_wrap.oncomplete({ 0: 0, 1: [addr_info_wrap.hostname] });
                 return 0; // = success
-              }
-            });// TODO
+              },
+            }); // TODO
 
-          case "config":
+          case 'config':
             return faker(name, {
               hasIntl: false, // CONSIDER:
               exposeHTTP2: false, // CONSIDER:
@@ -699,37 +734,34 @@
               preserveSymlinks: false, // CONSIDER:
             }); // TODO:
 
-          case "constants":
+          case 'constants':
             return constants;
 
-          case "contextify":
+          case 'contextify':
             return faker(name, {
-              ContextifyScript
+              ContextifyScript,
             }); // TODO
 
-          case "crypto":
+          case 'crypto':
             return faker(name, {
               randomBytes: (size: number, cb?: Function) => {
                 var rawBytes = new Uint8Array(size);
                 if (size > 0) crypto.getRandomValues(rawBytes);
                 var bytes = Buffer.from(rawBytes.buffer);
-                if (typeof cb === 'function')
-                  return global.process.nextTick(() => cb(null, bytes));
+                if (typeof cb === 'function') return global.process.nextTick(() => cb(null, bytes));
                 return bytes;
               },
 
               randomFill: (bytes: Buffer, offset: number, size: number, cb?: Function) => {
                 var rawBytes = new Uint8Array(size);
                 if (size > 0) crypto.getRandomValues(rawBytes);
-                for (let i = 0; i < size; ++i)
-                  bytes[offset + i] = rawBytes[i];
-                if (typeof cb === 'function')
-                  return global.process.nextTick(() => cb(null, bytes)); // guess
+                for (let i = 0; i < size; ++i) bytes[offset + i] = rawBytes[i];
+                if (typeof cb === 'function') return global.process.nextTick(() => cb(null, bytes)); // guess
                 return bytes;
               },
             }); // TODO
 
-          case "fs":
+          case 'fs':
             const wrap = <T>(f: () => T, req: FSReqWrap | undefined): T => {
               let result: T | undefined = undefined;
               let err: Error | undefined = undefined;
@@ -744,47 +776,46 @@
             };
 
             /**
- * Wraps a callback function, ensuring it is invoked through setImmediate.
- * @hidden
- */
-function wrapCb<T extends Function>(cb: T, numArgs: number): T {
-  if (typeof cb !== 'function') {
-    throw new Error('Callback must be a function.');
-  }
+             * Wraps a callback function, ensuring it is invoked through setImmediate.
+             * @hidden
+             */
+            function wrapCb<T extends Function>(cb: T, numArgs: number): T {
+              if (typeof cb !== 'function') {
+                throw new Error('Callback must be a function.');
+              }
 
-  const hookedCb = wrapCbHook(cb, numArgs);
+              const hookedCb = wrapCbHook(cb, numArgs);
 
-  // We could use `arguments`, but Function.call/apply is expensive. And we only
-  // need to handle 1-3 arguments
-  switch (numArgs) {
-    case 1:
-      return <any>function (arg1: any) {
-        setImmediate(function () {
-          return hookedCb(arg1);
-        });
-      };
-    case 2:
-      return <any>function (arg1: any, arg2: any) {
-        setImmediate(function () {
-          return hookedCb(arg1, arg2);
-        });
-      };
-    case 3:
-      return <any>function (arg1: any, arg2: any, arg3: any) {
-        setImmediate(function () {
-          return hookedCb(arg1, arg2, arg3);
-        });
-      };
-    default:
-      throw new Error('Invalid invocation of wrapCb.');
-  }
-}
+              // We could use `arguments`, but Function.call/apply is expensive. And we only
+              // need to handle 1-3 arguments
+              switch (numArgs) {
+                case 1:
+                  return <any>function (arg1: any) {
+                    setImmediate(function () {
+                      return hookedCb(arg1);
+                    });
+                  };
+                case 2:
+                  return <any>function (arg1: any, arg2: any) {
+                    setImmediate(function () {
+                      return hookedCb(arg1, arg2);
+                    });
+                  };
+                case 3:
+                  return <any>function (arg1: any, arg2: any, arg3: any) {
+                    setImmediate(function () {
+                      return hookedCb(arg1, arg2, arg3);
+                    });
+                  };
+                default:
+                  throw new Error('Invalid invocation of wrapCb.');
+              }
+            }
 
             const fstat = (fd: FileDescriptor | undefined, req?: FSReqWrap): void => {
               if (fd !== undefined) {
                 statValues[1] =
-                  (0xF000 & ((fd.isDir ? 0b0100 : 0b1000) << 12)) |
-                  (0x0FFF & 0x1B7 /*no clue*/);
+                  (0xf000 & ((fd.isDir ? 0b0100 : 0b1000) << 12)) | (0x0fff & 0x1b7) /*no clue*/;
                 statValues[8] = fd.s.byteLength;
               }
               // TODO
@@ -819,10 +850,10 @@ function wrapCb<T extends Function>(cb: T, numArgs: number): T {
                     let buffer = readFileSync(path);
                     if (buffer && !Array.isArray(buffer))
                       return fstat({ s: buffer, isDir: false, _path: path }, req);
-                  } catch { }
+                  } catch {}
                   if (readDirSync(path))
                     return fstat({ s: new Uint8Array(0), isDir: true, _path: path }, req);
-                  err("TODO: correct error treatment");
+                  err('TODO: correct error treatment');
                 } catch {
                   fstat(undefined, req);
                   return;
@@ -835,18 +866,22 @@ function wrapCb<T extends Function>(cb: T, numArgs: number): T {
                     let buffer = readFileSync(path);
                     if (buffer && !Array.isArray(buffer))
                       return fstat({ s: buffer, isDir: false, _path: path }, req);
-                  }
-                  catch { }
+                  } catch {}
                   if (readDirSync(path))
                     return fstat({ s: new Uint8Array(0), isDir: true, _path: path }, req);
-                  err("TODO: correct error treatment");
+                  err('TODO: correct error treatment');
                 } catch {
                   fstat(undefined, req);
                   return;
                 }
               },
 
-              open: (path: string, flags: number, mode: number, req?: FSReqWrap): FileDescriptor => {
+              open: (
+                path: string,
+                flags: number,
+                mode: number,
+                req?: FSReqWrap,
+              ): FileDescriptor => {
                 return wrap<FileDescriptor>(() => {
                   const { O_RDONLY, O_CREAT, O_TRUNC, O_WRONLY } = constants.fs;
                   if (flags === O_RDONLY)
@@ -861,12 +896,18 @@ function wrapCb<T extends Function>(cb: T, numArgs: number): T {
                 wrap<undefined>(() => undefined, req);
               },
 
-              read: (fd: FileDescriptor, buffer: any, offset: number, length: number, position: number, req?: FSReqWrap): number => {
+              read: (
+                fd: FileDescriptor,
+                buffer: any,
+                offset: number,
+                length: number,
+                position: number,
+                req?: FSReqWrap,
+              ): number => {
                 return wrap<number>(() => {
                   const s = fd.s;
                   const copy = Math.min(s.length, length);
-                  for (let i = 0; i < copy; ++i)
-                    buffer[offset + i] = s[i];
+                  for (let i = 0; i < copy; ++i) buffer[offset + i] = s[i];
                   fd.s = s.slice(copy);
                   return copy;
                 }, req);
@@ -880,8 +921,7 @@ function wrapCb<T extends Function>(cb: T, numArgs: number): T {
                 return wrap<undefined>(() => {
                   try {
                     readDirSync(path);
-                  }
-                  catch {
+                  } catch {
                     env.fs[path] = null;
                     return undefined;
                   }
@@ -894,27 +934,27 @@ function wrapCb<T extends Function>(cb: T, numArgs: number): T {
                 console.warn(`fs.unlink ${path} not implemented`);
               },
 
-              FSReqWrap: FSReqWrap
-            });// TODO
+              FSReqWrap: FSReqWrap,
+            }); // TODO
 
-          case "fs_event_wrap":
-            return faker(name, {});// TODO
+          case 'fs_event_wrap':
+            return faker(name, {}); // TODO
 
-          case "http_parser":
+          case 'http_parser':
             return faker(name, {
               methods: [],
-              HTTPParser: HTTPParser
-            });// TODO
+              HTTPParser: HTTPParser,
+            }); // TODO
 
-          case "inspector":
-            return faker(name, {});// TODO
+          case 'inspector':
+            return faker(name, {}); // TODO
 
-          case "js_stream":
+          case 'js_stream':
             return faker(name, {
-              JSStream: () => ({})
+              JSStream: () => ({}),
             }); // TODO:
 
-          case "os":
+          case 'os':
             return faker(name, {
               getCPUs: () => [], //errNotImpl(),
               getFreeMem: () => errNotImpl('os.getFreeMem'),
@@ -922,21 +962,24 @@ function wrapCb<T extends Function>(cb: T, numArgs: number): T {
               getHostname: () => errNotImpl('os.getHostname'),
               getInterfaceAddresses: () => errNotImpl('os.getInterfaceAddresses'),
               getLoadAvg: () => errNotImpl('os.getLoadAvg'),
-              getOSRelease: () => "4.4.0-66-generic",
-              getOSType: () => "Linux",
+              getOSRelease: () => '4.4.0-66-generic',
+              getOSType: () => 'Linux',
               getTotalMem: () => errNotImpl('os.getTotalMem'),
-              getUserInfo: () => [{
-                uid: 1001,
-                gid: 1001,
-                username: 'runner',
-                homedir: '/home/runner',
-                shell: '/bin/bash'
-              }][0],
+              getUserInfo: () =>
+                [
+                  {
+                    uid: 1001,
+                    gid: 1001,
+                    username: 'runner',
+                    homedir: '/home/runner',
+                    shell: '/bin/bash',
+                  },
+                ][0],
               getUptime: () => errNotImpl('os.getUptime'),
-              isBigEndian: false
-            });// TODO
+              isBigEndian: false,
+            }); // TODO
 
-          case "performance":
+          case 'performance':
             return faker(name, {
               constants: {
                 NODE_PERFORMANCE_ENTRY_TYPE_NODE: 0,
@@ -960,81 +1003,112 @@ function wrapCb<T extends Function>(cb: T, numArgs: number): T {
                 NODE_PERFORMANCE_MILESTONE_PRELOAD_MODULE_LOAD_END: 0,
               },
               // mark: _mark,
-              markMilestone: () => { },
+              markMilestone: () => {},
               // measure: _measure,
               // milestones,
               observerCounts: {},
               PerformanceEntry: PerformanceEntry,
-              setupObservers: () => { },
+              setupObservers: () => {},
               // timeOrigin,
               // timerify,
-            });// TODO
-
-          case "pipe_wrap":
-            return faker(name, {});// TODO
-
-          case "process_wrap":
-            return faker(name, {});// TODO
-
-          case "module_wrap":
-            return faker(name, {});// TODO
-
-          case "natives":
-            return natives;
-
-          case "signal_wrap":
-            return faker(name, {}); // TODO:
-
-          case "spawn_sync":
-            return faker(name, {
-              spawn: () => errNotImpl('spawn')
-            }); // TODO:
-
-          case "stream_wrap":
-            return faker(name, {
-              ShutdownWrap: ShutdownWrap,
-              WriteWrap: WriteWrap
-            });// TODO
-
-          case "tcp_wrap":
-            return faker(name, {
-              TCP: TCP
-            });// TODO
-
-          case "tls_wrap":
-            return faker(name, {
-              TLSWrap: () => { },
-              wrap: (stream: any, context: any, isServer: any) => { }
-            }); // TODO:
-
-          case "timer_wrap":
-            return faker(name, {
-              Timer: Timer
             }); // TODO
 
-          case "tty_wrap":
+          case 'pipe_wrap':
+            return faker(name, {}); // TODO
+
+          case 'process_wrap':
+            return faker(name, {}); // TODO
+
+          case 'module_wrap':
+            return faker(name, {}); // TODO
+
+          case 'natives':
+            return natives;
+
+          case 'signal_wrap':
+            return faker(name, {}); // TODO:
+
+          case 'spawn_sync':
+            return faker(name, {
+              spawn: () => errNotImpl('spawn'),
+            }); // TODO:
+
+          case 'stream_wrap':
+            return faker(name, {
+              ShutdownWrap: ShutdownWrap,
+              WriteWrap: WriteWrap,
+            }); // TODO
+
+          case 'tcp_wrap':
+            return faker(name, {
+              TCP: TCP,
+            }); // TODO
+
+          case 'tls_wrap':
+            return faker(name, {
+              TLSWrap: () => {},
+              wrap: (stream: any, context: any, isServer: any) => {},
+            }); // TODO:
+
+          case 'timer_wrap':
+            return faker(name, {
+              Timer: Timer,
+            }); // TODO
+
+          case 'tty_wrap':
             return faker(name, {
               isTTY: () => true,
-              guessHandleType: (fs: number): string => "TTY",
-              TTY: TTY
-            });// TODO
+              guessHandleType: (fs: number): string => 'TTY',
+              TTY: TTY,
+            }); // TODO
 
-          case "udp_wrap":
-            return faker(name, {});// TODO
+          case 'udp_wrap':
+            return faker(name, {}); // TODO
 
-          case "url":
+          case 'url':
             return faker(name, {
-              parse: () => { },
-              encodeAuth: () => { },
-              toUSVString: () => { },
-              domainToASCII: () => { },
-              domainToUnicode: () => { },
-              setURLConstructor: () => { },
-              URL_FLAGS_NONE: 0, URL_FLAGS_FAILED: 1, URL_FLAGS_CANNOT_BE_BASE: 2, URL_FLAGS_INVALID_PARSE_STATE: 4, URL_FLAGS_TERMINATED: 8, URL_FLAGS_SPECIAL: 16, URL_FLAGS_HAS_USERNAME: 32, URL_FLAGS_HAS_PASSWORD: 64, URL_FLAGS_HAS_HOST: 128, URL_FLAGS_HAS_PATH: 256, URL_FLAGS_HAS_QUERY: 512, URL_FLAGS_HAS_FRAGMENT: 1024,
-              kSchemeStart: 0, kScheme: 1, kNoScheme: 2, kSpecialRelativeOrAuthority: 3, kPathOrAuthority: 4, kRelative: 5, kRelativeSlash: 6, kSpecialAuthoritySlashes: 7, kSpecialAuthorityIgnoreSlashes: 8, kAuthority: 9, kHost: 10, kHostname: 11, kPort: 12, kFile: 13, kFileSlash: 14, kFileHost: 15, kPathStart: 16, kPath: 17, kCannotBeBase: 18, kQuery: 19, kFragment: 20
+              parse: () => {},
+              encodeAuth: () => {},
+              toUSVString: () => {},
+              domainToASCII: () => {},
+              domainToUnicode: () => {},
+              setURLConstructor: () => {},
+              URL_FLAGS_NONE: 0,
+              URL_FLAGS_FAILED: 1,
+              URL_FLAGS_CANNOT_BE_BASE: 2,
+              URL_FLAGS_INVALID_PARSE_STATE: 4,
+              URL_FLAGS_TERMINATED: 8,
+              URL_FLAGS_SPECIAL: 16,
+              URL_FLAGS_HAS_USERNAME: 32,
+              URL_FLAGS_HAS_PASSWORD: 64,
+              URL_FLAGS_HAS_HOST: 128,
+              URL_FLAGS_HAS_PATH: 256,
+              URL_FLAGS_HAS_QUERY: 512,
+              URL_FLAGS_HAS_FRAGMENT: 1024,
+              kSchemeStart: 0,
+              kScheme: 1,
+              kNoScheme: 2,
+              kSpecialRelativeOrAuthority: 3,
+              kPathOrAuthority: 4,
+              kRelative: 5,
+              kRelativeSlash: 6,
+              kSpecialAuthoritySlashes: 7,
+              kSpecialAuthorityIgnoreSlashes: 8,
+              kAuthority: 9,
+              kHost: 10,
+              kHostname: 11,
+              kPort: 12,
+              kFile: 13,
+              kFileSlash: 14,
+              kFileHost: 15,
+              kPathStart: 16,
+              kPath: 17,
+              kCannotBeBase: 18,
+              kQuery: 19,
+              kFragment: 20,
             });
 
-          case "util":
+          case 'util':
             return faker(name, {
               getPromiseDetails: (x: Promise<any>) => x && x.toString(), // TODO
               getProxyDetails: (x: Promise<any>) => x && x.toString(), // TODO
@@ -1061,8 +1135,8 @@ function wrapCb<T extends Function>(cb: T, numArgs: number): T {
               isDate: (x: any) => x instanceof Date,
               // kPending,
               // kRejected,
-              startSigintWatchdog: () => { },
-              stopSigintWatchdog: () => { },
+              startSigintWatchdog: () => {},
+              stopSigintWatchdog: () => {},
               getHiddenValue: (error: any, noIdea: any): boolean => false,
 
               createPromise: () => {
@@ -1073,26 +1147,104 @@ function wrapCb<T extends Function>(cb: T, numArgs: number): T {
               },
               promiseResolve: () => {
                 console.error('util.promiseResolve not implemented');
-              }
+              },
             }); // TODO
 
-          case "uv":
+          case 'uv':
             return faker(name, {
-              errname: function () { return `errname(${arguments})`; },
-              UV_E2BIG: -4093, UV_EACCES: -4092, UV_EADDRINUSE: -4091, UV_EADDRNOTAVAIL: -4090, UV_EAFNOSUPPORT: -4089, UV_EAGAIN: -4088, UV_EAI_ADDRFAMILY: -3000, UV_EAI_AGAIN: -3001, UV_EAI_BADFLAGS: -3002, UV_EAI_BADHINTS: -3013, UV_EAI_CANCELED: -3003, UV_EAI_FAIL: -3004, UV_EAI_FAMILY: -3005, UV_EAI_MEMORY: -3006, UV_EAI_NODATA: -3007, UV_EAI_NONAME: -3008, UV_EAI_OVERFLOW: -3009, UV_EAI_PROTOCOL: -3014, UV_EAI_SERVICE: -3010, UV_EAI_SOCKTYPE: -3011, UV_EALREADY: -4084, UV_EBADF: -4083, UV_EBUSY: -4082, UV_ECANCELED: -4081, UV_ECHARSET: -4080, UV_ECONNABORTED: -4079, UV_ECONNREFUSED: -4078, UV_ECONNRESET: -4077, UV_EDESTADDRREQ: -4076, UV_EEXIST: -4075, UV_EFAULT: -4074, UV_EFBIG: -4036, UV_EHOSTUNREACH: -4073, UV_EINTR: -4072, UV_EINVAL: -4071, UV_EIO: -4070, UV_EISCONN: -4069, UV_EISDIR: -4068, UV_ELOOP: -4067, UV_EMFILE: -4066, UV_EMSGSIZE: -4065, UV_ENAMETOOLONG: -4064, UV_ENETDOWN: -4063, UV_ENETUNREACH: -4062, UV_ENFILE: -4061, UV_ENOBUFS: -4060, UV_ENODEV: -4059, UV_ENOENT: -4058, UV_ENOMEM: -4057, UV_ENONET: -4056, UV_ENOPROTOOPT: -4035, UV_ENOSPC: -4055, UV_ENOSYS: -4054, UV_ENOTCONN: -4053, UV_ENOTDIR: -4052, UV_ENOTEMPTY: -4051, UV_ENOTSOCK: -4050, UV_ENOTSUP: -4049, UV_EPERM: -4048, UV_EPIPE: -4047, UV_EPROTO: -4046, UV_EPROTONOSUPPORT: -4045, UV_EPROTOTYPE: -4044, UV_ERANGE: -4034, UV_EROFS: -4043, UV_ESHUTDOWN: -4042, UV_ESPIPE: -4041, UV_ESRCH: -4040, UV_ETIMEDOUT: -4039, UV_ETXTBSY: -4038, UV_EXDEV: -4037, UV_UNKNOWN: -4094, UV_EOF: -4095, UV_ENXIO: -4033, UV_EMLINK: -4032, UV_EHOSTDOWN: -4031
+              errname: function () {
+                return `errname(${arguments})`;
+              },
+              UV_E2BIG: -4093,
+              UV_EACCES: -4092,
+              UV_EADDRINUSE: -4091,
+              UV_EADDRNOTAVAIL: -4090,
+              UV_EAFNOSUPPORT: -4089,
+              UV_EAGAIN: -4088,
+              UV_EAI_ADDRFAMILY: -3000,
+              UV_EAI_AGAIN: -3001,
+              UV_EAI_BADFLAGS: -3002,
+              UV_EAI_BADHINTS: -3013,
+              UV_EAI_CANCELED: -3003,
+              UV_EAI_FAIL: -3004,
+              UV_EAI_FAMILY: -3005,
+              UV_EAI_MEMORY: -3006,
+              UV_EAI_NODATA: -3007,
+              UV_EAI_NONAME: -3008,
+              UV_EAI_OVERFLOW: -3009,
+              UV_EAI_PROTOCOL: -3014,
+              UV_EAI_SERVICE: -3010,
+              UV_EAI_SOCKTYPE: -3011,
+              UV_EALREADY: -4084,
+              UV_EBADF: -4083,
+              UV_EBUSY: -4082,
+              UV_ECANCELED: -4081,
+              UV_ECHARSET: -4080,
+              UV_ECONNABORTED: -4079,
+              UV_ECONNREFUSED: -4078,
+              UV_ECONNRESET: -4077,
+              UV_EDESTADDRREQ: -4076,
+              UV_EEXIST: -4075,
+              UV_EFAULT: -4074,
+              UV_EFBIG: -4036,
+              UV_EHOSTUNREACH: -4073,
+              UV_EINTR: -4072,
+              UV_EINVAL: -4071,
+              UV_EIO: -4070,
+              UV_EISCONN: -4069,
+              UV_EISDIR: -4068,
+              UV_ELOOP: -4067,
+              UV_EMFILE: -4066,
+              UV_EMSGSIZE: -4065,
+              UV_ENAMETOOLONG: -4064,
+              UV_ENETDOWN: -4063,
+              UV_ENETUNREACH: -4062,
+              UV_ENFILE: -4061,
+              UV_ENOBUFS: -4060,
+              UV_ENODEV: -4059,
+              UV_ENOENT: -4058,
+              UV_ENOMEM: -4057,
+              UV_ENONET: -4056,
+              UV_ENOPROTOOPT: -4035,
+              UV_ENOSPC: -4055,
+              UV_ENOSYS: -4054,
+              UV_ENOTCONN: -4053,
+              UV_ENOTDIR: -4052,
+              UV_ENOTEMPTY: -4051,
+              UV_ENOTSOCK: -4050,
+              UV_ENOTSUP: -4049,
+              UV_EPERM: -4048,
+              UV_EPIPE: -4047,
+              UV_EPROTO: -4046,
+              UV_EPROTONOSUPPORT: -4045,
+              UV_EPROTOTYPE: -4044,
+              UV_ERANGE: -4034,
+              UV_EROFS: -4043,
+              UV_ESHUTDOWN: -4042,
+              UV_ESPIPE: -4041,
+              UV_ESRCH: -4040,
+              UV_ETIMEDOUT: -4039,
+              UV_ETXTBSY: -4038,
+              UV_EXDEV: -4037,
+              UV_UNKNOWN: -4094,
+              UV_EOF: -4095,
+              UV_ENXIO: -4033,
+              UV_EMLINK: -4032,
+              UV_EHOSTDOWN: -4031,
             });
 
-          case "zlib":
-            return faker(name, {});// TODO
+          case 'zlib':
+            return faker(name, {}); // TODO
 
           default:
             console.error(`bind("${name}") not even stubbed`);
-            debugger;
             throw new Error(`missing binding '${name}'`);
         }
       },
 
-      chdir: (target: string) => { cwd = require("path").resolve(cwd, target) },
+      chdir: (target: string) => {
+        cwd = require('path').resolve(cwd, target);
+      },
 
       cwd: () => cwd,
 
@@ -1100,27 +1252,25 @@ function wrapCb<T extends Function>(cb: T, numArgs: number): T {
         // NODE_DEBUG: "repl,timer,stream,esm,module,net"
       },
 
-      execPath: "/bin/node/app.js",
+      execPath: '/bin/node/app.js',
 
       moduleLoadList: [] as string[],
 
       pid: 42,
 
       reallyExit: (exitCode: number) => {
-        postMessage({ f: "EXIT", x: exitCode });
-        debugger;
-        while (true)
-          ; // TODO smarter spin wait? maybe some sync-IO stuff?
+        postMessage({ f: 'EXIT', x: exitCode });
+        while (true); // TODO smarter spin wait? maybe some sync-IO stuff?
         // don't allow any further execution (not caller, but also no timers etc.)
       },
 
       release: {
-        name: "node-box"
+        name: 'node-box',
       },
 
       umask: () => 0,
 
-      version: "v8.0.0",
+      version: 'v8.0.0',
 
       versions: {
         http_parser: '2.7.0',
@@ -1134,20 +1284,28 @@ function wrapCb<T extends Function>(cb: T, numArgs: number): T {
         icu: '59.1',
         unicode: '9.0',
         cldr: '31.0.1',
-        tz: '2017b'
-      }
+        tz: '2017b',
+      },
     };
 
     Object.setPrototypeOf(process, {});
 
-    const bootstrapper = new ContextifyScript(natives["internal/bootstrap_node"], { displayErrors: true, filename: "internal/bootstrap_node", lineOffset: 0 });
+    const bootstrapper = new ContextifyScript(natives['internal/bootstrap_node'], {
+      displayErrors: true,
+      filename: 'internal/bootstrap_node',
+      lineOffset: 0,
+    });
     const bootstrap = bootstrapper.runInThisContext();
     try {
       bootstrap(process);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  selfAny.onerror = function (ev: any) { postMessage({ f: "error", x: ev }); };
+  selfAny.onerror = function (ev: any) {
+    postMessage({ f: 'error', x: ev });
+  };
 }
 
 const constants = {
@@ -1232,7 +1390,7 @@ const constants = {
       ETIMEDOUT: 60,
       ETXTBSY: 26,
       EWOULDBLOCK: 35,
-      EXDEV: 18
+      EXDEV: 18,
     },
     signals: {
       SIGHUP: 1,
@@ -1265,8 +1423,8 @@ const constants = {
       SIGWINCH: 28,
       SIGIO: 23,
       SIGINFO: 29,
-      SIGSYS: 12
-    }
+      SIGSYS: 12,
+    },
   },
   fs: {
     O_RDONLY: 0,
@@ -1308,7 +1466,7 @@ const constants = {
     W_OK: 2,
     X_OK: 1,
     UV_FS_COPYFILE_EXCL: 1,
-    COPYFILE_EXCL: 1
+    COPYFILE_EXCL: 1,
   },
   crypto: {
     OPENSSL_VERSION_NUMBER: 268443903,
@@ -1377,8 +1535,10 @@ const constants = {
     POINT_CONVERSION_COMPRESSED: 2,
     POINT_CONVERSION_UNCOMPRESSED: 4,
     POINT_CONVERSION_HYBRID: 6,
-    defaultCoreCipherList: 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES256-SHA384:ECDHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA256:HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA',
-    defaultCipherList: 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES256-SHA384:ECDHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA256:HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA'
+    defaultCoreCipherList:
+      'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES256-SHA384:ECDHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA256:HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA',
+    defaultCipherList:
+      'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES256-SHA384:ECDHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA256:HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA',
   },
   zlib: {
     Z_NO_FLUSH: 0,
@@ -1424,6 +1584,6 @@ const constants = {
     Z_DEFAULT_MEMLEVEL: 8,
     Z_MIN_LEVEL: -1,
     Z_MAX_LEVEL: 9,
-    Z_DEFAULT_LEVEL: -1
-  }
-}
+    Z_DEFAULT_LEVEL: -1,
+  },
+};

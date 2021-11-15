@@ -171,23 +171,23 @@ export default defineConfig({
     minify: 'terser',
   },
   esbuild: {
-    banner: `let require = {
-			toUrl: (s) => {
-				let meta = import.meta
-				// if (s.length > 0 && typeof global !== 'undefined') {
-				// 	try {
-				// 		console.log(global.require.resolve(s))
-				// 	} catch (e) {
-				// 		console.log('ERROR', e)
-				// 	}
-				// }
-				if (s === 'bootstrap-fork') {
-					return "${basePath}/src/bootstrap-vite-fork.js"
-				}
-				return "${basePath}/" + (s.length === 0 ? 'package.json' : s);
-			},
-			__$__nodeRequire: import.meta.env.SSR ? ((...args) => global.require(...args)) : undefined
-		};`,
+    // banner: `let require = {
+    // 	toUrl: (s) => {
+    // 		let meta = import.meta
+    // 		// if (s.length > 0 && typeof global !== 'undefined') {
+    // 		// 	try {
+    // 		// 		console.log(global.require.resolve(s))
+    // 		// 	} catch (e) {
+    // 		// 		console.log('ERROR', e)
+    // 		// 	}
+    // 		// }
+    // 		if (s === 'bootstrap-fork') {
+    // 			return "${basePath}/src/bootstrap-vite-fork.js"
+    // 		}
+    // 		return "${basePath}/" + (s.length === 0 ? 'package.json' : s);
+    // 	},
+    // 	__$__nodeRequire: import.meta.env.SSR ? ((...args) => global.require(...args)) : undefined
+    // };`,
   },
   optimizeDeps: {
     include: ['./node_modules/readable-stream/readable-browser.js'],

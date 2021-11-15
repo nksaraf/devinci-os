@@ -9,6 +9,7 @@ import {
 } from './file_flag';
 import * as path from 'path';
 import { fail } from './util';
+import { Buffer } from 'buffer';
 // import wasmUrl from 'asc:./fs.asm';
 
 // WebAssembly.instantiateStreaming(fetch(wasmUrl), {}).then(({ instance }) =>
@@ -682,7 +683,7 @@ export class BaseFileSystem {
   }
 
   public truncate(p: string, len: number, cb: CallbackOneArg): void {
-    this.open(p, 'r+', 0x1a4, function (er: ApiError, fd?: File) {
+    this.open(p, constants.fs.O_RDWR, 0x1a4, function (er: ApiError, fd?: File) {
       if (er) {
         return cb(er);
       }
@@ -695,7 +696,7 @@ export class BaseFileSystem {
   }
 
   public truncateSync(p: string, len: number): void {
-    const fd = this.openSync(p, 'r+', 0x1a4);
+    const fd = this.openSync(p, constants.fs.O_RDWR, 0x1a4);
     // Need to safely close FD, regardless of whether or not truncate succeeds.
     try {
       fd.truncateSync(len);

@@ -1,154 +1,143 @@
 import type MountableFileSystem from 'os/kernel/fs/backend/MountableFileSystem';
 import type PreloadFile from 'os/kernel/fs/generic/preload_file';
 import type { Kernel } from 'os/kernel/kernel';
-import { constants } from '../../kernel/constants';
-
-const wrap = <T>(f: () => T, req: undefined): T => {
-  let result: T | undefined = undefined;
-  let err: Error | undefined = undefined;
-  try {
-    result = f();
-  } catch (e) {
-    err = e;
-  }
-  // if (req) nextTick(() => req.oncomplete(err, result));
-  // else if (err) throw err;
-  return result as any;
-};
-
-class FileHandle {
-  file: PreloadFile<MountableFileSystem>;
-  fd: number;
-  super(file) {
-    this.file = file;
-    this.fd = InternalFS.getFdForFile(file);
-  }
-  getAsyncId() {
-    return this.fd;
-  }
-}
-
-class FSReqCallback<ResultType = unknown> {
-  constructor(bigint?: boolean) {}
-  oncomplete: ((error: Error) => void) | ((error: null, result: ResultType) => void);
-  context: ReadFileContext;
-  complete(e: Error, r?: ResultType) {
-    if (e) {
-      (this.oncomplete as (error: Error) => void)(e);
-    } else {
-      this.oncomplete(null, r);
-    }
-  }
-}
-
-function asyncify(fn, req, ctx, ...args) {
-  if (req instanceof FSReqCallback) {
+import { Buffer } from 'buffer';
+export const fsBinding = (kernel: Kernel) => {
+  const wrap = <T>(f: () => T, req: undefined): T => {
+    let result: T | undefined = undefined;
+    let err: Error | undefined = undefined;
     try {
-      req.complete(null, fn(...args));
+      result = f();
     } catch (e) {
-      req.complete(e);
+      err = e;
     }
-  } else if (req === InternalFS.kUsePromises) {
-    return new Promise((resolve, reject) => {
-      try {
-        resolve(fn(...args));
-      } catch (err) {
-        reject(err);
+    // if (req) nextTick(() => req.oncomplete(err, result));
+    // else if (err) throw err;
+    return result as any;
+  };
+
+  // class FileHandle {
+  //   file: PreloadFile<MountableFileSystem>;
+  //   fd: number;
+  //   super(file) {
+  //     this.file = file;
+  //     this.fd = getFdForFile(file);
+  //   }
+  //   getAsyncId() {
+  //     return this.fd;
+  //   }
+  // }
+
+  class FSReqCallback<ResultType = unknown> {
+    constructor(bigint?: boolean) {}
+    oncomplete: ((error: Error) => void) | ((error: null, result: ResultType) => void);
+    context: ReadFileContext;
+    complete(e: Error, r?: ResultType) {
+      if (e) {
+        (this.oncomplete as (error: Error) => void)(e);
+      } else {
+        this.oncomplete(null, r);
       }
-    });
-  } else {
+    }
+  }
+
+  function asyncify(fn, req, ctx, ...args) {
+    if (req instanceof FSReqCallback) {
+      try {
+        req.complete(null, fn(...args));
+      } catch (e) {
+        req.complete(e);
+      }
+    } else if (req === kUsePromises) {
+      return new Promise((resolve, reject) => {
+        try {
+          resolve(fn(...args));
+        } catch (err) {
+          reject(err);
+        }
+      });
+    } else {
+      return fn(...args);
+    }
     return fn(...args);
   }
-  return fn(...args);
-}
 
-export class InternalFS {
-  static FSReqCallback = FSReqCallback;
-  static kernel: Kernel;
+  const kUsePromises: unique symbol = Symbol('usePromises');
 
-  static readonly kUsePromises: unique symbol = Symbol('usePromises');
-
-  private static _open(
-    path: StringOrBuffer,
-    flags: number,
-    mode: number,
-  ): number | Promise<number> {
+  function _open(path: StringOrBuffer, flags: number, mode: number): number | Promise<number> {
     console.log(arguments);
-    let file = InternalFS.kernel.fs.openSync(
-      path as string,
-      {
-        [constants.fs.O_RDONLY]: 'r' as const,
-        [constants.fs.O_RDWR]: 'r+' as const,
-      }[flags],
-      mode,
-    ) as PreloadFile<MountableFileSystem>;
+    let file = kernel.fs.openSync(path as string, flags, mode) as PreloadFile<MountableFileSystem>;
 
-    return InternalFS.getFdForFile(file);
+    return kernel.process.addFile(file);
   }
 
-  static open(
+  function open(
     path: StringOrBuffer,
     flags: number,
     mode: number,
-    req?: FSReqCallback<number> | typeof InternalFS.kUsePromises,
+    req?: FSReqCallback<number> | typeof kUsePromises,
     ctx?: FSSyncContext,
   ): number | Promise<number> {
-    return asyncify(InternalFS._open, req, ctx, path, flags, mode);
+    return asyncify(_open, req, ctx, path, flags, mode);
   }
 
-  static openFileHandle(
+  function openFileHandle(
     path: StringOrBuffer,
     flags: number,
     mode: number,
-    req?: FSReqCallback<number> | typeof InternalFS.kUsePromises,
+    req?: FSReqCallback<number> | typeof kUsePromises,
     ctx?: FSSyncContext,
   ): number | Promise<number> {
-    return asyncify(InternalFS._open, req, ctx, path, flags, mode);
+    return asyncify(_open, req, ctx, path, flags, mode);
   }
 
-  private static _read(
+  function _read(
     fd: number,
     buffer: Uint8Array,
     offset: number,
     length: number,
     position: number,
   ): number {
-    console.log(arguments);
-    let file = InternalFS.kernel.get(fd);
-    let buf = Buffer.from(buffer);
-    let bytes = file.readSync(buf, 0, length, position);
-    buf.copy(buffer, 0, 0, bytes);
+    let file = kernel.process.files[fd];
+    const buf = Buffer.allocUnsafe(length);
+    let bytes = file.readSync(buf, offset, length, position);
+
+    for (let i = 0; i < length; i++) {
+      // 97 is the decimal ASCII value for 'a'.
+      buffer[i] = buf[i];
+    }
     return bytes;
   }
 
-  static read(
+  function read(
     fd: number,
     buffer: Uint8Array,
     offset: number,
     length: number,
     position: number,
-    req?: FSReqCallback<number> | typeof InternalFS.kUsePromises,
+    req?: FSReqCallback<number> | typeof kUsePromises,
     ctx?: FSSyncContext,
   ) {
-    asyncify(InternalFS._read, req, ctx, fd, buffer, offset, length, position);
+    return asyncify(_read, req, ctx, fd, buffer, offset, length, position);
   }
 
-  static _close(fd: number): void {
-    if (InternalFS.fdMap.has(fd)) {
-      InternalFS.fdMap.delete(fd);
+  function _close(fd: number): void {
+    let file = kernel.process.files[fd];
+    if (file) {
+      delete kernel.process.files[fd];
+      file.closeSync();
     }
   }
 
-  static close(
+  function close(
     fd: number,
-    req?: FSReqCallback<void> | typeof InternalFS.kUsePromises,
+    req?: FSReqCallback<void> | typeof kUsePromises,
     ctx?: FSSyncContext,
   ): void {
-    asyncify(InternalFS._close, req, ctx, fd);
+    asyncify(_close, req, ctx, fd);
   }
 
-
-  static statValues = new Float64Array([
+  const statValues = new Float64Array([
     1458881089, // device ID
     33207, // mode | protection
     1, // # hard links
@@ -179,48 +168,59 @@ export class InternalFS {
     0,
   ]);
 
-  static _fstat(fd: number, useBigInt: false): Float64Array {
-    if (fd !== undefined && InternalFS.fdMap.has(fd)) {
-      let file = InternalFS.fdMap.get(fd);
+  function _fstat(fd: number, useBigInt: false): Float64Array {
+    if (fd !== undefined && kernel.process.files[fd]) {
+      let file = kernel.process.files[fd];
       console.log(file);
-      InternalFS.statValues[1] =
+      statValues[1] =
         (0xf000 & ((file.getStats().isDirectory() ? 0b0100 : 0b1000) << 12)) |
         (0x0fff & 0x1b7) /*no clue*/;
-      InternalFS.statValues[8] = file.getStats().size;
+      statValues[8] = file.getStats().size;
 
-      return InternalFS.statValues;
+      return statValues;
     }
 
-    return InternalFS.statValues;
+    return statValues;
   }
 
-  static fstat(
+  function fstat(
     fd: number,
     useBigInt: false,
-    req?: FSReqCallback<Float64Array> | typeof InternalFS.kUsePromises,
+    req?: FSReqCallback<Float64Array> | typeof kUsePromises,
     ctx?: FSSyncContext,
   ): Float64Array {
-    return asyncify(InternalFS._fstat, req, ctx, fd, useBigInt);
+    return asyncify(_fstat, req, ctx, fd, useBigInt);
   }
 
-  static _lstat(path: string, useBigInt: false): Float64Array {
-    let stats = Kernel.fs.statSync(path, true);
-    InternalFS.statValues[1] =
+  function _lstat(path: string, useBigInt: false): Float64Array {
+    let stats = kernel.fs.statSync(path, true);
+    statValues[1] =
       (0xf000 & ((stats.isDirectory() ? 0b0100 : 0b1000) << 12)) | (0x0fff & 0x1b7) /*no clue*/;
-    InternalFS.statValues[8] = stats.size;
+    statValues[8] = stats.size;
 
-    return InternalFS.statValues;
+    return statValues;
   }
 
-  static lstat(
+  function lstat(
     path: string,
     useBigInt: false,
-    req?: FSReqCallback<Float64Array> | typeof InternalFS.kUsePromises,
+    req?: FSReqCallback<Float64Array> | typeof kUsePromises,
     ctx?: FSSyncContext,
   ): Float64Array | Promise<Float64Array> {
-    return asyncify(InternalFS._lstat, req, ctx, path, useBigInt);
+    return asyncify(_lstat, req, ctx, path, useBigInt);
   }
-}
+
+  return {
+    FSReqCallback,
+    open,
+    lstat,
+    fstat,
+    read,
+    // write,
+    close,
+    openFileHandle,
+  };
+};
 
 interface ReadFileContext {
   fd: number | undefined;
@@ -248,4 +248,4 @@ interface FSSyncContext {
 type BufferType = Uint8Array;
 type Stream = object;
 type StringOrBuffer = string | BufferType;
-Float64Array.BYTES_PER_ELEMENT
+Float64Array.BYTES_PER_ELEMENT;

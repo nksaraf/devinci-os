@@ -73,7 +73,7 @@ function processTicksAndRejections() {
       emitBefore(asyncId, tock[trigger_async_id_symbol], tock);
 
       try {
-        const callback = tock.callback;
+  const callback = tock.callback;
         if (tock.args === undefined) {
           callback();
         } else {

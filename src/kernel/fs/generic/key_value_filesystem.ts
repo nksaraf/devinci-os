@@ -8,6 +8,7 @@ import * as path from 'path';
 import Inode from './inode';
 import PreloadFile from './preload_file';
 import { emptyBuffer } from '../core/util';
+import { Buffer } from 'buffer';
 /**
  * @hidden
  */
@@ -634,11 +635,7 @@ export class SyncKeyValueFileSystem extends SynchronousFileSystem {
    * Given the Inode of a directory, retrieves the corresponding directory
    * listing.
    */
-  private getDirListing(
-    tx: SyncKeyValueROTransaction,
-    p: string,
-    inode: Inode,
-  ): DirectoryEntry {
+  private getDirListing(tx: SyncKeyValueROTransaction, p: string, inode: Inode): DirectoryEntry {
     if (!inode.isDirectory()) {
       throw ApiError.ENOTDIR(p);
     }

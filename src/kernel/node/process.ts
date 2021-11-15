@@ -91,7 +91,7 @@ class NextTickQueue {
 export class Process extends EventEmitter implements NodeJS.Process {
   private startTime = Date.now();
 
-  private _cwd: string = '/';
+  private _cwd: string = '/home';
   /**
    * Changes the current working directory.
    *
@@ -150,7 +150,9 @@ export class Process extends EventEmitter implements NodeJS.Process {
     throw new Error('abort');
   }
 
-  public env: { [name: string]: string } = {};
+  public env: { [name: string]: string } = {
+    NODE_DEBUG: '1',
+  };
   public exitCode: number = 0;
   public exit(code: number): never {
     this.exitCode = code;
@@ -260,9 +262,12 @@ export class Process extends EventEmitter implements NodeJS.Process {
       target_arch: 'x32',
       v8_use_snapshot: false,
       v8_no_strict_aliasing: 0,
+      v8_enable_i18n_support: false,
       visibility: '',
     },
   };
+
+  public meta = {};
 
   public kill(pid: number, signal?: string): never {
     this.emit('kill', [pid, signal]);

@@ -47,7 +47,7 @@
 >
   <div ml-auto>
     <FinderGrid
-      path="/@node"
+      path="/"
       flow="column"
       align="right"
       iconSize={56}

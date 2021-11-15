@@ -5,6 +5,7 @@ import type { IFileSystem, CallbackOneArg, FileSystemConstructor } from './file_
 import { ErrorCode, ApiError } from './api_error';
 import levenshtein from './levenshtein';
 import * as path from 'path';
+import { Buffer } from 'buffer';
 
 export function deprecationMessage(print: boolean, fsName: string, opts: any): void {
   if (print) {
@@ -195,11 +196,7 @@ export function bufferValidator(v: object, cb: CallbackOneArg): void {
  * Checks that the given options object is valid for the file system options.
  * @hidden
  */
-export function checkOptions(
-  fsType: FileSystemConstructor,
-  opts: any,
-  cb: CallbackOneArg,
-): void {
+export function checkOptions(fsType: FileSystemConstructor, opts: any, cb: CallbackOneArg): void {
   const optsInfo = fsType.Options;
   const fsName = fsType.Name;
 

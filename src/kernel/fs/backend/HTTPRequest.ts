@@ -16,6 +16,7 @@ import {
 } from '../generic/xhr';
 import { fetchIsAvailable, fetchFileAsync, fetchFileSizeAsync } from '../generic/fetch';
 import { FileIndex, isFileInode, isDirInode } from '../generic/file_index';
+import type { Buffer } from 'buffer';
 
 /**
  * Try to convert the given buffer into a string, and pass it to the callback.
@@ -415,11 +416,11 @@ export default class HTTPRequest extends BaseFileSystem implements IFileSystem {
     const fd = this.openSync(fname, flag, 0x1a4);
     try {
       const fdCast = <NoSyncFile<HTTPRequest>>fd;
-      const fdBuff = <Buffer>fdCast.getBuffer();
+      const fdBuff = fdCast.getBuffer();
       if (encoding === null) {
         return copyingSlice(fdBuff);
       }
-      return fdBuff.toString(encoding);
+      return new TextDecoder(encoding).decode(fdBuff);
     } finally {
       fd.closeSync();
     }
