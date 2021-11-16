@@ -18,6 +18,7 @@
     "@types/node": "^16.11.6",
     "@types/path-browserify": "^1.0.0",
     "@types/tar-stream": "^2.2.2",
+    "@types/wicg-file-system-access": "^2020.9.4",
     "@unocss/preset-icons": "^0.7.7",
     "autoprefixer": "^10.3.6",
     "cross-env": "^7.0.3",

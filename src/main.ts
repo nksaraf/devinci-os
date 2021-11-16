@@ -6,7 +6,6 @@ import type { Kernel } from './kernel/kernel';
 import { KernelFlags } from './kernel/kernel/types';
 import { FileType } from './kernel/fs/core/stats';
 import { NodeHost } from './kernel/node/runtime';
-import { extractContents } from './kernel/kernel/tar';
 
 import calculator from 'os/apps/calculator/calculator';
 import calendar from 'os/apps/calendar/calendar';
@@ -15,10 +14,10 @@ import editor from 'os/apps/editor/editor';
 import terminal from 'os/apps/terminal/terminal';
 import vscode from 'os/apps/vscode/vscode';
 import wallpaper from 'os/apps/wallpaper/wallpaper';
-import { installApp } from './stores/apps.store';
+import { createAppConfig, installApp } from './stores/apps.store';
 import Global from './kernel/global';
-import { runTests } from './runTests';
 import { constants } from './kernel/kernel/constants';
+import { rest, setupWorker } from 'msw';
 
 installApp(finder());
 installApp(calculator());
@@ -27,6 +26,23 @@ installApp(editor());
 installApp(terminal());
 installApp(vscode());
 installApp(wallpaper());
+installApp(
+  createAppConfig({
+    id: 'workflowy',
+    title: 'Workflowy',
+    // window: {
+    //   loadComponent: async () => {
+    //     return (await import('os/apps/workflowy/Workflowy.svelte')).default;
+    //   },
+    // },
+    dock: {
+      icon: '/assets/app-icons/workflowy/256.png',
+      onClick() {
+        window.open('https://workflowy.com/', '_blank');
+      },
+    },
+  }),
+);
 
 export const initKernel = async () => {
   console.log(new ReadableStream());
@@ -54,8 +70,8 @@ export const initKernel = async () => {
   Global.node = node;
   console.timeEnd('unpacking node');
 
-  let net = node.require('net');
-  console.log(new net.Socket());
+  // let net = node.require('net');
+  // console.log(new net.Socket());
 
   console.log(kernel.fs.openSync('/hello.txt', constants.fs.O_RDWR, FileType.FILE));
   // Step 1: Create a server socket
@@ -63,6 +79,40 @@ export const initKernel = async () => {
 
   node.require('child_process').spawnSync('/bin/sh', ['-c', 'echo hello']);
   node.require('os');
+
+  async function* streamAsyncIterable(stream: ReadableStream) {
+    const reader = stream.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          return;
+        }
+        yield value;
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+  // Fetches data from url and calculates response size using the async generator.
+  async function getResponseSize(url) {
+    const response = await fetch(url);
+    // Will hold the size of the response, in bytes.
+    let responseSize = 0;
+
+    // The for-await-of loop. Async iterates over each portion of the response.
+    for await (const chunk of streamAsyncIterable(response.body)) {
+      // Incrementing the total response length.
+      console.log(chunk.length);
+      responseSize += chunk.length;
+    }
+
+    console.log(`Response Size: ${responseSize} bytes`);
+    // expected output: "Response Size: 1071472"
+    return responseSize;
+  }
+
+  await getResponseSize('https://jsonplaceholder.typicode.com/photos');
   // node.setInternalModule('bench-common', {
   //   createBenchmark: () => {
   //     let id = 0;
@@ -78,7 +128,7 @@ export const initKernel = async () => {
   //   },
   // });
 
-  runTests(node);
+  // runTests(node);
 
   // node
   //   .require('net')
@@ -120,30 +170,45 @@ export const initKernel = async () => {
   // }, 500);
   // await process.run();
 
+  server(kernel);
+
+  kernel.net.socket().connect('localhost', 4000, () => {
+    console.log('connected!!!');
+  });
+
+  // const worker = setupWorker(rest.get('/', (req, res, ctx) => {
+  //   return {
+  //     status: 200,
+  //     body: 'Hello World',
+  //   };
+  // })
+
+  // worker.start()
+
   return kernel;
 };
 
 function server(kernel: Kernel) {
-  // const serverSocket = kernel.net.socket();
-  // // Step 2: Bind the socket to a port
-  // kernel.net.bind(serverSocket, 'localhost', 4000);
-  // // Step 3: Start listening for connections
-  // serverSocket.listen(console.log);
-  // serverSocket.accept((err, dataSocket) => {
-  //   console.log('accepted connection as', dataSocket);
-  //   const buf = Buffer.from('     ', 'utf-8');
-  //   dataSocket.read(buf, 0, 8048, -1, () => {
-  //     console.log('got data', buf.toString('utf-8'));
-  //   });
-  // });
+  const serverSocket = kernel.net.socket();
+  // Step 2: Bind the socket to a port
+  kernel.net.bind(serverSocket, 'localhost', 4000);
+  // Step 3: Start listening for connections
+  serverSocket.listen(console.log);
+  serverSocket.accept((err, dataSocket) => {
+    console.log('accepted connection as', dataSocket);
+    const buf = Buffer.from('     ', 'utf-8');
+    dataSocket.read(buf, 0, 8048, -1, () => {
+      console.log('got data', buf.toString('utf-8'));
+    });
+  });
 }
 
 initKernel()
   .then(() => {})
   .finally(() => {
-    // const desktop = new MacOS({
-    //   target: document.getElementById('root'),
-    // });
+    const desktop = new MacOS({
+      target: document.getElementById('root'),
+    });
     // createVSCode(document.getElementById('root'), {});
   });
 

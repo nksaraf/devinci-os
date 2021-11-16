@@ -19,7 +19,12 @@
           title={appConfig.title}
           isOpen={Boolean($openWindows.find(([id, w]) => w.app.id === appConfig.id))}
           onClick={() => {
-            createWindow(appConfig).open();
+            if (appConfig.dock.onClick) {
+              appConfig.dock.onClick();
+            }
+            if (appConfig.window) {
+              createWindow(appConfig).open();
+            }
           }}
         >
           <img

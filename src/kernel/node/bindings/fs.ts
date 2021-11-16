@@ -41,31 +41,38 @@ export const fsBinding = (kernel: Kernel) => {
     }
   }
 
-  function asyncify(fn, req, ctx, ...args) {
-    if (req instanceof FSReqCallback) {
+  async function handlePromise(prom, req) {
+    if (req === kUsePromises) {
+      return prom;
+    } else if (req instanceof FSReqCallback) {
       try {
-        req.complete(null, fn(...args));
+        let value = await prom;
+        req.complete(null, value);
       } catch (e) {
         req.complete(e);
       }
-    } else if (req === kUsePromises) {
-      return new Promise((resolve, reject) => {
+    }
+  }
+
+  function asyncify(fn, req, ctx, ...args) {
+    if (req !== undefined) {
+      let promise = new Promise((resolve, reject) => {
         try {
           resolve(fn(...args));
         } catch (err) {
           reject(err);
         }
       });
+      return handlePromise(promise, req);
     } else {
       return fn(...args);
     }
-    return fn(...args);
   }
 
   const kUsePromises: unique symbol = Symbol('usePromises');
 
   function _open(path: StringOrBuffer, flags: number, mode: number): number | Promise<number> {
-    console.log(arguments);
+    console.log('opening', arguments);
     let file = kernel.fs.openSync(path as string, flags, mode) as PreloadFile<MountableFileSystem>;
 
     return kernel.process.addFile(file);
@@ -100,13 +107,19 @@ export const fsBinding = (kernel: Kernel) => {
   ): number {
     let file = kernel.process.files[fd];
     const buf = Buffer.allocUnsafe(length);
-    let bytes = file.readSync(buf, offset, length, position);
+    debugger;
+    if (file) {
+      let bytes = file.readSync(buf, offset, length, position === -1 ? 0 : position);
 
-    for (let i = 0; i < length; i++) {
-      // 97 is the decimal ASCII value for 'a'.
-      buffer[i] = buf[i];
+      for (let i = 0; i < length; i++) {
+        // 97 is the decimal ASCII value for 'a'.
+        buffer[i] = buf[i];
+      }
+
+      console.log(fd, file, kernel.process.files);
+
+      return bytes;
     }
-    return bytes;
   }
 
   function read(
@@ -124,8 +137,8 @@ export const fsBinding = (kernel: Kernel) => {
   function _close(fd: number): void {
     let file = kernel.process.files[fd];
     if (file) {
+      file.syncSync();
       delete kernel.process.files[fd];
-      file.closeSync();
     }
   }
 
@@ -168,19 +181,11 @@ export const fsBinding = (kernel: Kernel) => {
     0,
   ]);
 
-  function _fstat(fd: number, useBigInt: false): Float64Array {
+  function _fstat(fd: number, useBigInt: false): Uint8Array {
     if (fd !== undefined && kernel.process.files[fd]) {
       let file = kernel.process.files[fd];
-      console.log(file);
-      statValues[1] =
-        (0xf000 & ((file.getStats().isDirectory() ? 0b0100 : 0b1000) << 12)) |
-        (0x0fff & 0x1b7) /*no clue*/;
-      statValues[8] = file.getStats().size;
-
-      return statValues;
+      return file.getStats().toBuffer();
     }
-
-    return statValues;
   }
 
   function fstat(
@@ -210,13 +215,43 @@ export const fsBinding = (kernel: Kernel) => {
     return asyncify(_lstat, req, ctx, path, useBigInt);
   }
 
+  function _mkdir(
+    path: string,
+    mode: number,
+    req?: FSReqCallback<void> | typeof kUsePromises,
+    ctx?: FSSyncContext,
+  ) {}
+
+  function mkdir(
+    path: string,
+    mode: number,
+    req?: FSReqCallback<void> | typeof kUsePromises,
+    ctx?: FSSyncContext,
+  ): void {
+    asyncify(_mkdir, req, ctx, path, mode);
+  }
+
+  function writeBuffer(
+    fd: number,
+    buffer: Uint8Array,
+    offset: number,
+    length: number,
+    position: number,
+    req?: FSReqCallback<number> | typeof kUsePromises,
+    ctx?: FSSyncContext,
+  ): number {
+    return kernel.process.files[fd].writeSync(Buffer.from(buffer), offset, length, position);
+  }
+
   return {
     FSReqCallback,
     open,
     lstat,
     fstat,
     read,
+    mkdir,
     // write,
+    writeBuffer,
     close,
     openFileHandle,
   };

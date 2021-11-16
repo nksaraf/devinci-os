@@ -172,13 +172,13 @@ export interface IFileSystem {
    * @param mode Mode to make the directory using. Can be ignored if
    *   the filesystem doesn't support permissions.
    */
-  mkdir(p: string, mode: number, cb: CallbackOneArg): void;
+  mkdir(p: string, mode: number, options: { recursive: boolean }, cb: CallbackOneArg): void;
   /**
    * **Core**: Synchronous `mkdir`.
    * @param mode Mode to make the directory using. Can be ignored if
    *   the filesystem doesn't support permissions.
    */
-  mkdirSync(p: string, mode: number): void;
+  mkdirSync(p: string, mode: number, options: { recursive: boolean }): void;
   /**
    * **Core**: Asynchronous `readdir`. Reads the contents of a directory.
    *
@@ -558,7 +558,14 @@ export class BaseFileSystem {
       switch (getActionTypeIfNotExists(flag)) {
         case ActionType.CREATE_FILE:
           // Ensure parent exists.
-          const parentStats = this.statSync(path.dirname(p), false);
+          let parentStats;
+          try {
+            parentStats = this.statSync(path.dirname(p), false);
+          } catch (e) {
+            this.mkdirSync(path.dirname(p), 0x644, { recursive: true });
+            parentStats = this.statSync(path.dirname(p), false);
+          }
+
           if (!parentStats.isDirectory()) {
             throw ApiError.ENOTDIR(path.dirname(p));
           }
@@ -608,11 +615,11 @@ export class BaseFileSystem {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
 
-  public mkdir(p: string, mode: number, cb: CallbackOneArg): void {
+  public mkdir(p: string, mode: number, options: { recursive }, cb: CallbackOneArg): void {
     cb(new ApiError(ErrorCode.ENOTSUP));
   }
 
-  public mkdirSync(p: string, mode: number): void {
+  public mkdirSync(p: string, mode: number, options: { recursive }): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
 
@@ -950,9 +957,9 @@ export class SynchronousFileSystem extends BaseFileSystem {
     }
   }
 
-  public mkdir(p: string, mode: number, cb: CallbackOneArg): void {
+  public mkdir(p: string, mode: number, options: { recursive: boolean }, cb: CallbackOneArg): void {
     try {
-      this.mkdirSync(p, mode);
+      this.mkdirSync(p, mode, options);
       cb();
     } catch (e) {
       cb(e);

@@ -511,7 +511,7 @@ export class SyncKeyValueFileSystem extends SynchronousFileSystem {
     }
   }
 
-  public mkdirSync(p: string, mode: number): void {
+  public mkdirSync(p: string, mode: number, options: { recursive: boolean }): void {
     const tx = this.store.beginTransaction('readwrite'),
       data = Buffer.from('{}');
     this.commitNewFile(tx, p, FileType.DIRECTORY, mode, data);
@@ -1127,7 +1127,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
     });
   }
 
-  public mkdir(p: string, mode: number, cb: CallbackOneArg): void {
+  public mkdir(p: string, mode: number, options: { recursive: boolean }, cb: CallbackOneArg): void {
     const tx = this.store.beginTransaction('readwrite'),
       data = Buffer.from('{}');
     this.commitNewFile(tx, p, FileType.DIRECTORY, mode, data, cb);

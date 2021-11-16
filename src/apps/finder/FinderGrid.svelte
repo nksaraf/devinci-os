@@ -1,4 +1,6 @@
 <script lang="ts">
+  import * as path from 'path';
+
   import { onMount } from 'svelte';
   import FinderItem from './FinderItem.svelte';
 
@@ -6,7 +8,7 @@
     cellHeight = 140,
     iconSize = 18,
     onDesktop = false,
-    path = '/home',
+    directory = '/home',
     flow = 'row',
     align = 'right',
     rows = 5,
@@ -16,24 +18,25 @@
 
   let items = [];
 
-  async function readFiles() {
-    items = kernel.fs.readdirSync(path).map((file) => {
-      let stats = kernel.fs.statSync(`${path}/${file}`, false);
+  async function readFiles(directory) {
+    items = kernel.fs.readdirSync(directory).map((file) => {
+      let stats = kernel.fs.statSync(`${directory}/${file}`, false);
       return {
         name: file,
-        path: `${path}/${file}`,
-        type: stats.isDirectory() ? 'folder' : 'file',
-        size: stats.size,
+        path: path.join(directory, file),
+        stats: stats,
       };
     });
   }
 
-  onMount(() => {
-    readFiles();
-    // fs.watch(path, () => {
-    //   readFiles();
-    // });
-  });
+  // onMount(() => {
+  //   readFiles();
+  //   // fs.watch(path, () => {
+  //   //   readFiles();
+  //   // });
+  // });
+
+  $: readFiles(directory);
 
   // onDestroy(() => {
   //   fs.events.off('writeFile', readFiles);

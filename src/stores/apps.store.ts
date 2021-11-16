@@ -7,15 +7,16 @@ export type AppID = string;
 export type AppConfig = {
   id: string;
   title: string;
-  window: WindowConfig | (() => WindowConfig);
+  window?: WindowConfig | (() => WindowConfig);
   dock?: {
     icon?: string;
+    onClick?: () => void;
   };
 };
 
 export const createAppConfig = (
   et: Partial<Omit<AppConfig, 'window'>> & {
-    window: Partial<WindowConfig> | (() => Partial<WindowConfig>);
+    window?: Partial<WindowConfig> | (() => Partial<WindowConfig>);
   },
 ): AppConfig => et as AppConfig;
 

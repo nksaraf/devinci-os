@@ -4,10 +4,8 @@ import { SynchronousBaseFile } from '../core/file';
 import { isReadable, isAppendable, isSynchronous, isWriteable } from '../core/file_flag';
 import type { FileFlagString } from '../core/file_flag';
 import type { CallbackOneArg, CallbackTwoArgs } from '../core/file_system';
-import type { Process } from 'os/kernel/kernel/proc';
 import { Buffer } from 'buffer';
-// import { emptyBuffer } from '../core/util';
-
+import { constants } from '../../kernel/constants';
 /**
  * An implementation of the File interface that operates on a file that is
  * completely in-memory. PreloadFiles are backed by a Buffer.
@@ -26,8 +24,6 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
   protected _flag: FileFlagString;
   protected _dirty: boolean = false;
 
-  // any file that has a class open is a file descriptor, so it has an attached process and id
-  protected process: Process;
   /**
    * Creates a file with the given path and, optionally, the given contents. Note
    * that, if contents is specified, it will be mutated by the file!
@@ -44,7 +40,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
    */
   constructor(
     _path: string = '/dev/null',
-    _flag: FileFlagString = 'r',
+    _flag: FileFlagString = constants.fs.O_RDONLY,
     _stat?: Stats,
     fileType: FileType = FileType.VIRTUAL,
     // contents?: Buffer,
@@ -63,6 +59,15 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
     //   );
     // }
     this._stat = _stat ?? new Stats(fileType, 0);
+  }
+
+  createReadStream() {
+    return new ReadableStream({
+      start(controller) {
+        controller
+        // this.read
+      },
+    });
   }
 
   /**
@@ -145,7 +150,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
   public truncate(len: number, cb: CallbackOneArg): void {
     try {
       this.truncateSync(len);
-      if (isSynchronous(this._flag) && !this.process.kernel.fs!.supportsSynch()) {
+      if (isSynchronous(this._flag)) {
         this.sync(cb);
       }
       cb();
@@ -181,10 +186,11 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
     // const newBuff = Buffer.alloc(len);
     // this._buffer.copy(newBuff, 0, 0, len);
     // this._buffer = newBuff;
-    if (isSynchronous(this._flag) && this.process.kernel.fs!.supportsSynch()) {
+    if (isSynchronous(this._flag)) {
       this.syncSync();
     }
   }
+
   setBufferSync(arg0: Buffer) {
     throw new Error('Method not implemented.');
   }
@@ -432,9 +438,6 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
    * @param [Number] mode
    */
   public chmodSync(mode: number): void {
-    if (!this.process.kernel.fs.supportsProps()) {
-      throw new ApiError(ErrorCode.ENOTSUP);
-    }
     this._dirty = true;
     this._stat.chmod(mode);
     this.syncSync();

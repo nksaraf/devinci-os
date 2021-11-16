@@ -1,14 +1,19 @@
 <script lang="ts">
+  import type Stats from 'os/kernel/fs/core/stats';
+
+  import { getContext } from 'svelte';
+
   import { selection } from '__/stores/fs.store';
   import { createWindow } from '__/stores/window.store';
   import editor from '../editor/editor';
+  import finder from './finder';
 
   export let item: {
-    type: string;
     name: string;
     path: string;
-    isDir: boolean;
+    stats: Stats;
   };
+
   export let onDesktop: boolean = false;
 
   $: selected = $selection.includes(item.path);
@@ -28,6 +33,21 @@
       return [...sel];
     });
   }
+
+  let finderPath = getContext('finder-path') as { setPath(p: string): void };
+
+  function handleOpen() {
+    console.log(finderPath, item.path);
+    if (onDesktop) {
+      createWindow(finder(), {
+        args: {
+          path: item.path,
+        },
+      }).open();
+    } else {
+      finderPath.setPath(item.path);
+    }
+  }
 </script>
 
 <div
@@ -45,6 +65,8 @@
           path: item.path,
         },
       }).open();
+    } else {
+      handleOpen();
     }
   }}
   on:click={(e) => {
@@ -57,7 +79,23 @@
 >
   <div class="finder-icon-container {selected ? 'selected' : ''} {onDesktop ? 'desktop' : ''}">
     <div class="finder-item-icon">
-      <img src="/assets/app-icons/finder/folder256.png" alt={item.path} w-full h-full />
+      {#if item.stats.isDirectory()}
+        <img
+          src="/assets/app-icons/finder/folder256.png"
+          alt={item.path}
+          bg-transparent
+          w-full
+          h-full
+        />
+      {:else}
+        <img
+          src="/assets/app-icons/finder/file512.png"
+          alt={item.path}
+          bg-transparent
+          w-full
+          h-full
+        />
+      {/if}
       <!-- <img src={item.icon} /> -->
     </div>
   </div>

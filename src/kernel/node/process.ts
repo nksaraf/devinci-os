@@ -152,6 +152,7 @@ export class Process extends EventEmitter implements NodeJS.Process {
 
   public env: { [name: string]: string } = {
     NODE_DEBUG: '1',
+    NODE_TEST_DIR: '/',
   };
   public exitCode: number = 0;
   public exit(code: number): never {

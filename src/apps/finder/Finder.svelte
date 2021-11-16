@@ -1,5 +1,18 @@
 <script lang="ts">
+  import * as path from 'path';
+
+  import { setContext } from 'svelte';
+
   import FinderGrid from './FinderGrid.svelte';
+  export let args;
+
+  let directory = args.path;
+
+  setContext('finder-path', {
+    setPath: (newPath) => {
+      directory = newPath;
+    },
+  });
 </script>
 
 <div class="flex flex-row relative" h-full w-full>
@@ -11,12 +24,12 @@
       <div class="i-bi-chevron-left text-lg" />
       <div class="i-bi-chevron-right ml-8 text-lg" />
       <div class="ml-4 text-gray-600 text-lg font-bold">
-        {'home'}
+        {path.basename(directory)}
       </div>
     </header>
     <section style="flex: 1; overflow:scroll;max-width: 100%;" bg-white>
       <FinderGrid
-        path="/"
+        {directory}
         flow="row"
         align="left"
         cols={6}

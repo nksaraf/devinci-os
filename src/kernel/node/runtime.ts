@@ -24,24 +24,20 @@ export class NodeHost {
     this.moduleCache.set(`${this.internalUrl}/${moduleName}.js`, mod);
   }
   async bootstrapFromHttp(kernel: Kernel) {
-    // let httpFS = await createFileSystemBackend(HTTPRequest, {
-    //   index: `/node/index.json`,
-    //   baseUrl: '/node/',
-    //   preferXHR: true,
-    // });
-
     let testFS = await createFileSystemBackend(HTTPRequest, {
       baseUrl: 'http://localhost:5000/',
       index: 'http://localhost:5000/index.json',
       preferXHR: true,
     });
 
-    kernel.fs.mount('/@node-tests', testFS);
-    this.bootstrap(kernel, '/@node-tests/lib');
+    kernel.fs.mkdirSync('/lib', 0x644, { recursive: true });
+
+    kernel.fs.mount('/lib/node', testFS);
+    this.bootstrap(kernel, '/lib/node/lib');
   }
 
   runTest(testName: string) {
-    const file = `/@node-tests/test/parallel/test-${testName}.js`;
+    const file = `/lib/node/test/parallel/test-${testName}.js`;
     console.time('testing ' + testName);
     this.loadModule(file);
     console.timeEnd('testing ' + testName);
@@ -49,7 +45,7 @@ export class NodeHost {
 
   global = {};
 
-  async bootstrap(kernel: Kernel, src = '/@node') {
+  async bootstrap(kernel: Kernel, src = '/lib/node/lib') {
     // nodeConsole = Object.assign({}, console, {
     //   log: (...args) => {
     //     this.kernel.process.stdout.writeString(args.join(' ') + '\n');

@@ -1,6 +1,6 @@
 import type * as fs from 'fs';
 import { constants } from 'os/kernel/kernel/constants';
-
+import { Buffer } from 'buffer';
 /**
  * Indicates the type of the given file. Applied to 'mode'.
  */

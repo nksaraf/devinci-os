@@ -15,6 +15,7 @@ import type { Kernel } from './kernel';
 import VirtualFile from '../fs/generic/virtual_file';
 import { SyncKeyValueFile, SyncKeyValueFileSystem } from '../fs/generic/key_value_filesystem';
 import type { FileFlagString } from '../fs/core/file_flag';
+import type { IterableReadableStream } from './stream';
 
 export interface AcceptCallback {
   (err: Error, s?: SocketFile, remoteAddr?: string, remotePort?: number): void;
@@ -24,8 +25,8 @@ export interface ConnectCallback {
   (err: Error, s?: SocketFile, remoteAddr?: string, remotePort?: number): void;
 }
 
-export function isSocket(f: File): f is SocketFile {
-  return f instanceof SocketFile;
+export function isSocket(f: File): f is Socket {
+  return f instanceof Socket;
 }
 
 export interface Incoming {
@@ -35,29 +36,21 @@ export interface Incoming {
   cb: AcceptCallback;
 }
 
-export class Network extends BaseFileSystem implements IFileSystem {
+export class Network {
   channel: BroadcastChannel;
-  getName(): string {
-    throw new Error('Method not implemented.');
-  }
-  isReadOnly(): boolean {
-    throw new Error('Method not implemented.');
-  }
-  supportsProps(): boolean {
-    throw new Error('Method not implemented.');
-  }
-  supportsSynch(): boolean {
-    throw new Error('Method not implemented.');
-  }
+
   kernel: Kernel;
   ports: { [port: number]: SocketFile } = {};
   constructor() {
-    super();
     this.channel = new BroadcastChannel('network');
   }
   // createFileSync(p: string, flag: FileFlagString, mode: number): File {}
   socket() {
     return new SocketFile();
+  }
+
+  getConnection(port: MessagePort): SocketFile {
+    return this.ports[port];
   }
 
   // Client side of BSD Sockets.
@@ -81,12 +74,38 @@ export class Network extends BaseFileSystem implements IFileSystem {
     }
 
     // this is kind of a IP + DNS search
-    this.lookup(addr, port, (err, serverProxySocket) => {
+    this.lookup(addr, port, (err, ip, port) => {
+      if (err) {
+        onConnect(err);
+        return;
+      }
+
       if (!serverProxySocket.isListening) {
         onConnect(new ApiError(ErrorCode.ECONNREFUSED));
         return;
       }
 
+      const messageChannel = new MessageChannel();
+
+      clientSocket.readable = new ReadableStream({
+        start(controller: ReadableStreamDefaultController) {
+          messageChannel.port1.addEventListener('message', (event) => {
+            controller.enqueue(event.data);
+          });
+
+          messageChannel.port1.addEventListener('close', () => {
+            controller.close();
+          });
+
+          messageChannel.port1.addEventListener('err', () => {
+            controller.error();
+          });
+        },
+      });
+
+      messageChannel.port1.start();
+
+      clientSocket.writable;
       // actual server interaction
       serverProxySocket.doAccept(clientSocket, addr, port, onConnect);
     });
@@ -136,28 +155,21 @@ export class Network extends BaseFileSystem implements IFileSystem {
 //   openFileSync('/sockets/')
 // }
 
-export class SocketFile extends VirtualFile implements File {
-  kernel: Kernel;
+export class Socket extends EventTarget implements File {
+  kernel: Kernel = kernel;
   isListening: boolean = false;
   refCount: number = 1;
   sockfd: number;
   port: number;
   addr: string;
 
-  peer: SocketFile = undefined;
+  peer: Socket = undefined;
 
-  outgoing: InMemoryPipe = undefined;
-  incoming: InMemoryPipe = undefined;
+  readable: ReadableStream = undefined;
+  writable: WritableStream = undefined;
 
   waitingClients: Incoming[] = [];
   waitingForNewClients: AcceptCallback[] = [];
-
-  constructor() {
-    let sockfd = kernel.process.getNextFD();
-    super(sockfd, kernel.process, '/sockets/' + sockfd, 'w+');
-    this.kernel = kernel;
-    kernel.process.files[sockfd] = this;
-  }
 
   listen(cb: (err: number) => void): void {
     this.isListening = true;
@@ -308,5 +320,55 @@ export class SocketFile extends VirtualFile implements File {
 
   stat(cb: (err: any, stats: any) => void): void {
     throw new Error('TODO: SocketFile.stat not implemented');
+  }
+}
+
+interface SocketInit {}
+interface SocketStats {}
+interface SocketInfo {}
+
+// Socket
+// Server side:
+//  - onconnect(port, cb)
+
+interface ISocket extends EventTarget {
+  update(object: SocketInit): Promise<boolean>;
+
+  readonly readable: ReadableStream;
+  readonly writable: WritableStream;
+
+  readonly ready: Promise<boolean>;
+  readonly closed: Promise<boolean>;
+
+  abort(reason?: string): Promise<boolean>;
+  readonly signal: AbortSignal;
+
+  readonly stats: SocketStats;
+  readonly info: SocketInfo;
+}
+
+class Socket extends EventTarget implements File {
+  constructor(object: SocketInit) {
+    super();
+  }
+
+  update(object: SocketInit): Promise<boolean> {
+    throw new Error('Method not implemented.');
+  }
+  writable: WritableStream<any>;
+  ready: Promise<boolean>;
+  closed: Promise<boolean>;
+  abort(reason?: string): Promise<boolean> {
+    throw new Error('Method not implemented.');
+  }
+  signal: AbortSignal;
+  stats: SocketStats;
+  info: SocketInfo;
+
+  _ready: boolean;
+  _closed: boolean;
+
+  get readable(): IterableReadableStream {
+    return;
   }
 }

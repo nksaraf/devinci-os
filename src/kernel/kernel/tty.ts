@@ -9,7 +9,7 @@ import type ShellHistory from '../shell/shell-history';
 import { closestLeftBoundary, closestRightBoundary, isIncompleteInput } from '../shell/shell-utils';
 import type { IDisposable } from '../terminal';
 import { InMemoryPipe, PipeFile } from './pipe';
-
+import { constants } from './constants';
 /**
  * Convert offset at the given input to col/row location
  *
@@ -50,7 +50,7 @@ class TTYFileSystem extends AsyncKeyValueFileSystem implements IFileSystem {
   createFile() {}
 }
 
-let constants = {
+let keyboard = {
   UP_ARROW: 1,
   DOWN_ARROW: 2,
   LEFT_ARROW: 3,
@@ -66,6 +66,8 @@ let constants = {
   CTRL_BACKSPACE: 13,
   DELETE: 14,
 };
+
+import { Event, Emitter } from 'vs/base/common/event';
 
 interface IEventEmitter {
   on(event: string, callback: (...args: any[]) => void): IDisposable;
@@ -143,7 +145,7 @@ export class TTY extends VirtualFile implements File {
 
   constructor(public device: TerminalDevice) {
     super();
-    this._flag = 'w+';
+    this._flag = constants.fs.O_RDWR;
 
     this._termSize = {
       cols: this.device.cols,
@@ -173,36 +175,36 @@ export class TTY extends VirtualFile implements File {
     if (ord === 0x1b) {
       switch (data.substr(1)) {
         case '[A': // Up arrow
-          return constants.UP_ARROW;
+          return keyboard.UP_ARROW;
 
         case '[B': // Down arrow
-          return constants.DOWN_ARROW;
+          return keyboard.DOWN_ARROW;
 
         case '[D': // Left Arrow
-          return constants.LEFT_ARROW;
+          return keyboard.LEFT_ARROW;
 
         case '[C': // Right Arrow
-          return constants.RIGHT_ARROW;
+          return keyboard.RIGHT_ARROW;
 
         case '[3~': // Delete
-          return constants.DELETE;
+          return keyboard.DELETE;
 
         case '[F': // End
-          return constants.END;
+          return keyboard.END;
 
         case '[H': // Home
-          return constants.HOME;
+          return keyboard.HOME;
 
         // case "b": // ALT + a
 
         case 'b': // ALT + LEFT
-          return constants.ALT_LEFT_ARROW;
+          return keyboard.ALT_LEFT_ARROW;
 
         case 'f': // ALT + RIGHT
-          return constants.ALT_RIGHT_ARROW;
+          return keyboard.ALT_RIGHT_ARROW;
 
         case '\x7F': // CTRL + BACKSPACE
-          return constants.CTRL_BACKSPACE;
+          return keyboard.CTRL_BACKSPACE;
       }
 
       // Handle special characters
