@@ -8,7 +8,7 @@ import { constants } from '../kernel/constants';
 
 type Context = typeof globalThis;
 
-export class NodeHost {
+export class NodeRuntime {
   kernel: Kernel;
   fs: typeof import('fs');
   constructor() {

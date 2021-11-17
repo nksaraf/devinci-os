@@ -155,7 +155,7 @@ export class Network {
 //   openFileSync('/sockets/')
 // }
 
-export class Socket extends EventTarget implements File {
+export class SocketFile extends VirtualFile implements File {
   kernel: Kernel = kernel;
   isListening: boolean = false;
   refCount: number = 1;

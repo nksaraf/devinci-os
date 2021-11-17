@@ -1,6 +1,6 @@
-import type { NodeHost } from './kernel/node/runtime';
+import type { NodeRuntime } from './kernel/node/runtime';
 
-export function runTests(node: NodeHost) {
+export function runTests(node: NodeRuntime) {
   // node.runTest('fs-open');
   // node.runTest('fs-read');
   node.runTest('fs-readfile');

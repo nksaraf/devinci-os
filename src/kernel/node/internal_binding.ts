@@ -3,7 +3,7 @@ import { constants } from '../kernel/constants';
 import hrtime from '../wasi/polyfills/browser-hrtime';
 import type { InternalAsyncWrapBinding } from './bindings/async_wrap';
 import { fsBinding } from './bindings/fs';
-import type { NodeHost } from './runtime';
+import type { NodeRuntime } from './runtime';
 import * as Base64 from './base64';
 import process from './process';
 class FSEvent {}
@@ -163,7 +163,7 @@ const newLocal = {
   kStackSizeMb: ResourceLimits.kStackSizeMb,
   resourceLimits: new Float64Array(ResourceLimits.kTotalResourceLimitCount),
 };
-export const createInternalBindings = (host: NodeHost) => {
+export const createInternalBindings = (host: NodeRuntime) => {
   let servers: {} = {};
   let Buffer = class {};
 

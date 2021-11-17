@@ -5,7 +5,6 @@ import type {
   CallbackOneArg,
   CallbackThreeArgs as CallbackThreeArgs,
 } from './file_system';
-import type * as fsTypes from 'wicg-file-system-access';
 
 export interface SyncFile {
   /**
@@ -69,51 +68,6 @@ export interface SyncFile {
    * **Optional**: Change the file timestamps of the file.
    */
   utimesSync(atime: Date, mtime: Date): void;
-}
-
-class WritableFileStream extends WritableStream implements FileSystemWritableFileStream {
-  file
-  write(data: FileSystemWriteChunkType): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-  seek(position: number): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-  truncate(size: number): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-}
-
-class FileHandle implements FileSystemFileHandle {
-  kind = 'file' as const;
-  async getData(): Promise<BlobPart[]> {
-    throw new Error('Method not implemented.');
-  }
-  async getFile(): Promise<globalThis.File> {
-    return new File(await this.getData(), 'file.txt');
-  }
-  createWritable(options?: FileSystemCreateWritableOptions): Promise<FileSystemWritableFileStream> {
-    return new WritableStream({
-      write(chunk: Uint8Array): void {
-
-      },
-      close(): void {
-      }
-    });
-  }
-  name: string;
-  isSameEntry(other: FileSystemHandle): Promise<boolean> {
-    throw new Error('Method not implemented.');
-  }
-  queryPermission(descriptor?: FileSystemHandlePermissionDescriptor): Promise<PermissionState> {
-    throw new Error('Method not implemented.');
-  }
-  requestPermission(descriptor?: FileSystemHandlePermissionDescriptor): Promise<PermissionState> {
-    throw new Error('Method not implemented.');
-  }
-  get isFile(): true;
-  get isDirectory(): false;
-  get lastModified(): Date;
 }
 
 export interface File {

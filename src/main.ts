@@ -5,7 +5,7 @@ import { createKernel } from './kernel/kernel';
 import type { Kernel } from './kernel/kernel';
 import { KernelFlags } from './kernel/kernel/types';
 import { FileType } from './kernel/fs/core/stats';
-import { NodeHost } from './kernel/node/runtime';
+import { NodeRuntime } from './kernel/node/runtime';
 
 import calculator from 'os/apps/calculator/calculator';
 import calendar from 'os/apps/calendar/calendar';
@@ -17,8 +17,13 @@ import wallpaper from 'os/apps/wallpaper/wallpaper';
 import { createAppConfig, installApp } from './stores/apps.store';
 import Global from './kernel/global';
 import { constants } from './kernel/kernel/constants';
-import { rest, setupWorker } from 'msw';
-
+// import { rest, setupWorker } from 'msw';
+import { testFS } from './kernel/vfs/file';
+// import Deno from './deno?worker';
+// import { wrap } from 'comlink';
+import { createFileSystemBackend } from './kernel/fs';
+import HTTPRequest from './kernel/fs/backend/HTTPRequest';
+import { DenoRuntime } from './kernel/node/deno';
 installApp(finder());
 installApp(calculator());
 installApp(calendar());
@@ -52,6 +57,37 @@ export const initKernel = async () => {
     mode: KernelFlags.PRIVILEGED | KernelFlags.UI | KernelFlags.MAIN,
   });
 
+  // kernel.fs.mount(
+  //   '/deno',
+  //   await createFileSystemBackend(HTTPRequest, {
+  //     baseURL: 'https://raw.githubusercontent.com/denoland/deno/main/runtime/js/',
+  //   }),
+  // );
+
+  const node = new NodeRuntime();
+  const deno = new DenoRuntime();
+  await node.bootstrapFromHttp(kernel);
+  await deno.bootstrapFromHttp(kernel);
+  Global.node = node;
+  console.timeEnd('unpacking node');
+
+  // let getModule = async (runtime) => {
+  //   let code = await (
+  //     await fetch('https://raw.githubusercontent.com/denoland/deno/main/runtime/js/01_build.js')
+  //   ).text();
+
+  //   let func = new Function(`${code}`).bind(runtime);
+  // };
+
+  // let runtime = {
+  //   __bootstrap: {
+  //     primordials: node.globalProxy.primordials,
+  //   },
+  // };
+
+  // let { getRuntime } = await wrap(new Deno());
+
+  // await getRuntime();
   console.log(kernel);
   // console.time('unpacking node');
   // let res = await fetch('/node-lib.tar');
@@ -65,10 +101,6 @@ export const initKernel = async () => {
   // let res = await fetch('/node-lib.tar');
   // let buffer = await res.arrayBuffer();
   // await extractContents(kernel.fs, new Uint8Array(buffer), '/@node');
-  const node = new NodeHost();
-  await node.bootstrapFromHttp(kernel);
-  Global.node = node;
-  console.timeEnd('unpacking node');
 
   // let net = node.require('net');
   // console.log(new net.Socket());
@@ -170,11 +202,11 @@ export const initKernel = async () => {
   // }, 500);
   // await process.run();
 
-  server(kernel);
+  // server(kernel);
 
-  kernel.net.socket().connect('localhost', 4000, () => {
-    console.log('connected!!!');
-  });
+  // kernel.net.socket().connect('localhost', 4000, () => {
+  //   console.log('connected!!!');
+  // });
 
   // const worker = setupWorker(rest.get('/', (req, res, ctx) => {
   //   return {
@@ -206,6 +238,7 @@ function server(kernel: Kernel) {
 initKernel()
   .then(() => {})
   .finally(() => {
+    testFS();
     const desktop = new MacOS({
       target: document.getElementById('root'),
     });

@@ -1,7 +1,7 @@
 import { expose } from 'comlink';
 import { Kernel } from './kernel/kernel/kernel';
 import { KernelFlags } from './kernel/kernel/types';
-import { NodeHost } from './kernel/node/runtime';
+import { NodeRuntime } from './kernel/node/runtime';
 
 const kernel = new Kernel();
 console.log(kernel);
@@ -9,8 +9,8 @@ console.log(kernel);
 async function boot() {
   await kernel.boot({ mode: KernelFlags.WORKER });
   kernel.proc.listProcesses();
-  await NodeHost.bootstrap(kernel);
-  console.log(NodeHost.require('net'));
+  await NodeRuntime.bootstrap(kernel);
+  console.log(NodeRuntime.require('net'));
 }
 
 export async function main() {
