@@ -1,18 +1,441 @@
 import Global from '../global';
 import HTTPRequest from '../fs/backend/HTTPRequest';
-import { createInternalBindings } from './internal_binding';
 import type { Kernel } from '../kernel';
 import { createFileSystemBackend } from '../fs/create-fs';
+import type { File } from '../fs/core/file';
 import * as path from 'path';
 import { constants } from '../kernel/constants';
 import type { ResourceTable } from './interface';
 import { Resource } from './interface';
-
+import type { FileHandle } from '../vfs/file';
+import { Buffer } from 'buffer';
+import { FileType } from '../fs/core/stats';
 type Context = typeof globalThis;
+
+function op(
+  name: string,
+  execute: {
+    async: Function;
+    sync: Function;
+  },
+): Op {
+  return {
+    name,
+    ...execute,
+  };
+}
+
+function asyncOp(name: string, execute: Function): Op {
+  return {
+    name,
+    async: execute,
+    sync: execute,
+  };
+}
+
+function syncOp(name: string, execute: Function): Op {
+  return {
+    name,
+    sync: execute,
+    async: execute,
+  };
+}
+
+type Op = {
+  name: string;
+  sync?: Function;
+  async?: Function;
+};
+
+class DenoHost {
+  core: {
+    opcallSync: (index: any, arg1: any, arg2: any) => any;
+    opcallAsync: (index: any, promiseId: any, arg1: any, arg2: any) => any;
+    callConsole: (oldLog: any, newLog: any, ...args: any[]) => void;
+    setMacrotaskCallback: (cb: any) => void;
+    setWasmStreamingCallback: (cb: any) => void;
+    decode: (data: Uint8Array) => string;
+    encode: (data: string) => Uint8Array;
+  };
+
+  resourceTable: ResourceTable;
+
+  addResource(res: Resource) {
+    let rid = this.nextRid++;
+    this.resourceTable.set(rid, res);
+    return rid;
+  }
+  nextRid = 0;
+
+  constructor() {
+    this.resourceTable = new Map<number, Resource>();
+
+    this.addResource(new ConsoleLogResource());
+    this.addResource(new ConsoleLogResource());
+    this.addResource(new ConsoleLogResource());
+
+    this.ops = [
+      {
+        name: 'INTERNAL',
+        sync: () => {},
+        async: () => {},
+      }, //undefined, reserved for Deno
+      {
+        name: 'op_cwd',
+        sync: () => {},
+        async: () => {},
+      },
+      {
+        name: 'op_read',
+
+        sync: () => {},
+        async: async (rid: number, data: Uint8Array) => {
+          let resource = this.resourceTable.get(rid);
+          return await resource.read(data);
+        },
+      },
+      {
+        name: 'op_write',
+        sync: () => {},
+        async: async (rid: number, data: Uint8Array) => {
+          let resource = this.resourceTable.get(rid);
+          return await resource.write(data);
+        },
+      },
+
+      asyncOp('op_read_dir_async', async (dirPath: string) => {
+        return ['hello.txt'];
+      }),
+      {
+        name: 'op_format_file_name',
+        sync: (arg) => arg,
+        async: async (arg) => {
+          return arg;
+        },
+      },
+      {
+        name: 'op_url_parse',
+        sync: (arg) => {
+          let url = new URL(arg);
+          return [
+            url.href,
+            url.hash,
+            url.host,
+            url.hostname,
+            url.origin,
+            url.password,
+            url.pathname,
+            url.port,
+            url.protocol,
+            url.search,
+            url.username,
+          ].join('\n');
+        },
+        async: async (arg) => {
+          return arg;
+        },
+      },
+      {
+        name: 'op_fetch',
+        sync: (arg) => {
+          // return fetch(arg.url, {
+          //   headers: arg.headers,
+          //   method: arg.method,
+          // });
+          console.log(arg);
+          let requestRid = this.addResource(
+            new FetchRequestResource(
+              arg.url,
+              arg.method,
+              arg.headers,
+              arg.hasBody,
+              arg.clientRid,
+              arg.byteLength,
+            ),
+          );
+
+          return { requestRid, requestBodyRid: null, cancelHandleRid: null };
+        },
+        async: async (arg) => {
+          return arg;
+        },
+      },
+
+      {
+        name: 'op_fetch_send',
+        // sync: (arg) => {
+        //   // return fetch(arg.url, {
+        //   //   headers: arg.headers,
+        //   //   method: arg.method,
+        //   // });
+        //   let requestRid = this.addResource(new Resource());
+
+        //   return { requestRid, requestBodyRid: null };
+        // },
+        async: async (rid) => {
+          let httpRequest = this.resourceTable.get(rid) as FetchRequestResource;
+          let response = await fetch(httpRequest.url, {
+            headers: httpRequest.headers,
+            method: httpRequest.method,
+          });
+
+          return {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers,
+            url: response.url,
+            responseRid: this.addResource(new FetchResponseResource(response)),
+          };
+        },
+      },
+
+      {
+        name: 'op_encoding_normalize_label',
+        sync: (arg) => arg,
+      },
+      {
+        name: 'op_encoding_new_decoder',
+        sync: ({ label }) => {
+          return this.addResource(new TextDecoderResource());
+        },
+      },
+      {
+        name: 'op_encoding_decode',
+        sync: (data, { rid }) => {
+          let res = this.resourceTable.get(rid) as TextDecoderResource;
+          return res.decode(data);
+        },
+      },
+      {
+        name: 'op_close',
+        sync: (rid) => {
+          console.log('closing', rid);
+          let resource = this.resourceTable.get(rid);
+          resource.close();
+          this.resourceTable.delete(rid);
+        },
+      },
+      {
+        name: 'op_try_close',
+        sync: (rid) => {
+          console.log('try closing', rid);
+          let resource = this.resourceTable.get(rid);
+          try {
+            resource.close();
+            this.resourceTable.delete(rid);
+          } catch (e) {
+            console.log('couldnt close', rid, resource);
+          }
+        },
+      },
+      {
+        name: 'op_open_async',
+        async: async (arg) => {
+          let file = kernel.fs.openSync(arg.path, constants.fs.O_RDWR, arg.mode);
+          console.log(file);
+          return this.addResource(new FileResource(file, arg.path));
+        },
+      },
+
+      asyncOp('op_fstat_async', async (rid) => {
+        let file = this.resourceTable.get(rid) as FileResource;
+        let stat = file.file.statSync();
+        return {
+          size: stat.size,
+          isFile: true,
+          isDirectory: false,
+          isSymbolicLink: false,
+        };
+      }),
+    ];
+
+    this.core = {
+      opcallSync: (index, arg1, arg2) => {
+        // this is called when Deno.core.syncOpsCache is run
+        // we have to reply with an array of [op_name, id in op_cache]]
+        // Deno maintains a cache of this mapping
+        // so it can call ops by passing a number, not the whole string
+        if (index === 0) {
+          return this.ops.map((o, index) => [o.name, index]).slice(1);
+        }
+
+        if (!this.ops[index]) {
+          throw new Error(`op ${index} not found`);
+        } else if (!this.ops[index].sync) {
+          throw new Error(`op ${index} not sync`);
+        }
+
+        // @ts-ignore
+        let opResult = this.ops[index].sync(arg1, arg2);
+        console.log('opcall sync', this.ops[index].name, opResult);
+
+        return opResult;
+      },
+      opcallAsync: (index, promiseId, arg1, arg2) => {
+        if (index === 0) {
+          return this.ops.map((o, index) => [o.name, index]).slice(1);
+        }
+        return this.ops[index].async(arg1, arg2);
+      },
+      callConsole: (oldLog, newLog, ...args) => {
+        if (typeof args[0] === 'string' && args[0].startsWith('op ')) {
+          if (this.ops.find((o) => o.name === args[1])) {
+            console.log(...args);
+          } else {
+            console.error(...args);
+          }
+        } else {
+          oldLog(...args);
+          // newLog(...args);
+        }
+      },
+      setMacrotaskCallback: (cb) => {
+        console.log('macrostask callback');
+      },
+      setWasmStreamingCallback: (cb) => {
+        console.log('wasm streaming callback');
+      },
+
+      decode: function (data: Uint8Array) {
+        return new TextDecoder().decode(data);
+      },
+
+      encode: function (data: string) {
+        return new TextEncoder().encode(data);
+      },
+    };
+  }
+
+  syncOpsCache() {
+    // @ts-ignore
+    this.core.syncOpsCache();
+  }
+
+  ops: Op[];
+}
+
+class ConsoleLogResource extends Resource {
+  name = 'console';
+  async read(data: Uint8Array) {
+    return 0;
+  }
+  async write(data: Uint8Array) {
+    let str = new TextDecoder().decode(data);
+    // console.log(str);
+    console.log(str);
+    return data.length;
+  }
+  close() {
+    //
+  }
+  shutdown() {
+    return Promise.resolve();
+  }
+}
+
+class FetchResponseResource extends Resource {
+  reader: ReadableStreamDefaultReader;
+  constructor(public response: Response) {
+    super();
+    let reader = response.body.getReader();
+    // let stream = new ReadableStream({
+    //   type: 'bytes' as const,
+    //   async pull(controller) {
+    //     let { done, value } = await reader.read();
+
+    //     if (done) {
+    //       controller.close();
+    //     }
+
+    //     controller.enqueue(value);
+    //   },
+    // });
+    this.reader = reader;
+  }
+  async read(data: Uint8Array) {
+    let { done, value } = await this.reader.read();
+
+    if (done) {
+      return 0;
+    } else {
+      data.set(value);
+      console.log('READ', done, value, data);
+
+      return value.byteLength;
+    }
+  }
+}
+
+class FetchRequestResource extends Resource {
+  constructor(
+    public url: string,
+    public method: string,
+    public headers: [[string, string]],
+    public hasBody: boolean,
+    public clientRid: number,
+    public byteLength: number,
+  ) {
+    super();
+  }
+}
+
+class TextDecoderResource extends Resource {
+  decoder = new TextDecoder();
+
+  close() {}
+
+  decode(data: Uint8Array) {
+    return this.decoder.decode(data);
+  }
+}
+
+class FileResource extends Resource {
+  constructor(public file: File, public name: string) {
+    super();
+  }
+
+  position = 0;
+  async read(data: Uint8Array) {
+    if (this.position >= this.file.statSync().size) {
+      return null;
+    }
+    let container = Buffer.from(data);
+    let nread = this.file.readSync(
+      container,
+      0,
+      Math.min(this.file.statSync().size, data.byteLength),
+      0,
+    );
+
+    data.set(container, 0);
+
+    this.position += nread;
+
+    return nread;
+  }
+
+  async write(data: Uint8Array) {
+    let container = Buffer.from(data);
+    let nwritten = this.file.writeSync(
+      container,
+      0,
+      Math.max(this.file.statSync().size, data.byteLength),
+      0,
+    );
+
+    this.position += nwritten;
+
+    return nwritten;
+  }
+
+  close() {
+    this.file.closeSync();
+  }
+}
 
 export class DenoRuntime {
   kernel: Kernel;
-  resourceTable: ResourceTable;
+  host: DenoHost;
   constructor() {
     this.require = this.require.bind(this);
     this.resolve = this.resolve.bind(this);
@@ -39,22 +462,14 @@ export class DenoRuntime {
     this.bootstrap(kernel, '/lib/deno');
   }
 
-  runTest(testName: string) {
-    const file = `/lib/node/test/parallel/test-${testName}.js`;
-    console.time('testing ' + testName);
-    this.loadModule(file);
-    console.timeEnd('testing ' + testName);
-  }
+  // runTest(testName: string) {
+  //   const file = `/lib/node/test/parallel/test-${testName}.js`;
+  //   console.time('testing ' + testName);
+  //   this.loadModule(file);
+  //   console.timeEnd('testing ' + testName);
+  // }
 
   global = {};
-
-  addResource(res: Resource) {
-    let rid = this.nextRid++;
-    this.resourceTable.set(rid, res);
-    return rid;
-  }
-
-  nextRid = 0;
 
   async bootstrap(kernel: Kernel, src = '/lib/deno') {
     // nodeConsole = Object.assign({}, console, {
@@ -108,7 +523,11 @@ export class DenoRuntime {
       WeakRef: globalThis.WeakRef,
       WeakSet,
 
-      SharedArrayBuffer: ArrayBuffer,
+      SharedArrayBuffer: class {
+        constructor() {
+          throw new Error('SharedArrayBuffer is not supported');
+        }
+      },
       // Atomics,
 
       decodeURI,
@@ -120,6 +539,8 @@ export class DenoRuntime {
     this.kernel = kernel;
 
     this.internalUrl = src;
+
+    this.host = new DenoHost();
 
     this.globalProxy = new Proxy(this.global as any, {
       has: (o, k) => k in o || k in this.global,
@@ -135,218 +556,23 @@ export class DenoRuntime {
     // @ts-ignore
     this.global.globalThis = this.global;
 
-    this.resourceTable = new Map<number, Resource>();
-
-    class StreamResource extends Resource {
-      constructor(public stream: ReadableStream) {
-        super();
-      }
-      read(data: Uint8Array) {
-        const reader = this.stream.getReader({
-          mode: 'byob',
-        });
-        return reader.read(data);
-      }
-      write(data: Uint8Array) {
-        return this.stream.write(data);
-      }
-      close() {
-        this.stream.close();
-      }
-      shutdown() {
-        return this.stream.close();
-      }
-    }
-
-    let ops = [
-      {
-        name: 'INTERNAL',
-        sync: () => {},
-        async: () => {},
-      }, //undefined, reserved for Deno
-      {
-        name: 'op_cwd',
-        sync: () => {},
-        async: () => {},
-      },
-      {
-        name: 'op_read',
-
-        sync: () => {},
-        async: (rid: number, data: Uint8Array) => {
-          let resource = this.resourceTable.get(rid);
-          return resource.read(data);
-        },
-      },
-
-      {
-        name: 'op_read_dir_async',
-        sync: () => {},
-        async: async () => {
-          return ['hello.txt'];
-        },
-      },
-      {
-        name: 'op_format_file_name',
-        sync: (arg) => arg,
-        async: async (arg) => {
-          return arg;
-        },
-      },
-      {
-        name: 'op_url_parse',
-        sync: (arg) => {
-          let url = new URL(arg);
-          return [
-            url.href,
-            url.hash,
-            url.host,
-            url.hostname,
-            url.origin,
-            url.password,
-            url.pathname,
-            url.port,
-            url.protocol,
-            url.search,
-            url.username,
-          ].join('\n');
-        },
-        async: async (arg) => {
-          return arg;
-        },
-      },
-      {
-        name: 'op_fetch',
-        sync: (arg) => {
-          // return fetch(arg.url, {
-          //   headers: arg.headers,
-          //   method: arg.method,
-          // });
-          let requestRid = this.addResource(new Resource());
-
-          return { requestRid, requestBodyRid: null, cancelHandleRid: null };
-        },
-        async: async (arg) => {
-          return arg;
-        },
-      },
-
-      {
-        name: 'op_fetch_send',
-        // sync: (arg) => {
-        //   // return fetch(arg.url, {
-        //   //   headers: arg.headers,
-        //   //   method: arg.method,
-        //   // });
-        //   let requestRid = this.addResource(new Resource());
-
-        //   return { requestRid, requestBodyRid: null };
-        // },
-        async: async (rid) => {
-          let httpRequest = this.resourceTable.get(rid);
-          let response = await fetch(httpRequest.url, httpRequest.options);
-
-          let reader = response.body.getReader();
-
-          let stream = new ReadableStream({
-            type: 'bytes' as const,
-            async pull(controller) {
-              let read = reader.read();
-              read.then(({ done, value }) => {
-                if (done) {
-                  controller.close();
-                }
-
-                controller.enqueue(value);
-              });
-            },
-          });
-
-          return {
-            status: response.status,
-            statusText: response.statusText,
-            headers: response.headers,
-            url: response.url,
-            responseRid: this.addResource(new Resource(response)),
-          };
-        },
-      },
-    ];
-
-    let Deno = {
-      core: {
-        opcallSync: (index, arg1, arg2) => {
-          if (index === 0) {
-            return ops.map((o, index) => [o.name, index]).slice(1);
-          }
-
-          let opResult = ops[index].sync(arg1, arg2);
-          console.log('opcall sync', ops[index].name, opResult);
-
-          return opResult;
-        },
-        opcallAsync: (index, promiseId, arg1, arg2) => {
-          if (index === 0) {
-            return ops.map((o, index) => [o.name, index]).slice(1);
-          }
-          return ops[index].async(arg1, arg2);
-        },
-        callConsole: (oldLog, newLog, ...args) => {
-          if (args[0].startsWith('op ')) {
-            if (ops.find((o) => o.name === args[1])) {
-              console.log(...args);
-            } else {
-              console.error(...args);
-            }
-          } else {
-            console.log(...args);
-          }
-        },
-        setMacrotaskCallback: (cb) => {
-          console.log('macrostask callback');
-        },
-        setWasmStreamingCallback: (cb) => {
-          console.log('wasm streaming callback');
-        },
-      },
-    };
-
     // globals that remain same for all requires
     Object.assign(this.globalProxy, {
-      // process: process,
       console,
-      // primordials: this.primordials,
-      // getInternalBinding: this.getInternalBinding,
-      // window: undefined,
-      // importScripts: undefined,
-      // markBootstrapComplete: () => {
-      // console.log('bootstrap complete');
-      // },
-
-      Deno: Deno,
+      // original deno global comes from host
+      // this will be overwitten by the runtime
+      Deno: {
+        core: this.host.core,
+      },
     });
 
     Global.deno = this.globalProxy;
 
     this.moduleCache = new Map<string, any>();
 
-    // kernel.fs.mount(
-    //   '/deno',
-    //   await createFileSystemBackend(HTTPRequest, {
-    //     baseURL: 'https://raw.githubusercontent.com/denoland/deno/main/runtime/js/',
-    //   }),
-    // );
-
     this.evalScript('/lib/deno/core/00_primordials.js');
     this.evalScript('/lib/deno/core/01_core.js');
     this.evalScript('/lib/deno/core/02_error.js');
-
-    Deno.core.syncOpsCache();
-
-    // this.evalScript('/lib/deno/runtime/js/01_build.js');
-    // this.evalScript('/lib/deno/runtime/js/01_errors.js');
-    // this.evalScript('/lib/deno/runtime/js/01_version.js');
-    // this.evalScript('/lib/deno/runtime/js/01_web_util.js');
 
     this.evalExtension('/lib/deno/ext/console');
     this.evalExtension('/lib/deno/ext/webidl');
@@ -366,19 +592,44 @@ export class DenoRuntime {
 
     this.evalExtension('/lib/deno/runtime/js');
 
+    this.host.syncOpsCache();
+
     this.globalProxy.bootstrap.mainRuntime({
-      target: 'unknown',
+      target: 'arm64-devinci-darwin-dev',
+      args: ['/hello.txt'],
     });
 
     Global.Deno = this.globalProxy.Deno;
 
-    this.evalAsyncWithContext(`for await (const dirEntry of Deno.readDir('data')) {
-      console.log(dirEntry);
-    }
+    kernel.fs.writeFileSync(
+      '/hello.txt',
+      'Hello world',
+      'utf-8',
+      constants.fs.O_RDWR,
+      FileType.FILE,
+    );
+
+    await this.evalAsyncWithContext(`
+      for await (const dirEntry of Deno.readDir('data')) {
+        console.log(dirEntry);
+      }
       
       let response = await fetch("https://api.github.com/users/denoland");
-      console.log(await response.json());
+      for await (const chunk of response.body) {
+        console.log('heree', new TextDecoder().decode(chunk));
+      }
 
+      for (let i = 0; i < Deno.args.length; i++) {
+        const filename = Deno.args[i];
+        console.log('heree')
+        let file = await Deno.open(filename)
+        console.log(file)
+        await Deno.stdout.write(await Deno.readAll(file))
+        await Deno.writeFile('/other.txt', (await Deno.readFile('/hello.txt')).slice(0, 5))
+        file.close();
+
+        console.log(Deno.cwd())
+      }
     `);
 
     // this.evalScript('/lib/deno/runtime/js/06_util.js');
@@ -518,9 +769,9 @@ export class DenoRuntime {
     return executor.bind(context)(context);
   }
 
-  evalAsyncWithContext(source, context = this.globalProxy) {
+  async evalAsyncWithContext(source, context = this.globalProxy) {
     const executor = Function(`
-    return (context) => {
+    return async (context) => {
         try {
             with (context) {
               let fn = async function() {
@@ -529,7 +780,7 @@ export class DenoRuntime {
 
               boundFn = fn.bind(context);
 
-              return boundFn();
+              return await boundFn();
             }
         }  catch(e) {
           throw e;

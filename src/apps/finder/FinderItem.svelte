@@ -38,14 +38,23 @@
 
   function handleOpen() {
     console.log(finderPath, item.path);
-    if (onDesktop) {
-      createWindow(finder(), {
+
+    if (item.stats.isFile()) {
+      createWindow(editor(), {
         args: {
           path: item.path,
         },
       }).open();
     } else {
-      finderPath.setPath(item.path);
+      if (onDesktop) {
+        createWindow(finder(), {
+          args: {
+            path: item.path,
+          },
+        }).open();
+      } else {
+        finderPath.setPath(item.path);
+      }
     }
   }
 </script>
@@ -59,15 +68,7 @@
       addToSelection(e);
     }
 
-    if (item.name.endsWith('.js')) {
-      createWindow(editor(), {
-        args: {
-          path: item.path,
-        },
-      }).open();
-    } else {
-      handleOpen();
-    }
+    handleOpen();
   }}
   on:click={(e) => {
     e.preventDefault();

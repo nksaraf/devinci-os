@@ -4,12 +4,12 @@ import { isReadable, isWriteable } from '../fs/core/file_flag';
 import { constants } from '../kernel/constants';
 import './file-access.d.ts';
 
-enum FileSystemHandleKind {
+export enum FileSystemHandleKind {
   file = 'file',
   directory = 'directory',
 }
 
-class FileEntry {
+export class FileEntry {
   async getData(): Promise<ArrayBuffer> {
     return this._data;
   }
@@ -35,11 +35,11 @@ class FileEntry {
   }
 }
 
-class DirectoryEntry {
+export class DirectoryEntry {
   children: { [name: string]: FileEntry | DirectoryEntry };
 }
 
-interface DirectoryHandle extends EventTarget {}
+export interface DirectoryHandle extends EventTarget {}
 
 function createWritableStream(handle: FileHandle, existingBuffer?: ArrayBuffer) {
   let entry = handle.entry;
@@ -157,7 +157,7 @@ function createWritableStream(handle: FileHandle, existingBuffer?: ArrayBuffer) 
   });
 }
 
-class FileHandle implements FileSystemFileHandle {
+export class FileHandle implements FileSystemFileHandle {
   kind = FileSystemHandleKind.file as const;
   async getData(): Promise<[ArrayBuffer]> {
     return [await this.entry.getData()];

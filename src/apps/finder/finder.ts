@@ -9,5 +9,6 @@ export default () =>
       width: 720,
       height: 540,
       loadComponent: async () => (await import('./Finder.svelte')).default,
+      args: { path: '/' },
     },
   });

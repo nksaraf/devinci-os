@@ -1,6 +1,6 @@
 <script lang="ts">
   import type * as monaco from 'monaco-editor';
-  import { getContext, onMount } from 'svelte';
+  import { getContext, onDestroy, onMount } from 'svelte';
   import editorWorker from '../../../node_modules/monaco-editor/esm/vs/editor/editor.worker?worker';
   import jsonWorker from '../../../node_modules/monaco-editor/esm/vs/language/json/json.worker?worker';
   import cssWorker from '../../../node_modules/monaco-editor/esm/vs/language/css/css.worker?worker';
@@ -10,7 +10,7 @@
   import TrafficLights from 'os/ui/Window/TrafficLights.svelte';
   import type { WindowAPI } from '__/stores/window.store';
   import ExpandSvg from '@ui/components/SVG/traffic-lights/ExpandSVG.svelte';
-
+  import { constants } from 'os/kernel/kernel/constants';
   let divEl: HTMLDivElement = null;
   let editor: monaco.editor.IStandaloneCodeEditor;
   let Monaco: typeof monaco;
@@ -20,6 +20,8 @@
   console.log(args);
 
   const fs = getContext('kernel');
+
+  let disposables = [];
 
   onMount(async () => {
     // @ts-ignore
@@ -44,27 +46,31 @@
     Monaco = await import('monaco-editor');
 
     function writeFile(e) {
-      kernel.fs.writeFile(args.path, editor.getValue(), 'utf8', 'w', 0x777, console.log);
+      kernel.fs.writeFile(
+        args.path,
+        editor.getValue(),
+        'utf8',
+        constants.fs.O_RDWR,
+        0x777,
+        console.log,
+      );
     }
 
-    let disposables = [];
-
-    let data = kernel.fs.readFileSync(args.path, 'utf8', 'r');
+    let data = kernel.fs.readFileSync(args.path, 'utf8', constants.fs.O_RDWR);
     editor = Monaco.editor.create(divEl, {
       value: data as string,
       fontSize: 14,
       theme: 'vs-light',
-      language: 'javascript',
       cursorStyle: 'line-thin',
       automaticLayout: true,
     });
 
     disposables.push(editor.onDidChangeModelContent(writeFile));
+    disposables.push(editor);
+  });
 
-    return () => {
-      disposables.forEach((d) => d.dispose());
-      editor.dispose();
-    };
+  onDestroy(() => {
+    disposables.forEach((d) => d.dispose());
   });
 
   const win = getContext('windowAPI') as WindowAPI;

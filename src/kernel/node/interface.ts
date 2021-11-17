@@ -1,17 +1,17 @@
 export interface Resource {
   name: string;
-  read(data: Uint8Array): number;
-  write(data: Uint8Array): number;
+  read(data: Uint8Array): Promise<number>;
+  write(data: Uint8Array): Promise<number>;
   close(): void;
   shutdown(): Promise<void>;
 }
 
 export class Resource implements Resource {
-  read(data: Uint8Array): number {
+  async read(data: Uint8Array): Promise<number> {
     throw new Error('Method not implemented.');
   }
 
-  write(data: Uint8Array): number {
+  async write(data: Uint8Array): Promise<number> {
     throw new Error('Method not implemented.');
   }
 
@@ -19,7 +19,7 @@ export class Resource implements Resource {
     throw new Error('Method not implemented.');
   }
 
-  shutdown(): Promise<void> {
+  async shutdown(): Promise<void> {
     throw new Error('Method not implemented.');
   }
 }

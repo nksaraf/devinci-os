@@ -14,7 +14,7 @@ import terminal from 'os/apps/terminal/terminal';
 import vscode from 'os/apps/vscode/vscode';
 import wallpaper from 'os/apps/wallpaper/wallpaper';
 import { createAppConfig, installApp } from './stores/apps.store';
-
+import { constants } from 'os/kernel/kernel/constants';
 import { DenoRuntime } from './kernel/node/deno';
 
 installApp(finder());
@@ -49,6 +49,16 @@ export const initKernel = async () => {
   let kernel = await createKernel({
     mode: KernelFlags.PRIVILEGED | KernelFlags.UI | KernelFlags.MAIN,
   });
+
+  console.log(
+    kernel.fs.writeFileSync(
+      '/hello.txt',
+      'Hello world',
+      'utf-8',
+      constants.fs.O_RDWR,
+      FileType.FILE,
+    ),
+  );
 
   // kernel.fs.mount(
   //   '/deno',
@@ -98,7 +108,6 @@ export const initKernel = async () => {
   // let net = node.require('net');
   // console.log(new net.Socket());
 
-  // console.log(kernel.fs.openSync('/hello.txt', constants.fs.O_RDWR, FileType.FILE));
   // Step 1: Create a server socket
   // server(kernel);
 
