@@ -14,11 +14,7 @@ import terminal from 'os/apps/terminal/terminal';
 import vscode from 'os/apps/vscode/vscode';
 import wallpaper from 'os/apps/wallpaper/wallpaper';
 import { createAppConfig, installApp } from './stores/apps.store';
-import { constants } from './kernel/kernel/constants';
-// import { rest, setupWorker } from 'msw';
-import { testFS } from './kernel/vfs/file';
-// import Deno from './deno?worker';
-// import { wrap } from 'comlink';
+
 import { DenoRuntime } from './kernel/node/deno';
 
 installApp(finder());

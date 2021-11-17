@@ -1,17 +1,17 @@
 export interface Resource {
   name: string;
-  read(data: Uint8Array): ReadableStream;
-  write(data: Uint8Array): WritableStream;
+  read(data: Uint8Array): number;
+  write(data: Uint8Array): number;
   close(): void;
   shutdown(): Promise<void>;
 }
 
 export class Resource implements Resource {
-  read(data: Uint8Array): ReadableStream {
+  read(data: Uint8Array): number {
     throw new Error('Method not implemented.');
   }
 
-  write(data: Uint8Array): WritableStream {
+  write(data: Uint8Array): number {
     throw new Error('Method not implemented.');
   }
 

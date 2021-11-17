@@ -137,6 +137,27 @@ export class DenoRuntime {
 
     this.resourceTable = new Map<number, Resource>();
 
+    class StreamResource extends Resource {
+      constructor(public stream: ReadableStream) {
+        super();
+      }
+      read(data: Uint8Array) {
+        const reader = this.stream.getReader({
+          mode: 'byob',
+        });
+        return reader.read(data);
+      }
+      write(data: Uint8Array) {
+        return this.stream.write(data);
+      }
+      close() {
+        this.stream.close();
+      }
+      shutdown() {
+        return this.stream.close();
+      }
+    }
+
     let ops = [
       {
         name: 'INTERNAL',
@@ -150,11 +171,12 @@ export class DenoRuntime {
       },
       {
         name: 'op_read',
+
+        sync: () => {},
         async: (rid: number, data: Uint8Array) => {
           let resource = this.resourceTable.get(rid);
-          resource.write(data);
+          return resource.read(data);
         },
-        sync: () => {},
       },
 
       {
@@ -202,10 +224,51 @@ export class DenoRuntime {
           // });
           let requestRid = this.addResource(new Resource());
 
-          return { requestRid, requestBodyRid: null };
+          return { requestRid, requestBodyRid: null, cancelHandleRid: null };
         },
         async: async (arg) => {
           return arg;
+        },
+      },
+
+      {
+        name: 'op_fetch_send',
+        // sync: (arg) => {
+        //   // return fetch(arg.url, {
+        //   //   headers: arg.headers,
+        //   //   method: arg.method,
+        //   // });
+        //   let requestRid = this.addResource(new Resource());
+
+        //   return { requestRid, requestBodyRid: null };
+        // },
+        async: async (rid) => {
+          let httpRequest = this.resourceTable.get(rid);
+          let response = await fetch(httpRequest.url, httpRequest.options);
+
+          let reader = response.body.getReader();
+
+          let stream = new ReadableStream({
+            type: 'bytes' as const,
+            async pull(controller) {
+              let read = reader.read();
+              read.then(({ done, value }) => {
+                if (done) {
+                  controller.close();
+                }
+
+                controller.enqueue(value);
+              });
+            },
+          });
+
+          return {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers,
+            url: response.url,
+            responseRid: this.addResource(new Resource(response)),
+          };
         },
       },
     ];

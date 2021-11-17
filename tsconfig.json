@@ -34,7 +34,11 @@
       "browserfs/*": ["./packages/browserfs/*"],
       "vs/*": ["./packages/vscode/src/vs/*"]
     },
-    "types": ["vite-plugin-pwa/client", "@types/wicg-file-system-access"],
+    "types": [
+      "vite-plugin-pwa/client",
+      "@types/wicg-file-system-access",
+      "./src/kernel/node/deno-types.d.ts"
+    ],
     /**
      * Typecheck JS in `.svelte` and `.js` files by default.
      * Disable checkJs if you'd like to use dynamic types in JS.
@@ -64,10 +68,7 @@
       "ES2020.Symbol.WellKnown",
       "ES2020.Intl",
       "ESNext.WeakRef",
-      "ES2021.String",
-      "DOM",
-      "DOM.Iterable",
-      "WebWorker.ImportScripts"
+      "ES2021.String"
     ]
   },
   "include": [
@@ -80,6 +81,10 @@
     "packages/vscode/src/vs/**/*",
     "packages/vscode/src/typings/**/*"
   ],
-  "exclude": ["node_modules/**/*", "packages/node"],
+  "exclude": [
+    "node_modules/**/*",
+    "packages/node",
+    "node_modules/typescript/lib/lib.webworker.d.ts"
+  ],
   "extends": "@tsconfig/svelte/tsconfig.json"
 }
