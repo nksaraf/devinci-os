@@ -5,7 +5,6 @@ import { createKernel } from './kernel/kernel';
 import type { Kernel } from './kernel/kernel';
 import { KernelFlags } from './kernel/kernel/types';
 import { FileType } from './kernel/fs/core/stats';
-import { NodeRuntime } from './kernel/node/runtime';
 
 import calculator from 'os/apps/calculator/calculator';
 import calendar from 'os/apps/calendar/calendar';
@@ -15,15 +14,13 @@ import terminal from 'os/apps/terminal/terminal';
 import vscode from 'os/apps/vscode/vscode';
 import wallpaper from 'os/apps/wallpaper/wallpaper';
 import { createAppConfig, installApp } from './stores/apps.store';
-import Global from './kernel/global';
 import { constants } from './kernel/kernel/constants';
 // import { rest, setupWorker } from 'msw';
 import { testFS } from './kernel/vfs/file';
 // import Deno from './deno?worker';
 // import { wrap } from 'comlink';
-import { createFileSystemBackend } from './kernel/fs';
-import HTTPRequest from './kernel/fs/backend/HTTPRequest';
 import { DenoRuntime } from './kernel/node/deno';
+
 installApp(finder());
 installApp(calculator());
 installApp(calendar());
@@ -63,13 +60,14 @@ export const initKernel = async () => {
   //     baseURL: 'https://raw.githubusercontent.com/denoland/deno/main/runtime/js/',
   //   }),
   // );
+  console.time('unpacking deno');
 
-  const node = new NodeRuntime();
+  // const node = new NodeRuntime();
   const deno = new DenoRuntime();
-  await node.bootstrapFromHttp(kernel);
+  // await node.bootstrapFromHttp(kernel);
   await deno.bootstrapFromHttp(kernel);
-  Global.node = node;
-  console.timeEnd('unpacking node');
+
+  console.timeEnd('unpacking deno');
 
   // let getModule = async (runtime) => {
   //   let code = await (
@@ -88,7 +86,6 @@ export const initKernel = async () => {
   // let { getRuntime } = await wrap(new Deno());
 
   // await getRuntime();
-  console.log(kernel);
   // console.time('unpacking node');
   // let res = await fetch('/node-lib.tar');
   // let buffer = await res.arrayBuffer();
@@ -97,7 +94,7 @@ export const initKernel = async () => {
   // await node.bootstrap(kernel, '/@node');
   // console.timeEnd('unpacking node');
 
-  console.time('unpacking node');
+  // console.time('unpacking node');
   // let res = await fetch('/node-lib.tar');
   // let buffer = await res.arrayBuffer();
   // await extractContents(kernel.fs, new Uint8Array(buffer), '/@node');
@@ -105,46 +102,14 @@ export const initKernel = async () => {
   // let net = node.require('net');
   // console.log(new net.Socket());
 
-  console.log(kernel.fs.openSync('/hello.txt', constants.fs.O_RDWR, FileType.FILE));
+  // console.log(kernel.fs.openSync('/hello.txt', constants.fs.O_RDWR, FileType.FILE));
   // Step 1: Create a server socket
-  server(kernel);
+  // server(kernel);
 
-  node.require('child_process').spawnSync('/bin/sh', ['-c', 'echo hello']);
-  node.require('os');
+  // node.require('child_process').spawnSync('/bin/sh', ['-c', 'echo hello']);
+  // node.require('os');
 
-  async function* streamAsyncIterable(stream: ReadableStream) {
-    const reader = stream.getReader();
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          return;
-        }
-        yield value;
-      }
-    } finally {
-      reader.releaseLock();
-    }
-  }
-  // Fetches data from url and calculates response size using the async generator.
-  async function getResponseSize(url) {
-    const response = await fetch(url);
-    // Will hold the size of the response, in bytes.
-    let responseSize = 0;
-
-    // The for-await-of loop. Async iterates over each portion of the response.
-    for await (const chunk of streamAsyncIterable(response.body)) {
-      // Incrementing the total response length.
-      console.log(chunk.length);
-      responseSize += chunk.length;
-    }
-
-    console.log(`Response Size: ${responseSize} bytes`);
-    // expected output: "Response Size: 1071472"
-    return responseSize;
-  }
-
-  await getResponseSize('https://jsonplaceholder.typicode.com/photos');
+  // await testResponseStream();
   // node.setInternalModule('bench-common', {
   //   createBenchmark: () => {
   //     let id = 0;
@@ -220,6 +185,42 @@ export const initKernel = async () => {
   return kernel;
 };
 
+async function testResponseStream() {
+  async function* streamAsyncIterable(stream: ReadableStream) {
+    const reader = stream.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          return;
+        }
+        yield value;
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+  // Fetches data from url and calculates response size using the async generator.
+  async function getResponseSize(url) {
+    const response = await fetch(url);
+    // Will hold the size of the response, in bytes.
+    let responseSize = 0;
+
+    // The for-await-of loop. Async iterates over each portion of the response.
+    for await (const chunk of streamAsyncIterable(response.body)) {
+      // Incrementing the total response length.
+      console.log(chunk.length);
+      responseSize += chunk.length;
+    }
+
+    console.log(`Response Size: ${responseSize} bytes`);
+    // expected output: "Response Size: 1071472"
+    return responseSize;
+  }
+
+  await getResponseSize('https://jsonplaceholder.typicode.com/photos');
+}
+
 function server(kernel: Kernel) {
   const serverSocket = kernel.net.socket();
   // Step 2: Bind the socket to a port
@@ -238,7 +239,6 @@ function server(kernel: Kernel) {
 initKernel()
   .then(() => {})
   .finally(() => {
-    testFS();
     const desktop = new MacOS({
       target: document.getElementById('root'),
     });

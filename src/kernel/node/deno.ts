@@ -5,7 +5,8 @@ import type { Kernel } from '../kernel';
 import { createFileSystemBackend } from '../fs/create-fs';
 import * as path from 'path';
 import { constants } from '../kernel/constants';
-import type { Resource, ResourceTable } from './interface';
+import type { ResourceTable } from './interface';
+import { Resource } from './interface';
 
 type Context = typeof globalThis;
 
@@ -46,6 +47,14 @@ export class DenoRuntime {
   }
 
   global = {};
+
+  addResource(res: Resource) {
+    let rid = this.nextRid++;
+    this.resourceTable.set(rid, res);
+    return rid;
+  }
+
+  nextRid = 0;
 
   async bootstrap(kernel: Kernel, src = '/lib/deno') {
     // nodeConsole = Object.assign({}, console, {
@@ -125,6 +134,7 @@ export class DenoRuntime {
 
     // @ts-ignore
     this.global.globalThis = this.global;
+
     this.resourceTable = new Map<number, Resource>();
 
     let ops = [
@@ -146,18 +156,88 @@ export class DenoRuntime {
         },
         sync: () => {},
       },
+
+      {
+        name: 'op_read_dir_async',
+        sync: () => {},
+        async: async () => {
+          return ['hello.txt'];
+        },
+      },
+      {
+        name: 'op_format_file_name',
+        sync: (arg) => arg,
+        async: async (arg) => {
+          return arg;
+        },
+      },
+      {
+        name: 'op_url_parse',
+        sync: (arg) => {
+          let url = new URL(arg);
+          return [
+            url.href,
+            url.hash,
+            url.host,
+            url.hostname,
+            url.origin,
+            url.password,
+            url.pathname,
+            url.port,
+            url.protocol,
+            url.search,
+            url.username,
+          ].join('\n');
+        },
+        async: async (arg) => {
+          return arg;
+        },
+      },
+      {
+        name: 'op_fetch',
+        sync: (arg) => {
+          // return fetch(arg.url, {
+          //   headers: arg.headers,
+          //   method: arg.method,
+          // });
+          let requestRid = this.addResource(new Resource());
+
+          return { requestRid, requestBodyRid: null };
+        },
+        async: async (arg) => {
+          return arg;
+        },
+      },
     ];
 
     let Deno = {
       core: {
         opcallSync: (index, arg1, arg2) => {
-          console.log('opcall async', ops[index].sync(arg1, arg2));
+          if (index === 0) {
+            return ops.map((o, index) => [o.name, index]).slice(1);
+          }
+
+          let opResult = ops[index].sync(arg1, arg2);
+          console.log('opcall sync', ops[index].name, opResult);
+
+          return opResult;
         },
-        opcallAsync: (name, promiseId, arg1, arg2) => {
-          console.log('opcall async', ops[index].async(arg1, arg2));
+        opcallAsync: (index, promiseId, arg1, arg2) => {
+          if (index === 0) {
+            return ops.map((o, index) => [o.name, index]).slice(1);
+          }
+          return ops[index].async(arg1, arg2);
         },
-        callConsole: (name, ...args) => {
-          console.log('call console', name, args, this);
+        callConsole: (oldLog, newLog, ...args) => {
+          if (args[0].startsWith('op ')) {
+            if (ops.find((o) => o.name === args[1])) {
+              console.log(...args);
+            } else {
+              console.error(...args);
+            }
+          } else {
+            console.log(...args);
+          }
         },
         setMacrotaskCallback: (cb) => {
           console.log('macrostask callback');
@@ -198,11 +278,7 @@ export class DenoRuntime {
     this.evalScript('/lib/deno/core/01_core.js');
     this.evalScript('/lib/deno/core/02_error.js');
 
-    let opsCache = Deno.core.ops();
-
-    ops.forEach((op, index) => {
-      opsCache[op.name] = index;
-    });
+    Deno.core.syncOpsCache();
 
     // this.evalScript('/lib/deno/runtime/js/01_build.js');
     // this.evalScript('/lib/deno/runtime/js/01_errors.js');
@@ -232,6 +308,15 @@ export class DenoRuntime {
     });
 
     Global.Deno = this.globalProxy.Deno;
+
+    this.evalAsyncWithContext(`for await (const dirEntry of Deno.readDir('data')) {
+      console.log(dirEntry);
+    }
+      
+      let response = await fetch("https://api.github.com/users/denoland");
+      console.log(await response.json());
+
+    `);
 
     // this.evalScript('/lib/deno/runtime/js/06_util.js');
     // this.evalScript('/lib/deno/runtime/js/10_permissions.js');
@@ -352,6 +437,30 @@ export class DenoRuntime {
         try {
             with (context) {
               let fn = function() {
+                ${source}
+              }
+
+              boundFn = fn.bind(context);
+
+              return boundFn();
+            }
+        }  catch(e) {
+          throw e;
+        } finally {
+          
+        }
+    };
+  `)();
+
+    return executor.bind(context)(context);
+  }
+
+  evalAsyncWithContext(source, context = this.globalProxy) {
+    const executor = Function(`
+    return (context) => {
+        try {
+            with (context) {
+              let fn = async function() {
                 ${source}
               }
 
