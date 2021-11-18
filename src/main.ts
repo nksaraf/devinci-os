@@ -36,6 +36,7 @@ installApp(
     dock: {
       icon: '/assets/app-icons/workflowy/256.png',
       onClick() {
+        // @ts-ignore
         window.open('https://workflowy.com/', '_blank');
       },
     },
@@ -50,16 +51,6 @@ export const initKernel = async () => {
     mode: KernelFlags.PRIVILEGED | KernelFlags.UI | KernelFlags.MAIN,
   });
 
-  console.log(
-    kernel.fs.writeFileSync(
-      '/hello.txt',
-      'Hello world',
-      'utf-8',
-      constants.fs.O_RDWR,
-      FileType.FILE,
-    ),
-  );
-
   // kernel.fs.mount(
   //   '/deno',
   //   await createFileSystemBackend(HTTPRequest, {
@@ -69,11 +60,74 @@ export const initKernel = async () => {
   console.time('unpacking deno');
 
   // const node = new NodeRuntime();
-  const deno = new DenoRuntime();
   // await node.bootstrapFromHttp(kernel);
-  await deno.bootstrapFromHttp(kernel);
+  let deno = await DenoRuntime.bootstrapFromHttp(kernel);
 
   console.timeEnd('unpacking deno');
+
+  // kernel.fs.writeFileSync('/hello.txt', 'Hello world', 'utf-8', constants.fs.O_RDWR, FileType.FILE);
+
+  // await deno.evalAsyncWithContext(`
+  //     for await (const dirEntry of Deno.readDir('data')) {
+  //       console.log(dirEntry);
+  //     }
+
+  //     let response = await fetch("https://api.github.com/users/denoland");
+  //     for await (const chunk of response.body) {
+  //       console.log('heree', new TextDecoder().decode(chunk));
+  //     }
+
+  //     for (let i = 0; i < Deno.args.length; i++) {
+  //       const filename = Deno.args[i];
+  //       console.log('heree')
+  //       let file = await Deno.open(filename)
+  //       console.log(file)
+  //       await Deno.stdout.write(await Deno.readAll(file))
+  //       await Deno.writeFile('/other.txt', (await Deno.readFile('/hello.txt')).slice(0, 5))
+  //       file.close();
+
+  //       console.log(Deno.cwd())
+  //     }
+  //   `);
+
+  await deno.run('https://deno.land/std@0.115.1/examples/curl.ts', {
+    args: ['https://deno.land/std@0.115.1/examples/curl.ts'],
+  });
+
+  await deno.eval(`
+    console.log(location.href);
+    async function handle(conn) {
+      const httpConn = Deno.serveHttp(conn);
+      for await (const requestEvent of httpConn) {
+        console.log('REQUEST', requestEvent.request.url);
+        // ... handle requestEvent
+      }
+    }
+    
+    const server = Deno.listen({ port: 8080 });
+    
+    for await (const conn of server) {
+      handle(conn);
+    }
+  `);
+
+  // await deno.evalAsyncWithContext(`
+  // // Start listening on port 8080 of localhost.
+  // const server = Deno.listen({ port: 8080 });
+  // console.log("HTTP webserver running.  Access it at:  http://localhost:8080/");
+
+  // console.log(server)
+
+  // server.accept().then((conn) => {
+  //   console.log('CONNNECTEDDD', conn)
+  // })
+
+  //   `);
+
+  // await deno.evalAsyncWithContext(`
+  // const client = await Deno.connect({ port: 8080 });
+  // console.log(client)
+  //   `);
 
   // let getModule = async (runtime) => {
   //   let code = await (
@@ -241,12 +295,13 @@ function server(kernel: Kernel) {
   });
 }
 
+const desktop = new MacOS({
+  target: document.getElementById('root'),
+});
+
 initKernel()
   .then(() => {})
   .finally(() => {
-    const desktop = new MacOS({
-      target: document.getElementById('root'),
-    });
     // createVSCode(document.getElementById('root'), {});
   });
 
