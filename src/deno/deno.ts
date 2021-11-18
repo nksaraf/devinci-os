@@ -1,26 +1,28 @@
-import Global from '../global';
-import HTTPRequest from '../fs/backend/HTTPRequest';
-import type { Kernel } from '../kernel';
-import { createFileSystemBackend } from '../fs/create-fs';
+import HTTPRequest from '../kernel/fs/backend/HTTPRequest';
+import { createFileSystemBackend } from '../kernel/fs/create-fs';
 import * as path from 'path';
-import { constants } from '../kernel/constants';
-import { DenoHost } from './deno-host';
+import { constants } from '../kernel/kernel/constants';
+import { DenoRemoteHost } from './deno-host';
+import type { IDenoHost } from './deno-host';
 import esbuildWasmUrl from 'esbuild-wasm/esbuild.wasm?url';
-
+import { windowEndpoint } from 'comlink';
+import DenoWorker from 'os/deno-iframe?worker';
 export type Context = typeof globalThis;
 
 class DenoIsolate {
-  constructor(public context: Context, public host: DenoHost) {}
+  constructor(public context: Context, public host: IDenoHost) {}
 
-  bootstrap(options: {}) {
-    this.context.bootstrap.mainRuntime({
-      target: 'arm64-devinci-darwin-dev',
-      location: window.location.href,
-      ...options,
-    });
-  }
+  async bootstrap(options: {}) {}
 
   async eval(source: string) {
+    await this.host.core.syncOpsCache();
+
+    this.context.bootstrap.mainRuntime({
+      target: 'arm64-devinci-darwin-dev',
+      // location: window.location.href,
+      // ...options,
+    });
+
     return await evalAsyncWithContext(source, this.context);
   }
 
@@ -30,25 +32,8 @@ class DenoIsolate {
     });
     return await this.eval(await (await fetch(path)).text());
   }
-}
 
-export class DenoRuntime {
-  static async bootstrapFromHttp(kernel: Kernel) {
-    let testFS = await createFileSystemBackend(HTTPRequest, {
-      baseUrl: 'http://localhost:8999/',
-      index: 'http://localhost:8999/index.json',
-      preferXHR: true,
-    });
-
-    if (!kernel.fs.existsSync('/lib')) {
-      kernel.fs.mkdirSync('/lib', 0x644, { recursive: true });
-    }
-
-    kernel.fs.mount('/lib/deno', testFS);
-    return DenoRuntime.createIsolate();
-  }
-
-  static createIsolate() {
+  static async bootstrap(host: IDenoHost) {
     let denoGlobal = {
       JSON,
       Math,
@@ -108,8 +93,6 @@ export class DenoRuntime {
       encodeURIComponent,
     };
 
-    let host = new DenoHost();
-
     let globalContext = new Proxy(denoGlobal as any, {
       has: (o, k) => k in o || k in denoGlobal,
       get: (o, k) => {
@@ -128,7 +111,7 @@ export class DenoRuntime {
       // this will be overwitten by the runtime
 
       Deno: {
-        core: host.core,
+        core: await host.getBootstrapCore(),
       },
     });
 
@@ -138,45 +121,73 @@ export class DenoRuntime {
     denoGlobal.global = denoGlobal;
 
     // core
-    DenoRuntime.evalBootstrapModule('/lib/deno/core', globalContext);
+    evalBootstrapModule('/lib/deno/core', globalContext);
 
     // extensions
-    DenoRuntime.evalBootstrapModule('/lib/deno/ext/console', globalContext);
-    DenoRuntime.evalBootstrapModule('/lib/deno/ext/webidl', globalContext);
-    DenoRuntime.evalBootstrapModule('/lib/deno/ext/url', globalContext);
-    DenoRuntime.evalBootstrapModule('/lib/deno/ext/web', globalContext);
-    DenoRuntime.evalBootstrapModule('/lib/deno/ext/fetch', globalContext);
-    DenoRuntime.evalBootstrapModule('/lib/deno/ext/websocket', globalContext);
-    DenoRuntime.evalBootstrapModule('/lib/deno/ext/webstorage', globalContext);
-    DenoRuntime.evalBootstrapModule('/lib/deno/ext/net', globalContext);
-    DenoRuntime.evalBootstrapModule('/lib/deno/ext/timers', globalContext);
-    DenoRuntime.evalBootstrapModule('/lib/deno/ext/crypto', globalContext);
-    DenoRuntime.evalBootstrapModule('/lib/deno/ext/broadcast_channel', globalContext);
-    DenoRuntime.evalBootstrapModule('/lib/deno/ext/ffi', globalContext);
-    DenoRuntime.evalBootstrapModule('/lib/deno/ext/http', globalContext);
-    DenoRuntime.evalBootstrapModule('/lib/deno/ext/tls', globalContext);
-    DenoRuntime.evalBootstrapModule('/lib/deno/ext/webgpu', globalContext);
+    evalBootstrapModule('/lib/deno/ext/console', globalContext);
+    evalBootstrapModule('/lib/deno/ext/webidl', globalContext);
+    evalBootstrapModule('/lib/deno/ext/url', globalContext);
+    evalBootstrapModule('/lib/deno/ext/web', globalContext);
+    evalBootstrapModule('/lib/deno/ext/fetch', globalContext);
+    evalBootstrapModule('/lib/deno/ext/websocket', globalContext);
+    evalBootstrapModule('/lib/deno/ext/webstorage', globalContext);
+    evalBootstrapModule('/lib/deno/ext/net', globalContext);
+    evalBootstrapModule('/lib/deno/ext/timers', globalContext);
+    evalBootstrapModule('/lib/deno/ext/crypto', globalContext);
+    evalBootstrapModule('/lib/deno/ext/broadcast_channel', globalContext);
+    evalBootstrapModule('/lib/deno/ext/ffi', globalContext);
+    evalBootstrapModule('/lib/deno/ext/http', globalContext);
+    evalBootstrapModule('/lib/deno/ext/tls', globalContext);
+    evalBootstrapModule('/lib/deno/ext/webgpu', globalContext);
 
     // Deno runtime + Web globals (lot of them are coming from utilities)
-    DenoRuntime.evalBootstrapModule('/lib/deno/runtime/js', globalContext);
-
-    host.syncOpsCache();
+    evalBootstrapModule('/lib/deno/runtime/js', globalContext);
 
     return new DenoIsolate(globalContext, host);
   }
+}
 
-  private static evalBootstrapModule(src: string, context) {
-    kernel.fs.readdirSync(src).forEach((path) => {
-      if (path.endsWith('.js') && !Number.isNaN(Number(path[0]))) {
-        DenoRuntime.evalBootstrapScript(`${src}/${path}`, context);
-      }
-    });
+export class DenoRuntime {
+  static bootstrapWithRemote(wrap: any) {
+    let host = new DenoRemoteHost(wrap);
+
+    return this.bootstrapFromHttp(host);
+  }
+  static async bootstrapInWorker() {
+    let worker = new DenoWorker();
+
+    let host = new DenoRemoteHost(worker);
+
+    return this.bootstrapFromHttp(host);
   }
 
-  static async evalBootstrapScript(src, context) {
-    console.time('evaluating ' + src);
-    evalWithContext(kernel.fs.readFileSync(src, 'utf-8', constants.fs.O_RDONLY), context);
-    console.timeEnd('evaluating ' + src);
+  static async bootstrapInIframe() {
+    let iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = '/deno.html';
+    document.body.appendChild(iframe);
+    await new Promise((resolve) => {
+      iframe.onload = resolve;
+    });
+
+    let host = new DenoRemoteHost(windowEndpoint(iframe.contentWindow));
+
+    return this.bootstrapFromHttp(host);
+  }
+
+  static async bootstrapFromHttp(host: IDenoHost) {
+    let testFS = await createFileSystemBackend(HTTPRequest, {
+      baseUrl: 'http://localhost:8999/',
+      index: 'http://localhost:8999/index.json',
+      preferXHR: true,
+    });
+
+    if (!kernel.fs.existsSync('/lib')) {
+      kernel.fs.mkdirSync('/lib', 0x644, { recursive: true });
+    }
+
+    kernel.fs.mount('/lib/deno', testFS);
+    return DenoIsolate.bootstrap(host);
   }
 }
 
@@ -239,7 +250,7 @@ class Linker {
   loadModule(fileName: string, context: Context) {
     let contents = kernel.fs.readFileSync(fileName, 'utf-8', constants.fs.O_RDONLY);
 
-    let result = evalCommonJSModule(contents, {
+    let result = evalCJSModule(contents, {
       filename: fileName,
       globalContext: context,
       require: this.require.bind(this),
@@ -250,13 +261,29 @@ class Linker {
   }
 }
 
-function evalCommonJSModule(source: string, { filename = '', require, globalContext }) {
+class V8 {}
+
+function evalBootstrapModule(src: string, context) {
+  kernel.fs.readdirSync(src).forEach((path) => {
+    if (path.endsWith('.js') && !Number.isNaN(Number(path[0]))) {
+      evalScript(`${src}/${path}`, context);
+    }
+  });
+}
+
+function evalScript(src, context) {
+  console.time('evaluating ' + src);
+  evalWithContext(kernel.fs.readFileSync(src, 'utf-8', constants.fs.O_RDONLY), context);
+  console.timeEnd('evaluating ' + src);
+}
+
+function evalCJSModule(source: string, { filename = '', require, globalContext }) {
   const module = { exports: {} };
   const exports = module.exports;
 
-  // function require(mod) {
-  //   return this.require(mod, moduleProxy);
-  // }
+  const requireFn = (mod) => {
+    return require(mod, moduleProxy);
+  };
 
   const moduleProxy = new Proxy(
     {
@@ -265,7 +292,7 @@ function evalCommonJSModule(source: string, { filename = '', require, globalCont
       __filename: filename,
       __dirname: path.dirname(filename),
       globalThis: globalContext,
-      require,
+      require: requireFn,
       global: globalContext,
     },
     {
@@ -313,22 +340,22 @@ function evalWithContext(source, context) {
 
 function evalAsyncWithContext(source, context) {
   const executor = Function(`
-  return async (context) => {
-    try {
-        with (context) {
-          let fn = async function() {
-            ${source}
+    return async (context) => {
+      try {
+          with (context) {
+            let fn = async function() {
+              ${source}
+            }
+
+            boundFn = fn.bind(context);
+
+            return await boundFn();
           }
-
-          boundFn = fn.bind(context);
-
-          return await boundFn();
-        }
-    }  catch(e) {
-      throw e;
-    }
-  };
-`)();
+      }  catch(e) {
+        throw e;
+      }
+    };
+  `)();
 
   return executor.bind(context)(context);
 }

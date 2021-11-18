@@ -1,13 +1,110 @@
-import type { File } from '../fs/core/file';
-import { constants } from '../kernel/constants';
-import type { ResourceTable } from './interface';
-import { Resource } from './interface';
+import type { File } from '../kernel/fs/core/file';
+import { constants } from '../kernel/kernel/constants';
+import type { ResourceTable } from '../kernel/node/interface';
+import { Resource } from '../kernel/node/interface';
 import { Buffer } from 'buffer';
+import type { Remote } from 'comlink';
+import { wrap } from 'comlink';
 
-export class DenoHost {
+function sendOpCall(opname, arg1, arg2) {
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/deno/op/sync/' + opname, false);
+  xhr.send(JSON.stringify([opname, arg1, arg2]));
+  // look ma, i'm synchronous (•‿•)
+  console.log('json response', xhr.responseText);
+  return JSON.parse(xhr.responseText.length > 0 ? xhr.responseText : 'null');
+}
+
+export class DenoRemoteHost implements IDenoHost {
+  async getBootstrapCore(): Promise<any> {
+    return this.core;
+  }
+
+  proxy: Remote<DenoHost>;
+
+  getOpsMappings() {
+    return this.proxy.getOpsMappings();
+  }
+
+  core: {
+    opcallSync: (index: any, arg1: any, arg2: any) => any;
+    opcallAsync: (index: any, promiseId: any, arg1: any, arg2: any) => any;
+    callConsole: (oldLog: any, newLog: any, ...args: any[]) => void;
+    setMacrotaskCallback: (cb: any) => void;
+    setWasmStreamingCallback: (cb: any) => void;
+    decode: (data: Uint8Array) => string;
+    encode: (data: string) => Uint8Array;
+  };
+
+  overrideOps: Op[]
+
+  constructor(endpoint: any) {
+    this.proxy = wrap(endpoint);
+    this.overrideOps = {
+      "op_read": {
+        async: (buffer: Uint8Array) => {
+          
+        }
+      }
+    }
+    this.core = {
+      opcallSync: (index, arg1, arg2) => {
+        console.group('op sync', index, arg1, arg2);
+        let result = sendOpCall(index, arg1, arg2);
+        console.log(result);
+        console.groupEnd();
+
+        return result;
+      },
+      opcallAsync: async (index, promiseId, arg1, arg2): Promise<any> => {
+        console.group('op async', await this.proxy.ops[index].name, arg1, arg2);
+        let result = await this.proxy.core.opcallAsync(index, promiseId, arg1, arg2);
+        console.log(result);
+        console.groupEnd();
+        return result;
+      },
+      callConsole: (oldLog, newLog, ...args) => {
+        // if (typeof args[0] === 'string' && args[0].startsWith('op ')) {
+        // if (this.ops.find((o) => o.name === args[1])) {
+        //   console.log(...args);
+        // } else {
+        //   console.error(...args);
+        // }
+        // } else {
+        oldLog(...args);
+        // }
+      },
+      setMacrotaskCallback: (cb) => {
+        console.log('macrostask callback');
+      },
+      setWasmStreamingCallback: (cb) => {
+        console.log('wasm streaming callback');
+      },
+
+      decode: function (data: Uint8Array) {
+        return new TextDecoder().decode(data);
+      },
+
+      encode: function (data: string) {
+        return new TextEncoder().encode(data);
+      },
+    };
+  }
+}
+
+export class DenoHost implements IDenoHost {
+  async getBootstrapCore(): Promise<any> {
+    return this.core;
+  }
+
+  getOpsMappings() {
+    return this.ops.map((o, index) => [o.name, index]).slice(1);
+  }
+
   getResource<T extends Resource>(arg0: number): T {
     return this.resourceTable.get(arg0) as T;
   }
+
   core: {
     opcallSync: (index: any, arg1: any, arg2: any) => any;
     opcallAsync: (index: any, promiseId: any, arg1: any, arg2: any) => any;
@@ -37,7 +134,9 @@ export class DenoHost {
     this._ops = [
       {
         name: 'INTERNAL',
-        sync: () => {},
+        sync: () => {
+          return this.getOpsMappings();
+        },
         async: () => {},
       },
       {
@@ -47,9 +146,9 @@ export class DenoHost {
       },
       {
         name: 'op_read',
-
         sync: () => {},
         async: async (rid: number, data: Uint8Array) => {
+          debugger;
           let resource = this.resourceTable.get(rid);
           return await resource.read(data);
         },
@@ -173,10 +272,15 @@ export class DenoHost {
             method: httpRequest.method,
           });
 
+          let headers = [];
+          for (let [key, value] of response.headers) {
+            headers.push([key, value]);
+          }
+
           return {
             status: response.status,
             statusText: response.statusText,
-            headers: response.headers,
+            headers: headers,
             url: response.url,
             responseRid: this.addResource(new FetchResponseResource(response)),
           };
@@ -252,7 +356,7 @@ export class DenoHost {
         // Deno maintains a cache of this mapping
         // so it can call ops by passing a number, not the whole string
         if (index === 0) {
-          return this.ops.map((o, index) => [o.name, index]).slice(1);
+          return this.getOpsMappings();
         }
 
         if (!this.ops[index]) {
@@ -267,10 +371,7 @@ export class DenoHost {
 
         return opResult;
       },
-      opcallAsync: (index, promiseId, arg1, arg2) => {
-        if (index === 0) {
-          return this.ops.map((o, index) => [o.name, index]).slice(1);
-        }
+      opcallAsync: (index, promiseId, arg1, arg2): Promise<any> => {
         return this.ops[index].async(arg1, arg2);
       },
       callConsole: (oldLog, newLog, ...args) => {
@@ -301,11 +402,6 @@ export class DenoHost {
     };
   }
 
-  syncOpsCache() {
-    // @ts-ignore
-    this.core.syncOpsCache();
-  }
-
   _ops: Op[];
 
   get ops() {
@@ -329,8 +425,8 @@ function urlToDenoUrl(url: URL) {
   ].join('\n');
 }
 
-function network(host: DenoHost) {
-  host._ops.push(
+function network(kernel: DenoHost) {
+  kernel._ops.push(
     syncOp('op_net_listen', (args): OpConn => {
       switch (args.transport) {
         case 'tcp': {
@@ -343,7 +439,7 @@ function network(host: DenoHost) {
           //   port: args.port,
           // });
 
-          let listenerRid = host.addResource(new TcpListenerResource(socket));
+          let listenerRid = kernel.addResource(new TcpListenerResource(socket));
 
           // socket.listen();
           return {
@@ -360,11 +456,11 @@ function network(host: DenoHost) {
     asyncOp('op_net_accept', async (args): Promise<OpConn> => {
       console.log('tcp accept', args);
 
-      let listener = host.getResource<TcpListenerResource>(args.rid);
+      let listener = kernel.getResource<TcpListenerResource>(args.rid);
 
       let tcpStream = await listener.socket.accept();
 
-      let streamRid = host.addResource(new TcpStreamResource(tcpStream));
+      let streamRid = kernel.addResource(new TcpStreamResource(tcpStream));
       return {
         rid: streamRid,
         localAddr: tcpStream.localAddr,
@@ -377,7 +473,7 @@ function network(host: DenoHost) {
           console.log('tcp listener', args);
 
           let socket = new Socket();
-          let listenerRid = host.addResource(new TcpListenerResource(socket));
+          let listenerRid = kernel.addResource(new TcpListenerResource(socket));
 
           // socket.bind(args.addr);
           // socket.listen(args.addr);
@@ -434,6 +530,10 @@ class TcpListenerResource extends Resource {
 interface OpAddr {
   hostname: string;
   port: number;
+}
+
+export interface IDenoHost {
+  getBootstrapCore(): any;
 }
 
 enum AddrType {
