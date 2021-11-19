@@ -20,7 +20,10 @@ import { constants } from 'os/kernel/kernel/constants';
 import { ApiError, ERROR_KIND_TO_CODE } from './kernel/fs/core/api_error';
 import { VirtualFileSystem } from './kernel/fs';
 import Global from './kernel/global';
-
+let log = console.log;
+console.log = function () {
+  log('main', ...arguments);
+};
 installApp(finder());
 installApp(calculator());
 installApp(calendar());

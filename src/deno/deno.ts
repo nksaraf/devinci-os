@@ -62,6 +62,7 @@ export class DenoIsolate {
     // this.host.setOpsResolve(this.id);
     context.bootstrap.mainRuntime({
       target: 'arm64-devinci-darwin-dev',
+      debugFlag: true,
       // location: window.location.href,
       // ...options,
     });
@@ -275,6 +276,7 @@ export class Linker {
   async init() {
     this.moduleCache = new Map<string, any>();
     await this.esbuild.init();
+    Global.linker = this;
   }
 
   loadModule(fileName: string, context: Context) {
@@ -295,7 +297,7 @@ export class Linker {
   }
 
   private transpileToCJS(data: Uint8Array) {
-    const sharedBuffer = new SharedArrayBuffer(data.length * 10);
+    const sharedBuffer = new SharedArrayBuffer(data.length * 2 + 1500);
 
     let markers = new Int32Array(sharedBuffer, 0, 8);
     Atomics.store(markers, 0, 0);
@@ -303,7 +305,7 @@ export class Linker {
 
     new Uint8Array(sharedBuffer).set(data, 8);
 
-    this.esbuild.transpile(sharedBuffer).then(console.log).catch(console.error);
+    this.esbuild.transpile(sharedBuffer);
 
     Atomics.wait(markers, 0, 0);
 
