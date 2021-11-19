@@ -26,12 +26,14 @@ export class Kernel {
   id: number;
 
   mode: KernelFlags;
+  console: any;
+  syncOp: any;
+  asyncOp: any;
 
   async boot(env: { mode: KernelFlags }) {
     this.env = env;
     this.mode = env.mode;
     this.id = Math.floor(Math.random() * 100000);
-    Global.kernel = this;
     const chanel = new BroadcastChannel('kernel');
 
     this.events = mitt();

@@ -40,6 +40,16 @@ export default defineConfig({
         presetUno(),
       ],
     }),
+    {
+      name: 'configure-response-headers',
+      configureServer: (server) => {
+        server.middlewares.use((_req, res, next) => {
+          res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+          res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+          next();
+        });
+      },
+    },
     UnpluginIcons({ autoInstall: true, compiler: 'svelte' }),
     dynamicImport(),
     svelte(),
@@ -137,7 +147,6 @@ export default defineConfig({
       },
     }),
   ],
-
   resolve: {
     alias: [
       {

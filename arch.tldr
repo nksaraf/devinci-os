@@ -467,7 +467,7 @@
             ],
             "rotation": 0,
             "style": {
-              "color": "black",
+              "color": "white",
               "size": "small",
               "isFilled": true,
               "dash": "draw"

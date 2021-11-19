@@ -21,7 +21,132 @@ export enum ErrorCode {
   ENOTSUP = 95,
   ESPIPE = 32,
   ECONNREFUSED = 61,
+  EADDRINUSE,
+  EADDRNOTAVAIL,
+  ECONNABORTED,
+  ECONNRESET,
+  EINTR,
+  ENOSYS,
+  ENOTCONN,
+  EPIPE,
+  ETIMEDOUT,
 }
+
+enum ErrorKind {
+  /// An entity was not found, often a file.
+  NotFound = 'NotFound',
+  /// The operation lacked the necessary privileges to complete.
+  PermissionDenied = 'PermissionDenied',
+  /// The connection was refused by the remote server.
+  ConnectionRefused = 'ConnectionRefused',
+  /// The connection was reset by the remote server.
+  ConnectionReset = 'ConnectionReset',
+  /// The connection was aborted (terminated) by the remote server.
+  ConnectionAborted = 'ConnectionAborted',
+  /// The network operation failed because it was not connected yet.
+  NotConnected = 'NotConnected',
+  /// A socket address could not be bound because the address is already in
+  /// use elsewhere.
+  AddrInUse = 'AddrInUse',
+  /// A nonexistent interface was requested or the requested address was not
+  /// local.
+  AddrNotAvailable = 'AddrNotAvailable',
+  /// The operation failed because a pipe was closed.
+  BrokenPipe = 'BrokenPipe',
+  /// An entity already exists, often a file.
+  AlreadyExists = 'AlreadyExists',
+  /// The operation needs to block to complete, but the blocking operation was
+  /// requested to not occur.
+  WouldBlock = 'WouldBlock',
+  /// A parameter was incorrect.
+  InvalidInput = 'InvalidInput',
+  /// Data not valid for the operation were encountered.
+  ///
+  /// Unlike [`InvalidInput`], this typically means that the operation
+  /// parameters were valid, however the error was caused by malformed
+  /// input data.
+  ///
+  /// For example, a function that reads a file into a string will error with
+  /// `InvalidData` if the file's contents are not valid UTF-8.
+  ///
+  /// [`InvalidInput`]: ErrorKind::InvalidInput
+  InvalidData = 'InvalidData',
+  /// The I/O operation's timeout expired, causing it to be canceled.
+  TimedOut = 'TimedOut',
+  /// An error returned when an operation could not be completed because a
+  /// call to [`write`] returned [`Ok(0)`].
+  ///
+  /// This typically means that an operation could only succeed if it wrote a
+  /// particular number of bytes but only a smaller number of bytes could be
+  /// written.
+  ///
+  /// [`write`]: crate::io::Write::write
+  /// [`Ok(0)`]: Ok
+  WriteZero = 'WriteZero',
+  /// This operation was interrupted.
+  ///
+  /// Interrupted operations can typically be retried.
+  Interrupted = 'Interrupted',
+  /// Any I/O error not part of this list.
+  ///
+  /// Errors that are `Other` now may move to a different or a new
+  /// [`ErrorKind`] variant in the future. It is not recommended to match
+  /// an error against `Other` and to expect any additional characteristics,
+  /// e.g., a specific [`Error::raw_os_error`] return value.
+  Other = 'Other',
+
+  /// An error returned when an operation could not be completed because an
+  /// "end of file" was reached prematurely.
+  ///
+  /// This typically means that an operation could only succeed if it read a
+  /// particular number of bytes but only a smaller number of bytes could be
+  /// read.
+  UnexpectedEof = 'UnexpectedEof',
+
+  /// This operation is unsupported on this platform.
+  ///
+  /// This means that the operation can never succeed.
+  Unsupported = 'Unsupported',
+}
+
+export const ERROR_KIND_TO_CODE = {
+  // ErrorKind::ArgumentListTooLong => "E2BIG",
+  [ErrorKind.AddrInUse]: ErrorCode.EADDRINUSE,
+  [ErrorKind.AddrNotAvailable]: ErrorCode.EADDRNOTAVAIL,
+  // [ErrorKind.ResourceBusy]:  ErrorCode.EBUSY,
+  [ErrorKind.ConnectionAborted]: ErrorCode.ECONNABORTED,
+  [ErrorKind.ConnectionRefused]: ErrorCode.ECONNREFUSED,
+  [ErrorKind.ConnectionReset]: ErrorCode.ECONNRESET,
+  // [ErrorKind.Deadlock]:  ErrorCode.EDEADLK,
+  // [ErrorKind.FilesystemQuotaExceeded]:  ErrorCode.EDQUOT,
+  [ErrorKind.AlreadyExists]: ErrorCode.EEXIST,
+  // [ErrorKind.FileTooLarge]:  ErrorCode.EFBIG,
+  // [ErrorKind.HostUnreachable]:  ErrorCode.EHOSTUNREACH,
+  [ErrorKind.Interrupted]: ErrorCode.EINTR,
+  [ErrorKind.InvalidInput]: ErrorCode.EINVAL,
+  // [ErrorKind.IsADirectory]:  ErrorCode.EISDIR,
+  // [ErrorKind.FilesystemLoop]:  ErrorCode.ELOOP,
+  [ErrorKind.NotFound]: ErrorCode.ENOENT,
+  // [ErrorKind.OutOfMemory]: ErrorCode.ENOMEM,
+  // [ErrorKind.StorageFull]:  ErrorCode.ENOSPC,
+  [ErrorKind.Unsupported]: ErrorCode.ENOSYS,
+  // [ErrorKind.TooManyLinks]:  ErrorCode.EMLINK,
+  // [ErrorKind.FilenameTooLong]:  ErrorCode.ENAMETOOLONG,
+  // [ErrorKind.NetworkDown]:  ErrorCode.ENETDOWN,
+  // [ErrorKind.NetworkUnreachable]:  ErrorCode.ENETUNREACH,
+  [ErrorKind.NotConnected]: ErrorCode.ENOTCONN,
+  // [ErrorKind.NotADirectory]:  ErrorCode.ENOTDIR,
+  // [ErrorKind.DirectoryNotEmpty]:  ErrorCode.ENOTEMPTY,
+  [ErrorKind.BrokenPipe]: ErrorCode.EPIPE,
+  // [ErrorKind.ReadOnlyFilesystem]:  ErrorCode.EROFS,
+  // [ErrorKind.NotSeekable]:  ErrorCode.ESPIPE,
+  // [ErrorKind.StaleNetworkFileHandle]:  ErrorCode.ESTALE,
+  [ErrorKind.TimedOut]: ErrorCode.ETIMEDOUT,
+  // [ErrorKind.ExecutableFileBusy]:  ErrorCode.ETXTBSY,
+  // [ErrorKind.CrossesDevices]:  ErrorCode.EXDEV,
+  [ErrorKind.PermissionDenied]: ErrorCode.EACCES, // NOTE: Collides with EPERM ...
+};
+
 /* tslint:disable:variable-name */
 /**
  * Strings associated with each error code.

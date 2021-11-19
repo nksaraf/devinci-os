@@ -2,198 +2,241 @@ import HTTPRequest from '../kernel/fs/backend/HTTPRequest';
 import { createFileSystemBackend } from '../kernel/fs/create-fs';
 import * as path from 'path';
 import { constants } from '../kernel/kernel/constants';
-import { DenoRemoteHost } from './deno-host';
-import type { IDenoHost } from './deno-host';
-import esbuildWasmUrl from 'esbuild-wasm/esbuild.wasm?url';
-import { windowEndpoint } from 'comlink';
-import DenoWorker from 'os/deno-iframe?worker';
+import type { Kernel } from './denix';
+import { proxy, windowEndpoint, wrap } from 'comlink';
+import EsbuildWorker from './esbuild-worker.ts?worker';
+import { syncDownloadFile } from 'os/kernel/fs/generic/xhr';
+import Global from 'os/kernel/global';
 export type Context = typeof globalThis;
 
-class DenoIsolate {
-  constructor(public context: Context, public host: IDenoHost) {}
+let ISOLATE_ID = 0;
 
-  async bootstrap(options: {}) {}
+class OpResolvedEvent extends Event {
+  constructor(public readonly promiseId: number, public readonly value: any) {
+    super('resolved');
+  }
+}
 
-  async eval(source: string) {
-    await this.host.core.syncOpsCache();
+export class DenoIsolate {
+  constructor() {}
+  public context: Context;
+  id: number;
+  static async create(kernel: Kernel) {
+    let core = {
+      opcallSync: kernel.syncOp.bind(kernel),
+      opcallAsync: (...args: Parameters<Kernel['asyncOp']>) => {
+        kernel.asyncOp(...args).then((value) => {
+          core.opresolve(args[1], value);
+        });
+      },
+      callConsole: (oldLog, newLog, ...args) => {
+        kernel.console.log(...args);
+      },
+      setMacrotaskCallback: (cb) => {
+        console.log('macrostask callback');
+      },
+      setWasmStreamingCallback: (cb) => {
+        console.log('wasm streaming callback');
+      },
+      decode: function (data: Uint8Array) {
+        return new TextDecoder().decode(data);
+      },
+      encode: function (data: string) {
+        return new TextEncoder().encode(data);
+      },
+    };
 
-    this.context.bootstrap.mainRuntime({
+    let context = await loadDenoBootstrapper(core);
+
+    let isolate = new DenoIsolate();
+    isolate.context = context;
+    isolate.id = ISOLATE_ID++;
+
+    // @ts-ignore
+    await core.syncOpsCache();
+    kernel.addEventListener('op_resolve', (event: OpResolvedEvent) => {
+      //@ts-ignore
+      core.opresolve([event.promiseId, event.value]);
+    });
+
+    // this.host.setOpsResolve(this.id);
+    context.bootstrap.mainRuntime({
       target: 'arm64-devinci-darwin-dev',
       // location: window.location.href,
       // ...options,
     });
 
+    Global.Deno = context.Deno;
+
+    return isolate;
+  }
+
+  async eval(source: string, options: {} = {}) {
     return await evalAsyncWithContext(source, this.context);
   }
 
   async run(path: string, options: {} = {}) {
-    this.bootstrap({
-      ...options,
-    });
     return await this.eval(await (await fetch(path)).text());
   }
+}
+type DenoBootstrapCore = any;
 
-  static async bootstrap(host: IDenoHost) {
-    let denoGlobal = {
-      JSON,
-      Math,
-      Proxy,
-      Reflect,
+async function loadDenoBootstrapper(core: DenoBootstrapCore) {
+  await mountDenoLib();
 
-      Promise,
+  let denoGlobal = {
+    JSON,
+    Math,
+    Proxy,
+    Reflect,
 
-      AggregateError: globalThis.AggregateError,
-      Array,
-      ArrayBuffer,
-      BigInt,
-      BigInt64Array,
-      BigUint64Array,
-      Boolean,
-      DataView,
-      Date,
-      Error,
-      EvalError,
-      FinalizationRegistry: globalThis.FinalizationRegistry,
-      Float32Array,
-      Float64Array,
-      Function,
-      Int16Array,
-      Int32Array,
-      Int8Array,
-      Map,
-      Number,
-      Object,
-      RangeError,
-      ReferenceError,
-      RegExp,
-      Set,
-      String,
-      Symbol,
-      SyntaxError,
-      TypeError,
-      URIError,
-      Uint16Array,
-      Uint32Array,
-      Uint8Array,
-      Uint8ClampedArray,
-      WeakMap,
-      WeakRef: globalThis.WeakRef,
-      WeakSet,
+    Promise,
 
-      SharedArrayBuffer: class {
-        constructor() {
-          throw new Error('SharedArrayBuffer is not supported');
-        }
-      },
-      // Atomics,
+    AggregateError: globalThis.AggregateError,
+    Array,
+    ArrayBuffer,
+    BigInt,
+    BigInt64Array,
+    BigUint64Array,
+    Boolean,
+    DataView,
+    Date,
+    Error,
+    EvalError,
+    FinalizationRegistry: globalThis.FinalizationRegistry,
+    Float32Array,
+    Float64Array,
+    Function,
+    Int16Array,
+    Int32Array,
+    Int8Array,
+    Map,
+    Number,
+    Object,
+    RangeError,
+    ReferenceError,
+    RegExp,
+    Set,
+    String,
+    Symbol,
+    SyntaxError,
+    TypeError,
+    URIError,
+    Uint16Array,
+    Uint32Array,
+    Uint8Array,
+    Uint8ClampedArray,
+    WeakMap,
+    WeakRef: globalThis.WeakRef,
+    WeakSet,
 
-      decodeURI,
-      decodeURIComponent,
-      encodeURI,
-      encodeURIComponent,
-    };
+    SharedArrayBuffer:
+      crossOriginIsolated && SharedArrayBuffer
+        ? SharedArrayBuffer
+        : class {
+            constructor() {
+              throw new Error('SharedArrayBuffer is not supported');
+            }
+          },
+    // Atomics,
 
-    let globalContext = new Proxy(denoGlobal as any, {
-      has: (o, k) => k in o || k in denoGlobal,
-      get: (o, k) => {
-        return o[k] ?? undefined;
-      },
-      set: (o, k, v) => {
-        o[k] = v;
-        return true;
-      },
-    });
+    decodeURI,
+    decodeURIComponent,
+    encodeURI,
+    encodeURIComponent,
+  };
 
-    // globals that remain same for all requires
-    Object.assign(globalContext, {
-      console,
-      // original deno global comes from host
-      // this will be overwitten by the runtime
+  let globalContext = new Proxy(denoGlobal as any, {
+    has: (o, k) => k in o || k in denoGlobal,
+    get: (o, k) => {
+      return o[k] ?? undefined;
+    },
+    set: (o, k, v) => {
+      o[k] = v;
+      return true;
+    },
+  });
 
-      Deno: {
-        core: await host.getBootstrapCore(),
-      },
-    });
+  // globals that remain same for all requires
+  Object.assign(globalContext, {
+    console,
+    // original deno global comes from host
+    // this will be overwitten by the runtime
 
-    // @ts-ignore
-    denoGlobal.globalThis = denoGlobal;
-    // @ts-ignore
-    denoGlobal.global = denoGlobal;
+    Deno: {
+      core: core,
+    },
+  });
 
-    // core
-    evalBootstrapModule('/lib/deno/core', globalContext);
+  // @ts-ignore
+  denoGlobal.globalThis = denoGlobal;
+  // @ts-ignore
+  denoGlobal.global = denoGlobal;
 
-    // extensions
-    evalBootstrapModule('/lib/deno/ext/console', globalContext);
-    evalBootstrapModule('/lib/deno/ext/webidl', globalContext);
-    evalBootstrapModule('/lib/deno/ext/url', globalContext);
-    evalBootstrapModule('/lib/deno/ext/web', globalContext);
-    evalBootstrapModule('/lib/deno/ext/fetch', globalContext);
-    evalBootstrapModule('/lib/deno/ext/websocket', globalContext);
-    evalBootstrapModule('/lib/deno/ext/webstorage', globalContext);
-    evalBootstrapModule('/lib/deno/ext/net', globalContext);
-    evalBootstrapModule('/lib/deno/ext/timers', globalContext);
-    evalBootstrapModule('/lib/deno/ext/crypto', globalContext);
-    evalBootstrapModule('/lib/deno/ext/broadcast_channel', globalContext);
-    evalBootstrapModule('/lib/deno/ext/ffi', globalContext);
-    evalBootstrapModule('/lib/deno/ext/http', globalContext);
-    evalBootstrapModule('/lib/deno/ext/tls', globalContext);
-    evalBootstrapModule('/lib/deno/ext/webgpu', globalContext);
+  // core
+  evalBootstrapModule('/lib/deno/core', globalContext);
 
-    // Deno runtime + Web globals (lot of them are coming from utilities)
-    evalBootstrapModule('/lib/deno/runtime/js', globalContext);
+  // extensions
+  evalBootstrapModule('/lib/deno/ext/console', globalContext);
+  evalBootstrapModule('/lib/deno/ext/webidl', globalContext);
+  evalBootstrapModule('/lib/deno/ext/url', globalContext);
+  evalBootstrapModule('/lib/deno/ext/web', globalContext);
+  evalBootstrapModule('/lib/deno/ext/fetch', globalContext);
+  evalBootstrapModule('/lib/deno/ext/websocket', globalContext);
+  evalBootstrapModule('/lib/deno/ext/webstorage', globalContext);
+  evalBootstrapModule('/lib/deno/ext/net', globalContext);
+  evalBootstrapModule('/lib/deno/ext/timers', globalContext);
+  evalBootstrapModule('/lib/deno/ext/crypto', globalContext);
+  evalBootstrapModule('/lib/deno/ext/broadcast_channel', globalContext);
+  evalBootstrapModule('/lib/deno/ext/ffi', globalContext);
+  evalBootstrapModule('/lib/deno/ext/http', globalContext);
+  evalBootstrapModule('/lib/deno/ext/tls', globalContext);
+  evalBootstrapModule('/lib/deno/ext/webgpu', globalContext);
 
-    return new DenoIsolate(globalContext, host);
-  }
+  // Deno runtime + Web globals (lot of them are coming from utilities)
+  evalBootstrapModule('/lib/deno/runtime/js', globalContext);
+
+  return globalContext as Context;
 }
 
-export class DenoRuntime {
-  static bootstrapWithRemote(wrap: any) {
-    let host = new DenoRemoteHost(wrap);
+// export class DenoRuntime {
+//   static bootstrapWithRemote(endpoint: any) {
+//     let kernel = RemoteKernel.connect(endpoint);
 
-    return this.bootstrapFromHttp(host);
-  }
-  static async bootstrapInWorker() {
-    let worker = new DenoWorker();
+//     return this.bootstrapFromHttp(kernel);
+//   }
+//   // static async bootstrapInWorker() {
+//   //   let worker = new DenoWorker();
 
-    let host = new DenoRemoteHost(worker);
+//   //   let host = new DenoRemoteHost(worker);
 
-    return this.bootstrapFromHttp(host);
-  }
+//   //   return this.bootstrapFromHttp(host);
+//   // }
 
-  static async bootstrapInIframe() {
-    let iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = '/deno.html';
-    document.body.appendChild(iframe);
-    await new Promise((resolve) => {
-      iframe.onload = resolve;
-    });
+//   // static async bootstrapInIframe() {
+//   //   let iframe = document.createElement('iframe');
+//   //   iframe.style.display = 'none';
+//   //   iframe.src = '/deno.html';
+//   //   document.body.appendChild(iframe);
+//   //   await new Promise((resolve) => {
+//   //     iframe.onload = resolve;
+//   //   });
 
-    let host = new DenoRemoteHost(windowEndpoint(iframe.contentWindow));
+//   //   let host = new DenoRemoteHost(windowEndpoint(iframe.contentWindow));
 
-    return this.bootstrapFromHttp(host);
-  }
+//   //   return this.bootstrapFromHttp(host);
+//   // }
 
-  static async bootstrapFromHttp(host: IDenoHost) {
-    let testFS = await createFileSystemBackend(HTTPRequest, {
-      baseUrl: 'http://localhost:8999/',
-      index: 'http://localhost:8999/index.json',
-      preferXHR: true,
-    });
+//   static async bootstrapFromHttp(host: Kernel) {
+//     return await DenoIsolate.create(host);
+//   }
+// }
 
-    if (!kernel.fs.existsSync('/lib')) {
-      kernel.fs.mkdirSync('/lib', 0x644, { recursive: true });
-    }
-
-    kernel.fs.mount('/lib/deno', testFS);
-    return DenoIsolate.bootstrap(host);
-  }
-}
-
-class Linker {
+export class Linker {
   private moduleCache: Map<string, any>;
-  esbuild: typeof import('esbuild-wasm');
+  esbuild = wrap<{ init: () => void; transpile: (data: SharedArrayBuffer) => void }>(
+    new EsbuildWorker(),
+  );
   constructor() {
     this.require = this.require.bind(this);
     this.resolve = this.resolve.bind(this);
@@ -213,44 +256,35 @@ class Linker {
 
   resolve(fileName: string, context: Context) {
     if (fileName.startsWith('.')) {
-      let a = path.join(context.__dirname, fileName + '.js');
-      if (kernel.fs.existsSync(a)) {
+      if (context.__filename.startsWith('http')) {
+        let a = path.join(context.__dirname, fileName);
         return a;
       } else {
-        return path.join(context.__dirname, fileName, 'index.js');
+        let a = path.join(context.__dirname, fileName + '.js');
+        if (fs.existsSync(a)) {
+          return a;
+        } else {
+          return path.join(context.__dirname, fileName, 'index.js');
+        }
       }
     }
+
+    return fileName;
   }
 
   async init() {
     this.moduleCache = new Map<string, any>();
-    this.esbuild = await import('esbuild-wasm');
-    console.log(this.esbuild);
-    await this.esbuild.initialize({
-      wasmURL: esbuildWasmUrl,
-      worker: true,
-    });
-
-    // let result = await this.esbuild.transform(
-    //   `import {
-    //       ensureFile,
-    //       ensureFileSync,
-    //     } from "https://deno.land/std@0.115.0/fs/mod.ts";
-
-    //     ensureFile("./folder/targetFile.dat"); // returns promise
-    //     ensureFileSync("./folder/targetFile.dat"); // void`,
-    //   {
-    //     format: 'cjs',
-    //   },
-    // );
-
-    // console.log(result.code);
+    await this.esbuild.init();
   }
 
   loadModule(fileName: string, context: Context) {
-    let contents = kernel.fs.readFileSync(fileName, 'utf-8', constants.fs.O_RDONLY);
+    let data = fileName.startsWith('http')
+      ? syncDownloadFile(fileName, 'buffer')
+      : Deno.readFileSync(fileName);
 
-    let result = evalCJSModule(contents, {
+    let code = this.transpileToCJS(data);
+
+    let result = evalCJSModule(code, {
       filename: fileName,
       globalContext: context,
       require: this.require.bind(this),
@@ -259,12 +293,45 @@ class Linker {
     this.moduleCache.set(fileName, result);
     return result;
   }
+
+  private transpileToCJS(data: Uint8Array) {
+    const sharedBuffer = new SharedArrayBuffer(data.length * 10);
+
+    let markers = new Int32Array(sharedBuffer, 0, 8);
+    Atomics.store(markers, 0, 0);
+    Atomics.store(markers, 1, data.length);
+
+    new Uint8Array(sharedBuffer).set(data, 8);
+
+    this.esbuild.transpile(sharedBuffer).then(console.log).catch(console.error);
+
+    Atomics.wait(markers, 0, 0);
+
+    let code = new TextDecoder().decode(
+      new Uint8Array(
+        new Uint8Array(sharedBuffer, 8, Atomics.load(new Int32Array(sharedBuffer, 0, 8), 1)),
+      ),
+    );
+    return code;
+  }
 }
 
-class V8 {}
+async function mountDenoLib() {
+  let testFS = await createFileSystemBackend(HTTPRequest, {
+    baseUrl: 'http://localhost:8999/',
+    index: 'http://localhost:8999/index.json',
+    preferXHR: true,
+  });
+
+  if (!fs.existsSync('/lib')) {
+    fs.mkdirSync('/lib', 0x644, { recursive: true });
+  }
+
+  fs.mount('/lib/deno', testFS);
+}
 
 function evalBootstrapModule(src: string, context) {
-  kernel.fs.readdirSync(src).forEach((path) => {
+  fs.readdirSync(src).forEach((path) => {
     if (path.endsWith('.js') && !Number.isNaN(Number(path[0]))) {
       evalScript(`${src}/${path}`, context);
     }
@@ -273,7 +340,7 @@ function evalBootstrapModule(src: string, context) {
 
 function evalScript(src, context) {
   console.time('evaluating ' + src);
-  evalWithContext(kernel.fs.readFileSync(src, 'utf-8', constants.fs.O_RDONLY), context);
+  evalWithContext(fs.readFileSync(src, 'utf-8', constants.fs.O_RDONLY), context);
   console.timeEnd('evaluating ' + src);
 }
 

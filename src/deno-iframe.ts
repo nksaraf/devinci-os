@@ -1,6 +1,6 @@
 import { expose } from 'comlink';
 import { DenoRuntime } from './deno/deno';
-import { DenoHost } from './deno/deno-host';
+import { DenoHost } from './deno/denix';
 import { createKernel } from './kernel/kernel';
 import { KernelFlags } from './kernel/kernel/types';
 

@@ -19,8 +19,8 @@
   let items = [];
 
   async function readFiles(directory) {
-    items = kernel.fs.readdirSync(directory).map((file) => {
-      let stats = kernel.fs.statSync(`${directory}/${file}`, false);
+    items = fs.readdirSync(directory).map((file) => {
+      let stats = fs.statSync(`${directory}/${file}`, false);
       return {
         name: file,
         path: path.join(directory, file),

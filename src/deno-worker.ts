@@ -1,7 +1,4 @@
 import { expose } from 'comlink';
-import { DenoRuntime } from './deno/deno';
-import { createKernel } from './kernel/kernel';
-import { KernelFlags } from './kernel/kernel/types';
 import './comlink';
 
 declare global {
@@ -11,17 +8,54 @@ declare global {
   }
 }
 
-await createKernel({
-  mode: KernelFlags.PRIVILEGED | KernelFlags.UI | KernelFlags.MAIN,
-});
+// await createKernel({
+//   mode: KernelFlags.PRIVILEGED | KernelFlags.UI | KernelFlags.MAIN,
+// });
 
-DenoRuntime.bootstrapWithRemote(self)
-  .then(async (deno) => {
-    await deno.eval(`
-  const text = await Deno.readTextFile("/hello.txt");
-  console.log(text);`);
-  })
-  .catch(console.error);
+import './comlink';
+import { Kernel } from './deno/denix';
+import { DenoIsolate, Linker } from './deno/deno';
+import { Global } from './kernel/global';
+
+(async () => {
+  let kernel = await Kernel.create();
+  Global.fs = kernel.fs;
+  console.log(Global.fs.existsSync);
+
+  let deno = await DenoIsolate.create(kernel);
+
+  let linker = new Linker();
+  console.log(linker);
+  await linker.init();
+
+  console.log(deno.context, deno.context.Deno);
+
+  await Deno.writeFile(
+    '/test.ts',
+    Deno.core.encode(`import {
+        ensureDir,
+        ensureDirSync,
+      } from "https://deno.land/std@0.115.1/fs/mod.ts";
+
+      ensureDir("/bar").then(console.log); // returns a promise
+      ensureDirSync("/ensureDirSync"); // void
+
+      function writeJson(path: string, data: object): string {
+        try {
+          Deno.writeTextFileSync(path, JSON.stringify(data));
+      
+          return "Written to " + path;
+        } catch (e) {
+          return e.message;
+        }
+      }
+      
+      console.log(writeJson("./data.json", { hello: "World" }));
+    `),
+  );
+
+  console.log(await linker.loadModule('/test.ts', deno.context));
+})();
 
 expose({
   initialize: {},
