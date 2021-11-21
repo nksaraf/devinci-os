@@ -3,11 +3,11 @@ import { Resource } from './interface';
 import { proxy } from 'comlink';
 import type { Remote } from 'comlink';
 import { ApiError, ERROR_KIND_TO_CODE } from 'os/kernel/fs/core/api_error';
-import { network } from './network';
+import { LocalNetwork, network, Socket } from './ops/network';
 import { op_async, op_sync } from './interfaces';
 import type { Op } from './interfaces';
 import { builtIns } from './ops/builtIns';
-import { fs } from './ops/fs';
+import { fsOps } from './ops/fs';
 import { url } from './ops/url';
 import { VirtualFileSystem } from 'os/kernel/fs';
 
@@ -90,15 +90,8 @@ function syncOpCallXhr(op_code: number, arg1: any, arg2: any) {
 // }
 
 export class Kernel extends EventTarget {
-  syncOp(index, arg1 = undefined, arg2 = undefined) {
-    // this is called when Deno.core.syncOpsCache is run
-    // we have to reply with an array of [op_name, id in op_cache]]
-    // Deno maintains a cache of this mapping
-    // so it can call ops by passing a number, not the whole string
-    if (index === 0) {
-      return this.getOpsCache();
-    }
-
+  net: LocalNetwork = new LocalNetwork();
+  opSync(index, arg1 = undefined, arg2 = undefined) {
     if (!this.ops[index]) {
       throw new Error(`op ${index} not found`);
     } else if (!this.ops[index].sync) {
@@ -127,24 +120,20 @@ export class Kernel extends EventTarget {
   fs: VirtualFileSystem;
 
   console = console;
-  onAsyncOpResolve: any;
-  setOpsResolve(cb: any) {
-    this.onAsyncOpResolve = cb;
-  }
 
-  getOpsCache() {
+  get opsIndex() {
     return this.ops.map((o, index) => [o.name, index]).slice(1);
   }
 
-  get opsIndex() {
-    return Object.fromEntries(this.getOpsCache());
+  opCode(opName: string) {
+    return this.opsIndex.find(([name]) => name === opName)[1];
   }
 
   getResource<T extends Resource>(arg0: number): T {
     return this.resourceTable.get(arg0) as T;
   }
 
-  async asyncOp(op_code: number, promiseId: number, arg1: any, arg2: any) {
+  async opAsync(op_code: number, promiseId: number, arg1: any, arg2: any) {
     try {
       const result = await this.ops[op_code].async.bind(this)(arg1, arg2);
       console.log(result);
@@ -189,8 +178,12 @@ export class Kernel extends EventTarget {
     this.stderr = this.addResource(new ConsoleLogResource());
 
     this._ops = [
-      op_sync('ops_sync', async () => {
-        return this.getOpsCache();
+      op_sync('ops_sync', () => {
+        // this is called when Deno.core.syncOpsCache is run
+        // we have to reply with an array of [op_name, id in op_cache]]
+        // Deno maintains a cache of this mapping
+        // so it can call ops by passing a number, not the whole string
+        return this.opsIndex;
       }),
     ];
 
@@ -205,9 +198,7 @@ export class Kernel extends EventTarget {
         },
       },
       ...builtIns,
-      op_async('op_read_dir_async', async (dirPath: string) => {
-        return ['hello.txt'];
-      }),
+
       {
         name: 'op_format_file_name',
         sync: (arg) => arg,
@@ -217,7 +208,7 @@ export class Kernel extends EventTarget {
       },
 
       ...network,
-      ...fs,
+      ...fsOps,
       ...url,
 
       {
@@ -240,49 +231,111 @@ export class Kernel extends EventTarget {
     );
   }
 
-  // async initNetwork() {
-  //   const { setupWorker, rest } = await import('msw');
-  //   let worker = setupWorker(
-  //     // rest.get('/deno-host', async (req, res, ctx) => {
-  //     //   console.log('/deno-host', req.url);
-  //     //   console.log(JSON.parse(req.body));
-  //     //   return res(
-  //     //     ctx.json({
-  //     //       firstName: 'John',
-  //     //     }),
-  //     //   );
-  //     // }),
-  //     rest.post('/~deno/op/sync/:id', async (req, res, ctx) => {
-  //       let id = JSON.parse(req.body as string);
-  //       try {
-  //         let result = this.syncOp(req.params.id, id[1], id[2]);
-  //         return res(ctx.json(result ?? null));
-  //       } catch (e) {
-  //         if (e instanceof ApiError) {
-  //           console.log(e.code);
-  //           let getCode = Object.entries(ERROR_KIND_TO_CODE).find(([k, v]) => v === e.errno);
-  //           console.log('error code', getCode);
-  //           return res(
-  //             ctx.json({
-  //               $err_class_name: getCode[0],
-  //               code: getCode[1],
-  //             }),
-  //           );
-  //         }
-  //         throw e;
-  //       }
-  //     }),
-  //   );
+  createRequest() {}
 
-  //   await worker.start({
-  //     onUnhandledRequest: 'bypass',
-  //   });
-  // }
+  async initNetwork() {
+    const { setupWorker, rest } = await import('msw');
+
+    let requests = {};
+    const handleResponse = (e) => {
+      this.console.log('evenntttttt', e);
+      if (e.data.type === 'RESPONSE' && requests[e.data.requestId]) {
+        requests[e.data.requestId].resolve(e.data.response);
+      }
+    };
+
+    this.net.channel.addEventListener('message', handleResponse);
+
+    let worker = setupWorker(
+      rest.get('https://deno.land/*', async (req, res, ctx) => {
+        console.log('/deno-land');
+        let originalResponse = await ctx.fetch(req.url.href);
+        return res(ctx.text(await originalResponse.text()));
+      }),
+      rest.get('http://localhost:4507/*', async (req, res, ctx) => {
+        console.log('/deno-land', 'MIGHT WORK');
+        let originalResponse = await ctx.fetch(req.url.href);
+        return res(ctx.text(await originalResponse.text()));
+      }),
+      rest.get('/~p/:port/*', async (req, res, ctx) => {
+        this.console.log(req);
+        console.log('/~p/:port/*', req.url.href);
+        // somebody made some kind of request to my server
+
+        let resolve, reject;
+        let prom = new Promise((res, rej) => {
+          resolve = res;
+          reject = rej;
+        });
+
+        requests[req.id] = { resolve, reject };
+
+        setTimeout(() => {
+          delete requests[req.id];
+          resolve({ body: 'timed out in 10 seconds', status: 404, headers: [] });
+        }, 10000);
+
+        let url = new URL('http://localhost:' + req.params.port + req.url.pathname.slice(7)).href;
+        console.log(url);
+
+        this.net.channel.postMessage({
+          type: 'HTTP_REQUEST',
+          url: url,
+          port: req.params.port,
+          method: req.method,
+          headers: [...req.headers.entries()],
+          requestId: req.id,
+          referrer: req.referrer,
+        });
+
+        try {
+          let { body, status, headers } = await prom;
+          this.console.log('result', { body, status, headers });
+          return res(
+            ctx.set(Object.fromEntries(headers)),
+            ctx.body(body),
+            ctx.status(status),
+            ctx.set('Cross-Origin-Embedder-Policy', 'require-corp'),
+          );
+        } catch (e) {
+          return res(ctx.text(e.message));
+        }
+      }),
+      rest.post('/~deno/op/sync/:id', async (req, res, ctx) => {
+        let id = JSON.parse(req.body as string);
+        try {
+          let result = this.opSync(req.params.id, id[1], id[2]);
+          return res(ctx.json(result ?? null));
+        } catch (e) {
+          if (e instanceof ApiError) {
+            console.log(e.code);
+            let getCode = Object.entries(ERROR_KIND_TO_CODE).find(([k, v]) => v === e.errno);
+            console.log('error code', getCode);
+            return res(
+              ctx.json({
+                $err_class_name: getCode[0],
+                code: getCode[1],
+              }),
+            );
+          }
+          throw e;
+        }
+      }),
+    );
+
+    this.console.log(import.meta);
+
+    await worker.start({
+      onUnhandledRequest: 'bypass',
+      serviceWorker: {
+        url: '/deno-sw.js',
+      },
+    });
+  }
 
   static async create() {
     let kernel = new Kernel();
     kernel.init();
-    // await kernel.initNetwork();
     kernel.fs = new VirtualFileSystem();
     return kernel;
   }
@@ -295,17 +348,9 @@ export class Kernel extends EventTarget {
 }
 
 export class RemoteKernel extends Kernel {
-  setOpsResolve(cb: any) {
-    this.proxy.setOpsResolve(proxy(cb));
-  }
-
   proxy: Remote<Kernel>;
 
-  getOpsMappings() {
-    return this.proxy.getOpsCache();
-  }
-
-  syncOp(op_code, arg1, arg2) {
+  opSync(op_code, arg1, arg2) {
     console.group('op sync', op_code, arg1, arg2);
     let result = syncOpCallXhr(op_code, arg1, arg2);
     console.log(result);
@@ -314,8 +359,8 @@ export class RemoteKernel extends Kernel {
     return result;
   }
 
-  async asyncOp(op_code, promiseId, arg1, arg2) {
-    let result = await this.proxy.asyncOp(op_code, promiseId, arg1, arg2);
+  async opAsync(op_code, promiseId, arg1, arg2) {
+    let result = await this.proxy.opAsync(op_code, promiseId, arg1, arg2);
     console.log(result);
     console.groupEnd();
     return result;

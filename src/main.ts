@@ -1,8 +1,6 @@
 import '@ui/css/global.scss';
 import 'uno.css';
 import MacOS from 'os/ui/OS/OS.svelte';
-import { createKernel } from './kernel/kernel';
-import { KernelFlags } from './kernel/kernel/types';
 import './comlink';
 import calculator from 'os/apps/calculator/calculator';
 import calendar from 'os/apps/calendar/calendar';
@@ -12,18 +10,13 @@ import terminal from 'os/apps/terminal/terminal';
 import vscode from 'os/apps/vscode/vscode';
 import wallpaper from 'os/apps/wallpaper/wallpaper';
 import { createAppConfig, installApp } from './stores/apps.store';
-import { setupWorker, rest } from 'msw';
 import { Kernel } from './deno/denix';
-import DenoWorker from './deno-worker?worker';
-import { expose } from 'comlink';
+import DenoWebWorker from './deno/deno-worker?worker';
+import type { DenoWorker } from './deno/deno-worker';
+import { wrap } from 'comlink';
 import { constants } from 'os/kernel/kernel/constants';
-import { ApiError, ERROR_KIND_TO_CODE } from './kernel/fs/core/api_error';
-import { VirtualFileSystem } from './kernel/fs';
 import Global from './kernel/global';
-let log = console.log;
-console.log = function () {
-  log('main', ...arguments);
-};
+
 installApp(finder());
 installApp(calculator());
 installApp(calendar());
@@ -49,6 +42,13 @@ export const initKernel = async () => {
   console.log(new ReadableStream());
   console.log('booting Kernel');
 
+  // let iframe = document.createElement('iframe');
+  // // iframe.src = 'http://localhost:80/listener.html';
+  // iframe.src = 'http://localhost:80/kernel.html';
+  // iframe.allow = 'cross-origin-isolated';
+
+  // document.body.appendChild(iframe);
+
   // if ('serviceWorker' in navigator) {
   //   window.addEventListener('load', function() {
   //     navigator.serviceWorker.register('/sw.js').then(function(registration) {
@@ -71,11 +71,24 @@ export const initKernel = async () => {
   // let denoLocal = await DenoRuntime.bootstrapInWorker();
   // await denoLocal.eval(`console.log('herello world')`);
   const denix = await Kernel.create();
+  await denix.initNetwork();
   Global.fs = denix.fs;
   denix.fs.writeFileSync('/hello.txt', 'Hello World', 'utf-8', constants.fs.O_RDWR, 0x644);
-  let w = new DenoWorker();
-  expose(denix, w);
+  let w1 = wrap<DenoWorker>(new DenoWebWorker());
 
+  await w1.init();
+  await w1.run('https://deno.land/std@0.115.1/http/file_server.ts');
+
+  // let w2 = wrap<DenoWorker>(new DenoWebWorker());
+  // await w1.init();
+  // await w1.run('https://deno.land/std@0.115.1/http/file_server.ts');
+  // let { connect } = wrap<{ connect: () => Channel }>(w);
+
+  // ui thread
+  // let channel = await connect();
+  // let channelApi = wrap(channel.portToWrap);
+  // expose(denix, channel.portToWrap);
+  // console.log(await (await fetch('http://localhost:4507')).text());
   //
 
   return denix;

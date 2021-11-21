@@ -64,7 +64,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
   createReadStream() {
     return new ReadableStream({
       start(controller) {
-        controller
+        controller;
         // this.read
       },
     });
@@ -470,9 +470,11 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
     return new Promise((res, rej) => {
       let string = Buffer.from(str, 'utf8');
       this.writeBuffer(string, 0, length, null, (err, length) => {
+        console.log(length, err);
         if (err) {
           rej(err);
         }
+
         res(length);
       });
     });

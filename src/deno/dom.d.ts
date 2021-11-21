@@ -14170,14 +14170,6 @@ interface ReadableStream<R = any> {
   ): void;
 }
 
-declare var ReadableStream: {
-  prototype: ReadableStream;
-  new <R = any>(
-    underlyingSource?: UnderlyingSource<R>,
-    strategy?: QueuingStrategy<R>,
-  ): ReadableStream<R>;
-};
-
 interface ReadableStreamDefaultController<R = any> {
   readonly desiredSize: number | null;
   close(): void;

@@ -5,7 +5,7 @@ import type { File } from 'os/kernel/fs/core/file';
 import { constants } from 'os/kernel/kernel/constants';
 import { Buffer } from 'buffer';
 import path from 'path-browserify';
-export const fs = [
+export const fsOps = [
   op_sync('op_read_sync', function (this: Kernel, rid, data) {
     let res = this.getResource(rid) as FileResource;
     return res.readSync(data);
@@ -29,7 +29,7 @@ export const fs = [
       let file = this.fs.openSync(
         path.isAbsolute(arg.path)
           ? arg.path
-          : path.join(this.syncOp(this.opsIndex['op_cwd']), arg.path),
+          : path.join(this.opSync(this.opCode('op_cwd'), arg.path)),
         constants.fs.O_RDWR,
         arg.mode,
       );
@@ -55,6 +55,7 @@ export const fs = [
     let stat = file.file.statSync();
     return {
       size: stat.size,
+      mode: stat.mode,
       isFile: stat.isFile(),
       isDirectory: stat.isDirectory(),
       isSymbolicLink: stat.isSymbolicLink(),
@@ -66,6 +67,7 @@ export const fs = [
     let stat = file.file.statSync();
     return {
       size: stat.size,
+      mode: stat.mode,
       isFile: stat.isFile(),
       isDirectory: stat.isDirectory(),
       isSymbolicLink: stat.isSymbolicLink(),
@@ -76,6 +78,7 @@ export const fs = [
     let stat = this.fs.statSync(path, lstat);
     return {
       size: stat.size,
+      mode: stat.mode,
       isFile: stat.isFile(),
       isDirectory: stat.isDirectory(),
       isSymbolicLink: stat.isSymbolicLink(),
@@ -86,10 +89,35 @@ export const fs = [
     let stat = this.fs.statSync(path, lstat);
     return {
       size: stat.size,
+      mode: stat.mode,
       isFile: stat.isFile(),
       isDirectory: stat.isDirectory(),
       isSymbolicLink: stat.isSymbolicLink(),
     };
+  }),
+
+  op_async('op_read_dir_async', async function (this: Kernel, dirPath: string) {
+    return this.fs.readdirSync(dirPath).map((p) => {
+      let stat = this.fs.statSync(path.join(dirPath, p), false);
+      return {
+        name: p,
+        isFile: stat.isFile(),
+        isDirectory: stat.isDirectory(),
+        isSymbolicLink: stat.isSymbolicLink(),
+      };
+    });
+  }),
+
+  op_sync('op_read_dir_sync', function (this: Kernel, dirPath: string) {
+    return this.fs.readdirSync(dirPath).map((p) => {
+      let stat = this.fs.statSync(path.join(dirPath, p), false);
+      return {
+        name: p,
+        isFile: stat.isFile(),
+        isDirectory: stat.isDirectory(),
+        isSymbolicLink: stat.isSymbolicLink(),
+      };
+    });
   }),
 ];
 

@@ -1,7 +1,6 @@
 <script lang="ts">
   import { getContext, onMount } from 'svelte';
 
-  import { Terminal } from 'xterm';
   import 'xterm/css/xterm.css';
   import { WebLinksAddon } from 'xterm-addon-web-links';
   import { WebglAddon } from 'xterm-addon-webgl';
@@ -9,27 +8,55 @@
   import type { WindowAPI } from '__/stores/window.store';
   import TrafficLights from 'os/ui/Window/TrafficLights.svelte';
   import ExpandSvg from '@ui/components/SVG/traffic-lights/ExpandSVG.svelte';
+  import { TTYDevice, TTY, Xterm } from 'os/kernel/kernel/tty';
+  import DenoWebWorker from 'os/deno/deno-worker?worker';
+  import { wrap, proxy } from 'comlink';
+  import type { DenoWorker } from 'os/deno/deno-worker';
+  import { Terminal } from 'os/kernel/terminal';
 
   let divEl: HTMLDivElement = null;
 
   onMount(() => {
-    const terminal = new Terminal({
-      cursorStyle: 'bar',
-      fontFamily: 'monospace',
-    });
-    let fitAddon = new FitAddon();
-    // Load WebLinksAddon on terminal, this is all that's needed to get web links
-    // working in the terminal.
-    terminal.loadAddon(new WebLinksAddon());
-    terminal.loadAddon(fitAddon);
+    const terminal = new Terminal();
+    const worker = wrap<DenoWorker>(new DenoWebWorker());
+
+    (async () => {
+      // let channel = await worker.connect();
+      await worker.init();
+      await worker.addEventListener(
+        'stdout',
+        proxy((ev) => {
+          terminal.tty.println(ev.detail.join(' '));
+        }),
+      );
+
+      terminal.shell.handleCommand = async (cmd) => {
+        try {
+          console.log(await worker.eval(cmd));
+        } catch (e) {
+          terminal.tty.print(e.message + '\n' + e.stack);
+        }
+        terminal.tty.println('');
+      };
+
+      await terminal.shell.start();
+
+      // for (var input of shell.getReadable()))
+
+      // while (true) {
+      //   console.log(await tty.writeString('> '));
+      //   console.log('waiting for input');
+      //   let input = await tty.readString();
+      //   console.log(input);
+      //   try {
+      //     console.log(await worker.eval(input));
+      //   } catch (e) {
+      //     await tty.writeString(e.message + '\r\n' + e.stack.replaceAll('\n', '\r\n'));
+      //   }
+      // }
+    })();
 
     terminal.open(divEl);
-
-    fitAddon.fit();
-
-    terminal.loadAddon(new WebglAddon());
-
-    // initTTY(terminal);
   });
 
   export let args;

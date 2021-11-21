@@ -1,36 +1,59 @@
 import HTTPRequest from '../kernel/fs/backend/HTTPRequest';
-import { createFileSystemBackend } from '../kernel/fs/create-fs';
+import { createFileSystemBackend, VirtualFileSystem } from '../kernel/fs/create-fs';
 import * as path from 'path';
 import { constants } from '../kernel/kernel/constants';
 import type { Kernel } from './denix';
-import { proxy, windowEndpoint, wrap } from 'comlink';
-import EsbuildWorker from './esbuild-worker.ts?worker';
+import { wrap } from 'comlink';
+import EsbuildWorker from './linker/esbuild-worker?worker';
 import { syncDownloadFile } from 'os/kernel/fs/generic/xhr';
 import Global from 'os/kernel/global';
 export type Context = typeof globalThis;
 
 let ISOLATE_ID = 0;
 
-class OpResolvedEvent extends Event {
-  constructor(public readonly promiseId: number, public readonly value: any) {
-    super('resolved');
-  }
+interface IDenoCore {
+  opcallSync: any;
+  opcallAsync: (op_code: number, promiseId: number, arg1: any, arg2: any) => void;
+  callConsole: (oldLog: any, newLog: any, ...args: any[]) => void;
+  setMacrotaskCallback: (cb: any) => void;
+  setWasmStreamingCallback: (cb: any) => void;
+  decode: (data: Uint8Array) => string;
+  encode: (data: string) => Uint8Array;
+  isProxy: (v: any) => boolean;
+
+  opresolve?(...args): void;
+  syncOpsCache?(): void;
 }
 
-export class DenoIsolate {
-  constructor() {}
+export class DenoIsolate extends EventTarget {
+  constructor() {
+    super();
+  }
+
   public context: Context;
   id: number;
-  static async create(kernel: Kernel) {
-    let core = {
-      opcallSync: kernel.syncOp.bind(kernel),
-      opcallAsync: (...args: Parameters<Kernel['asyncOp']>) => {
-        kernel.asyncOp(...args).then((value) => {
-          core.opresolve(args[1], value);
-        });
-      },
+  linker: Linker;
+  kernel: Kernel;
+
+  opcallSync(op_code: number, arg1: any, arg2: any) {
+    return this.kernel.opSync(op_code, arg1, arg2);
+  }
+
+  opcallAsync(...args: Parameters<Kernel['opAsync']>) {
+    this.kernel.opAsync(...args).then((value) => {
+      this.core.opresolve(args[1], value);
+    });
+  }
+
+  core: IDenoCore;
+
+  async create() {
+    this.core = {
+      opcallSync: this.opcallSync.bind(this),
+      opcallAsync: this.opcallAsync.bind(this),
       callConsole: (oldLog, newLog, ...args) => {
-        kernel.console.log(...args);
+        // newLog(...args);
+        this.dispatchEvent(new CustomEvent('stdout', { detail: [...args] }));
       },
       setMacrotaskCallback: (cb) => {
         console.log('macrostask callback');
@@ -44,46 +67,59 @@ export class DenoIsolate {
       encode: function (data: string) {
         return new TextEncoder().encode(data);
       },
+      isProxy: function (obj) {
+        return false;
+      },
     };
 
-    let context = await loadDenoBootstrapper(core);
+    this.id = ISOLATE_ID++;
+  }
 
-    let isolate = new DenoIsolate();
-    isolate.context = context;
-    isolate.id = ISOLATE_ID++;
+  async attach(kernel: Kernel) {
+    this.kernel = kernel;
 
-    // @ts-ignore
-    await core.syncOpsCache();
-    kernel.addEventListener('op_resolve', (event: OpResolvedEvent) => {
-      //@ts-ignore
-      core.opresolve([event.promiseId, event.value]);
-    });
+    let context = await loadDenoBootstrapper(this.core, kernel.fs);
+
+    this.context = context;
+
+    this.core.syncOpsCache();
 
     // this.host.setOpsResolve(this.id);
     context.bootstrap.mainRuntime({
       target: 'arm64-devinci-darwin-dev',
       debugFlag: true,
+      args: [],
       // location: window.location.href,
       // ...options,
     });
 
     Global.Deno = context.Deno;
 
-    return isolate;
+    this.linker = new Linker();
+    this.linker.fs = kernel.fs;
+
+    Object.assign(this.context, {
+      require: (src) => {
+        this.linker.require(src, this.context);
+      },
+    });
+
+    await this.linker.init();
   }
 
   async eval(source: string, options: {} = {}) {
-    return await evalAsyncWithContext(source, this.context);
+    return await this.linker.eval(source, this.context);
   }
 
   async run(path: string, options: {} = {}) {
-    return await this.eval(await (await fetch(path)).text());
+    return await this.linker.evalScript(path, this.context);
   }
 }
+
 type DenoBootstrapCore = any;
 
-async function loadDenoBootstrapper(core: DenoBootstrapCore) {
-  await mountDenoLib();
+async function loadDenoBootstrapper(core: DenoBootstrapCore, fs: VirtualFileSystem) {
+  await mountDenoLib(fs);
 
   let denoGlobal = {
     JSON,
@@ -200,44 +236,16 @@ async function loadDenoBootstrapper(core: DenoBootstrapCore) {
   return globalContext as Context;
 }
 
-// export class DenoRuntime {
-//   static bootstrapWithRemote(endpoint: any) {
-//     let kernel = RemoteKernel.connect(endpoint);
-
-//     return this.bootstrapFromHttp(kernel);
-//   }
-//   // static async bootstrapInWorker() {
-//   //   let worker = new DenoWorker();
-
-//   //   let host = new DenoRemoteHost(worker);
-
-//   //   return this.bootstrapFromHttp(host);
-//   // }
-
-//   // static async bootstrapInIframe() {
-//   //   let iframe = document.createElement('iframe');
-//   //   iframe.style.display = 'none';
-//   //   iframe.src = '/deno.html';
-//   //   document.body.appendChild(iframe);
-//   //   await new Promise((resolve) => {
-//   //     iframe.onload = resolve;
-//   //   });
-
-//   //   let host = new DenoRemoteHost(windowEndpoint(iframe.contentWindow));
-
-//   //   return this.bootstrapFromHttp(host);
-//   // }
-
-//   static async bootstrapFromHttp(host: Kernel) {
-//     return await DenoIsolate.create(host);
-//   }
-// }
-
 export class Linker {
   private moduleCache: Map<string, any>;
-  esbuild = wrap<{ init: () => void; transpile: (data: SharedArrayBuffer) => void }>(
-    new EsbuildWorker(),
-  );
+  esbuild = wrap<{
+    init: () => void;
+    transpile: (
+      data: SharedArrayBuffer,
+      options: { url: string; mode: 'script' | 'module' },
+    ) => void;
+  }>(new EsbuildWorker());
+  fs: VirtualFileSystem;
   constructor() {
     this.require = this.require.bind(this);
     this.resolve = this.resolve.bind(this);
@@ -262,7 +270,7 @@ export class Linker {
         return a;
       } else {
         let a = path.join(context.__dirname, fileName + '.js');
-        if (fs.existsSync(a)) {
+        if (this.fs.existsSync(a)) {
           return a;
         } else {
           return path.join(context.__dirname, fileName, 'index.js');
@@ -279,24 +287,55 @@ export class Linker {
     Global.linker = this;
   }
 
-  loadModule(fileName: string, context: Context) {
+  fetchModule(fileName: string, context: Context) {
     let data = fileName.startsWith('http')
       ? syncDownloadFile(fileName, 'buffer')
       : Deno.readFileSync(fileName);
+    return data;
+  }
 
-    let code = this.transpileToCJS(data);
+  async eval(src: string, context: Context) {
+    let code = this.transpileToCJS(new TextEncoder().encode(src), {
+      url: '/deno/tmp.ts',
+      mode: 'script',
+    });
 
-    let result = evalCJSModule(code, {
-      filename: fileName,
+    return getEvalAsyncFunction(code, context)();
+  }
+
+  evalScript(fileName: string, context: Context) {
+    let data = this.fetchModule(fileName, context);
+    let code = this.transpileToCJS(data, { url: fileName, mode: 'script' });
+    let moduleFn = getModuleFn(code, {
+      globalContext: context,
+      require: this.require.bind(this),
+      url: fileName,
+      mode: 'script',
+    });
+
+    let promiseOrExports = moduleFn();
+
+    this.moduleCache.set(fileName, promiseOrExports);
+    return promiseOrExports;
+  }
+
+  loadModule(fileName: string, context: Context) {
+    let data = this.fetchModule(fileName, context);
+    let code = this.transpileToCJS(data, { url: fileName, mode: 'module' });
+    let moduleFn = getModuleFn(code, {
+      url: fileName,
+      mode: 'module',
       globalContext: context,
       require: this.require.bind(this),
     });
 
-    this.moduleCache.set(fileName, result);
-    return result;
+    let promiseOrExports = moduleFn();
+
+    this.moduleCache.set(fileName, promiseOrExports);
+    return promiseOrExports;
   }
 
-  private transpileToCJS(data: Uint8Array) {
+  private transpileToCJS(data: Uint8Array, options) {
     const sharedBuffer = new SharedArrayBuffer(data.length * 2 + 1500);
 
     let markers = new Int32Array(sharedBuffer, 0, 8);
@@ -305,7 +344,7 @@ export class Linker {
 
     new Uint8Array(sharedBuffer).set(data, 8);
 
-    this.esbuild.transpile(sharedBuffer);
+    this.esbuild.transpile(sharedBuffer, options);
 
     Atomics.wait(markers, 0, 0);
 
@@ -318,7 +357,7 @@ export class Linker {
   }
 }
 
-async function mountDenoLib() {
+async function mountDenoLib(fs: VirtualFileSystem) {
   let testFS = await createFileSystemBackend(HTTPRequest, {
     baseUrl: 'http://localhost:8999/',
     index: 'http://localhost:8999/index.json',
@@ -346,7 +385,10 @@ function evalScript(src, context) {
   console.timeEnd('evaluating ' + src);
 }
 
-function evalCJSModule(source: string, { filename = '', require, globalContext }) {
+function getModuleFn(
+  source: string,
+  { url = '', require, globalContext, mode = 'module' as 'module' | 'script' },
+): () => any | Promise<any> {
   const module = { exports: {} };
   const exports = module.exports;
 
@@ -358,8 +400,8 @@ function evalCJSModule(source: string, { filename = '', require, globalContext }
     {
       module,
       exports,
-      __filename: filename,
-      __dirname: path.dirname(filename),
+      __filename: url,
+      __dirname: path.dirname(url),
       globalThis: globalContext,
       require: requireFn,
       global: globalContext,
@@ -374,16 +416,32 @@ function evalCJSModule(source: string, { filename = '', require, globalContext }
     },
   );
 
-  let result = evalWithContext(source, moduleProxy as Context);
+  if (mode === 'module' && isModule(mode)) {
+    return () => {
+      let result = evalWithContext(source, moduleProxy as Context);
 
-  if (result != null) {
-    return result;
+      if (result != null) {
+        return result;
+      }
+
+      return module.exports;
+    };
+  } else {
+    return async () => {
+      let result = getEvalAsyncFunction(source, moduleProxy as Context)();
+
+      return await result;
+    };
   }
-
-  return module.exports;
 }
 
+let isModule = (p: 'module'): p is 'module' => true;
+
 function evalWithContext(source, context) {
+  return getEvalSyncFn(source, context)();
+}
+
+function getEvalSyncFn(source, context) {
   const executor = Function(`
     return (context) => {
       try {
@@ -399,15 +457,18 @@ function evalWithContext(source, context) {
             return boundFn();
           }
       }  catch(e) {
+        console.error('Error thrown from eval', e);
         throw e;
       }
     };
   `)();
 
-  return executor.bind(context)(context);
+  return () => {
+    executor.bind(context)(context);
+  };
 }
 
-function evalAsyncWithContext(source, context) {
+function getEvalAsyncFunction(source, context) {
   const executor = Function(`
     return async (context) => {
       try {
@@ -426,5 +487,7 @@ function evalAsyncWithContext(source, context) {
     };
   `)();
 
-  return executor.bind(context)(context);
+  return async () => {
+    await executor.bind(context)(context);
+  };
 }

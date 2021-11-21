@@ -5,11 +5,11 @@ import type { File } from '../fs/core/file';
 import type { CallbackThreeArgs, CallbackTwoArgs, IFileSystem } from '../fs/core/file_system';
 import { AsyncKeyValueFileSystem } from '../fs/generic/key_value_filesystem';
 import VirtualFile from '../fs/generic/virtual_file';
-import type ShellHistory from '../shell/shell-history';
-import { closestLeftBoundary, closestRightBoundary, isIncompleteInput } from '../shell/shell-utils';
+import type { ActiveCharPrompt, ActivePrompt } from '../shell/shell-utils';
 import type { IDisposable } from '../terminal';
-import { InMemoryPipe, PipeFile } from './pipe';
+import { InMemoryPipe } from './pipe';
 import { constants } from './constants';
+import { Buffer } from 'buffer';
 /**
  * Convert offset at the given input to col/row location
  *
@@ -67,8 +67,6 @@ let keyboard = {
   DELETE: 14,
 };
 
-import { Event, Emitter } from 'vs/base/common/event';
-
 interface IEventEmitter {
   on(event: string, callback: (...args: any[]) => void): IDisposable;
 
@@ -78,7 +76,7 @@ interface IEventEmitter {
 export interface TerminalDevice {
   on(event: string, callback: (...args: any[]) => void): IDisposable;
   emit(event: string, args: any): void;
-  write(data: any): void;
+  write(data: any, cb?: any): void;
   get cols(): number;
   get rows(): number;
 }
@@ -113,7 +111,7 @@ export class TTYDevice extends MittEventEmitter implements TerminalDevice {
   }
 }
 
-export class Xterm extends Terminal implements IEventEmitter {
+export class Xterm extends Terminal implements IEventEmitter, TerminalDevice {
   on(event: string, callback: (...args: any[]) => void) {
     return this.onData(callback);
   }
@@ -129,12 +127,14 @@ export class TTY extends VirtualFile implements File {
     rows: number;
   };
 
-  rawMode: boolean;
+  rawMode: boolean = false;
 
   _firstInit: boolean = true;
   _cursor: number;
   _input: string;
-  _history: ShellHistory;
+  _promptPrefix: string;
+  _continuationPromptPrefix: string;
+
   // _active: boolean = true;
   // _activePrompt;
   // _autocompleteHandlers: any;
@@ -151,294 +151,11 @@ export class TTY extends VirtualFile implements File {
       cols: this.device.cols,
       rows: this.device.rows,
     };
-
+    this._promptPrefix = '';
+    this._continuationPromptPrefix = '';
     this._input = '';
     this._cursor = 0;
   }
-
-  startReading() {
-    this.device.on('data', this.handleStdin.bind(this));
-  }
-
-  handleStdin(data: string) {
-    if (this.rawMode) {
-      this.writeString(data);
-    } else {
-      this.runLineDiscipline(data);
-    }
-  }
-
-  parseData(data: string) {
-    const ord = data.charCodeAt(0);
-    let ofs;
-
-    if (ord === 0x1b) {
-      switch (data.substr(1)) {
-        case '[A': // Up arrow
-          return keyboard.UP_ARROW;
-
-        case '[B': // Down arrow
-          return keyboard.DOWN_ARROW;
-
-        case '[D': // Left Arrow
-          return keyboard.LEFT_ARROW;
-
-        case '[C': // Right Arrow
-          return keyboard.RIGHT_ARROW;
-
-        case '[3~': // Delete
-          return keyboard.DELETE;
-
-        case '[F': // End
-          return keyboard.END;
-
-        case '[H': // Home
-          return keyboard.HOME;
-
-        // case "b": // ALT + a
-
-        case 'b': // ALT + LEFT
-          return keyboard.ALT_LEFT_ARROW;
-
-        case 'f': // ALT + RIGHT
-          return keyboard.ALT_RIGHT_ARROW;
-
-        case '\x7F': // CTRL + BACKSPACE
-          return keyboard.CTRL_BACKSPACE;
-      }
-
-      // Handle special characters
-    } else if (ord < 32 || ord === 0x7f) {
-      switch (data) {
-      }
-    }
-  }
-
-  /**
-   * Handle a single piece of information from the terminal -> tty.
-   */
-  runLineDiscipline = (data: string) => {
-    // Only Allow CTRL+C Through
-    // if (!this._active && data !== '\x03') {
-    //   return;
-    // }
-
-    const ord = data.charCodeAt(0);
-    let ofs;
-
-    // Handle ANSI escape sequences
-    if (ord === 0x1b) {
-      switch (data.substr(1)) {
-        case '[A': // Up arrow
-          if (this._history) {
-            let value = this._history.getPrevious();
-            if (value) {
-              this.setInput(value);
-              this.setCursor(value.length);
-            }
-          }
-          break;
-
-        case '[B': // Down arrow
-          if (this._history) {
-            let value = this._history.getNext();
-            if (!value) value = '';
-            this.setInput(value);
-            this.setCursor(value.length);
-          }
-          break;
-
-        case '[D': // Left Arrow
-          this.handleCursorMove(-1);
-          break;
-
-        case '[C': // Right Arrow
-          this.handleCursorMove(1);
-          break;
-
-        case '[3~': // Delete
-          this.handleCursorErase(false);
-          break;
-
-        case '[F': // End
-          this.setCursor(this.getInput().length);
-          break;
-
-        case '[H': // Home
-          this.setCursor(0);
-          break;
-
-        // case "b": // ALT + a
-
-        case 'b': // ALT + LEFT
-          ofs = closestLeftBoundary(this.getInput(), this.getCursor());
-          if (ofs) this.setCursor(ofs);
-          break;
-
-        case 'f': // ALT + RIGHT
-          ofs = closestRightBoundary(this.getInput(), this.getCursor());
-          if (ofs) this.setCursor(ofs);
-          break;
-
-        case '\x7F': // CTRL + BACKSPACE
-          ofs = closestLeftBoundary(this.getInput(), this.getCursor());
-          if (ofs) {
-            this.setInput(
-              this.getInput().substr(0, ofs) + this.getInput().substr(this.getCursor()),
-            );
-            this.setCursor(ofs);
-          }
-          break;
-      }
-
-      // Handle special characters
-    } else if (ord < 32 || ord === 0x7f) {
-      switch (data) {
-        case '\r': // ENTER
-        case '\x0a': // CTRL+J
-        case '\x0d': // CTRL+M
-          if (isIncompleteInput(this.getInput())) {
-            this.handleCursorInsert('\n');
-          } else {
-            this.handleLineComplete();
-          }
-          break;
-
-        case '\x7F': // BACKSPACE
-        case '\x08': // CTRL+H
-        case '\x04': // CTRL+D
-          this.handleCursorErase(true);
-          break;
-
-        // case '\t': // TAB
-        //   if (this._autocompleteHandlers.length > 0) {
-        //     const inputFragment = this.getInput().substr(0, this.getCursor());
-        //     const hasTrailingSpace = hasTrailingWhitespace(inputFragment);
-        //     const candidates = collectAutocompleteCandidates(
-        //       this._autocompleteHandlers,
-        //       inputFragment,
-        //     );
-
-        //     // Sort candidates
-        //     candidates.sort();
-
-        //     // Depending on the number of candidates, we are handing them in
-        //     // a different way.
-        //     if (candidates.length === 0) {
-        //       // No candidates? Just add a space if there is none already
-        //       if (!hasTrailingSpace) {
-        //         this.handleCursorInsert(' ');
-        //       }
-        //     } else if (candidates.length === 1) {
-        //       // Just a single candidate? Complete
-        //       const lastToken = getLastToken(inputFragment);
-        //       this.handleCursorInsert(candidates[0].substr(lastToken.length) + ' ');
-        //     } else if (candidates.length <= this.maxAutocompleteEntries) {
-        //       // If we are less than maximum auto-complete candidates, print
-        //       // them to the user and re-start prompt
-        //       this.printAndRestartPrompt(() => {
-        //         this.printWide(candidates);
-        //         return undefined;
-        //       });
-        //     } else {
-        //       // If we have more than maximum auto-complete candidates, print
-        //       // them only if the user acknowledges a warning
-        //       // this.printAndRestartPrompt(() =>
-        //       //   this.readChar(
-        //       //     `Display all ${candidates.length} possibilities? (y or n)`,
-        //       //   ).promise.then((yn: string) => {
-        //       //     if (yn === 'y' || yn === 'Y') {
-        //       //       this.printWide(candidates);
-        //       //     }
-        //       //   }),
-        //       // );
-        //     }
-        //   } else {
-        //     this.handleCursorInsert('    ');
-        //   }
-        //   break;
-
-        case '\x01': // CTRL+A
-          this.setCursor(0);
-          break;
-
-        case '\x02': // CTRL+B
-          this.handleCursorMove(-1);
-          break;
-
-        case '\x03': // CTRL+C
-        case '\x1a': // CTRL+Z
-          const currentInput = this.getInput();
-          this.setCursor(currentInput.length);
-          this.setInput('');
-          this.setCursorDirectly(0);
-          this.print(currentInput + '^C\r\n');
-          if (this._history) this._history.rewind();
-
-          // Kill the command
-          // if (this.commandRunner) {
-          //   this.commandRunner.kill();
-          //   this.commandRunner = undefined;
-          // }
-
-          // If we are prompting, then we want to cancel the current read
-          // this.resolveActiveRead();
-
-          break;
-
-        case '\x05': // CTRL+E
-          this.setCursor(this.getInput().length);
-          break;
-
-        case '\x06': // CTRL+F
-          this.handleCursorMove(1);
-          break;
-
-        case '\x07': // CTRL+G
-          if (this._history) this._history.rewind();
-          this.setInput('');
-          break;
-
-        case '\x0b': // CTRL+K
-          this.setInput(this.getInput().substring(0, this.getCursor()));
-          this.setCursor(this.getInput().length);
-          break;
-
-        case '\x0c': // CTRL+L
-          this.clear();
-          this.print(`$ ${this.getInput()}`);
-          break;
-
-        case '\x0e': // CTRL+N
-          if (this._history) {
-            let value = this._history.getNext();
-            if (!value) value = '';
-            this.setInput(value);
-            this.setCursor(value.length);
-          }
-          break;
-
-        case '\x10': // CTRL+P
-          if (this._history) {
-            let value = this._history.getPrevious();
-            if (value) {
-              this.setInput(value);
-              this.setCursor(value.length);
-            }
-          }
-          break;
-
-        case '\x15': // CTRL+U
-          this.setInput(this.getInput().substring(this.getCursor()));
-          this.setCursor(0);
-          break;
-      }
-
-      // Handle visible characters
-    } else {
-      this.handleCursorInsert(data);
-    }
-  };
 
   /**
    * Handle input completion
@@ -473,18 +190,9 @@ export class TTY extends VirtualFile implements File {
   /**
    * Prints a message and properly handles new-lines
    */
-  print(message: string, sync?: boolean) {
+  print(message: string, cb?: () => void) {
     const normInput = message.replace(/[\r\n]+/g, '\n').replace(/\n/g, '\r\n');
-    if (sync) {
-      // We write it synchronously via hacking a bit on xterm
-      // this.xtermwriteSync(normInput);
-      // this.xterm._core._renderService._renderer._runOperation((renderer) =>
-      //   renderer.onGridChanged(0, this.xterm.rows - 1),
-      // );
-      console.error('sync write not implemented');
-    } else {
-      this.device.write(normInput);
-    }
+    this.device.write(normInput, cb);
   }
 
   /**
@@ -516,61 +224,83 @@ export class TTY extends VirtualFile implements File {
   }
 
   /**
-   * Prints a status message on the current line. Meant to be used with clearStatus()
+   * Function to return a deconstructed readPromise
    */
-  printStatus(message: string, sync?: boolean) {
-    // Save the cursor position
-    this.print('\u001b[s', sync);
-    this.print(message, sync);
+  _getAsyncRead() {
+    let readResolve;
+    let readReject;
+    const readPromise = new Promise((resolve, reject) => {
+      readResolve = (response: string) => {
+        this._promptPrefix = '';
+        this._continuationPromptPrefix = '';
+        resolve(response);
+      };
+      readReject = reject;
+    });
+
+    return {
+      promise: readPromise,
+      resolve: readResolve,
+      reject: readReject,
+    };
   }
 
   /**
-   * Erase a character at cursor location
+   * Return a promise that will resolve when the user has completed
+   * typing a single line
    */
-  handleCursorErase = (backspace: boolean) => {
-    if (backspace) {
-      if (this.getCursor() <= 0) return;
-      const newInput =
-        this.getInput().substr(0, this.getCursor() - 1) + this.getInput().substr(this.getCursor());
-      this.clearInput();
-      this.setCursorDirectly(this.getCursor() - 1);
-      this.setInput(newInput, true);
-    } else {
-      const newInput =
-        this.getInput().substr(0, this.getCursor()) + this.getInput().substr(this.getCursor() + 1);
-      this.setInput(newInput);
+  prompt(promptPrefix: string, continuationPromptPrefix: string = '> '): ActivePrompt {
+    if (promptPrefix.length > 0) {
+      this.print(promptPrefix);
     }
-  };
+
+    this._firstInit = true;
+    this._promptPrefix = promptPrefix;
+    this._continuationPromptPrefix = continuationPromptPrefix;
+    this._input = '';
+    this._cursor = 0;
+
+    return {
+      promptPrefix,
+      continuationPromptPrefix,
+      ...this._getAsyncRead(),
+    };
+  }
 
   /**
-   * Move cursor at given direction
+   * Return a promise that will be resolved when the user types a single
+   * character.
+   *
+   * This can be active in addition to `.read()` and will be resolved in
+   * priority before it.
    */
-  handleCursorMove = (dir: number) => {
-    if (dir > 0) {
-      const num = Math.min(dir, this.getInput().length - this.getCursor());
-      this.setCursorDirectly(this.getCursor() + num);
-    } else if (dir < 0) {
-      const num = Math.max(dir, -this.getCursor());
-      this.setCursorDirectly(this.getCursor() + num);
+  readChar(promptPrefix: string): ActiveCharPrompt {
+    if (promptPrefix.length > 0) {
+      this.print(promptPrefix);
     }
-  };
+
+    return {
+      promptPrefix,
+      ...this._getAsyncRead(),
+    };
+  }
 
   /**
    * Clears the current status on the line, meant to be run after printStatus
    */
-  clearStatus(sync?: boolean) {
+  clearStatus() {
     // Restore the cursor position
-    this.print('\u001b[u', sync);
+    this.print('\u001b[u');
     // Clear from cursor to end of screen
-    this.print('\u001b[1000D', sync);
-    this.print('\u001b[0J', sync);
+    this.print('\u001b[1000D');
+    this.print('\u001b[0J');
   }
 
   /**
    * Apply prompts to the given input
    */
   applyPrompts(input: string): string {
-    return input;
+    return this._promptPrefix + input.replace(/\n/g, '\n' + this._continuationPromptPrefix);
   }
 
   /**
@@ -591,24 +321,20 @@ export class TTY extends VirtualFile implements File {
   clearInput() {
     const currentPrompt = this.applyPrompts(this._input);
 
-    for (let i = 0; i < currentPrompt.length; ++i) {
-      this.device.write('\b');
-    }
-
     // Get the overall number of lines to clear
-    // const allRows = countLines(currentPrompt, this._termSize.cols);
+    const allRows = countLines(currentPrompt, this._termSize.cols);
 
-    // // Get the line we are currently in
-    // const promptCursor = this.applyPromptOffset(this._input, this._cursor);
-    // const { col, row } = offsetToColRow(currentPrompt, promptCursor, this._termSize.cols);
+    // Get the line we are currently in
+    const promptCursor = this.applyPromptOffset(this._input, this._cursor);
+    const { col, row } = offsetToColRow(currentPrompt, promptCursor, this._termSize.cols);
 
-    // // First move on the last line
-    // const moveRows = allRows - row - 1;
-    // for (let i = 0; i < moveRows; ++i) this.master.write('\x1B[E');
+    // First move on the last line
+    const moveRows = allRows - row - 1;
+    for (let i = 0; i < moveRows; ++i) this.device.write('\x1B[E');
 
-    // // Clear current input line(s)
-    // this.master.write('\r\x1B[K');
-    // for (let i = 1; i < allRows; ++i) this.master.write('\x1B[F\x1B[K');
+    // Clear current input line(s)
+    this.device.write('\r\x1B[K');
+    for (let i = 1; i < allRows; ++i) this.device.write('\x1B[F\x1B[K');
   }
 
   /**
@@ -617,11 +343,7 @@ export class TTY extends VirtualFile implements File {
    * This function will erase all the lines that display on the tty,
    * and move the cursor in the beginning of the first line of the prompt.
    */
-  clear() {
-    this.truncateSync();
-  }
-
-  truncateSync() {
+  clearTty() {
     // Clear the screen
     this.device.write('\u001b[2J');
     // Set the cursor to 0, 0
@@ -634,6 +356,20 @@ export class TTY extends VirtualFile implements File {
    */
   getFirstInit(): boolean {
     return this._firstInit;
+  }
+
+  /**
+   * Function to get the current Prompt prefix
+   */
+  getPromptPrefix(): string {
+    return this._promptPrefix;
+  }
+
+  /**
+   * Function to get the current Continuation Prompt prefix
+   */
+  getContinuationPromptPrefix(): string {
+    return this._continuationPromptPrefix;
   }
 
   /**
@@ -700,9 +436,9 @@ export class TTY extends VirtualFile implements File {
     const { col, row } = offsetToColRow(newPrompt, newCursor, this._termSize.cols);
     const moveUpRows = newLines - row - 1;
 
-    // this.master.write('\r');
-    // for (let i = 0; i < moveUpRows; ++i) this.master.write('\x1B[F');
-    // for (let i = 0; i < col; ++i) this.master.write('\x1B[C');
+    this.device.write('\r');
+    for (let i = 0; i < moveUpRows; ++i) this.device.write('\x1B[F');
+    for (let i = 0; i < col; ++i) this.device.write('\x1B[C');
 
     // Replace input
     this._input = newInput;
@@ -748,20 +484,18 @@ export class TTY extends VirtualFile implements File {
       this._termSize.cols,
     );
 
-    console.log(prevCol, newCol);
-
     // Adjust vertically
     if (newRow > prevRow) {
-      for (let i = prevRow; i < newRow; ++i) this.device.write('\x1B[B');
+      for (let i = prevRow; i < newRow; ++i) this.print('\x1B[B');
     } else {
-      for (let i = newRow; i < prevRow; ++i) this.device.write('\x1B[A');
+      for (let i = newRow; i < prevRow; ++i) this.print('\x1B[A');
     }
 
     // Adjust horizontally
     if (newCol > prevCol) {
-      for (let i = prevCol; i < newCol; ++i) this.device.write('\x1B[C');
+      for (let i = prevCol; i < newCol; ++i) this.print('\x1B[C');
     } else {
-      for (let i = newCol; i < prevCol; ++i) this.device.write('\x1B[D');
+      for (let i = newCol; i < prevCol; ++i) this.print('\x1B[D');
     }
 
     // Set new offset
@@ -772,6 +506,18 @@ export class TTY extends VirtualFile implements File {
     this._termSize = { cols, rows };
   }
 
+  setFirstInit(value: boolean) {
+    this._firstInit = value;
+  }
+
+  setPromptPrefix(value: string) {
+    this._promptPrefix = value;
+  }
+
+  setContinuationPromptPrefix(value: string) {
+    this._continuationPromptPrefix = value;
+  }
+
   writeBuffer(
     buffer: Buffer,
     offset: number,
@@ -779,7 +525,7 @@ export class TTY extends VirtualFile implements File {
     position: number,
     callback: CallbackThreeArgs<number, Buffer>,
   ) {
-    this.device.write(buffer);
+    this.device.write(buffer, callback);
   }
 
   readBuffer(
@@ -794,35 +540,3 @@ export class TTY extends VirtualFile implements File {
 
   pipe = new InMemoryPipe();
 }
-
-/**
- * A tty is a particular device file, that sits between the shell and the terminal.
- * It acts an an interface for the shell and terminal to read/write from,
- * and communicate with one another
- */
-// export class PTYSlaveFile extends VirtualFile implements File {
-//   constructor(private _tty: TTY) {
-//     super();
-//     this._flag = 'w+';
-//   }
-
-//   writeBuffer(
-//     buffer: Buffer,
-//     offset: number,
-//     length: number,
-//     position: number,
-//     cb: CallbackThreeArgs<number, Buffer>,
-//   ): void {
-//     this._tty.write(buffer, offset, length, position, () => cb(null, length));
-//   }
-
-//   readBuffer(
-//     buffer: Buffer,
-//     offset: number,
-//     length: number,
-//     position: number,
-//     cb: CallbackThreeArgs<number, Buffer>,
-//   ) {
-//     this._tty.read(buffer, offset, length, position, cb);
-//   }
-// }

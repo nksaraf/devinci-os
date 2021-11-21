@@ -1,5 +1,14 @@
 <script lang="ts">
   import { openWindows } from 'os/stores/window.store';
+  let iframe: HTMLIFrameElement;
+
+  $: {
+    if (iframe) {
+      // (async () => {
+      //   iframe.srcdoc = await (await fetch('http://localhost:4507')).text();
+      // })();
+    }
+  }
 </script>
 
 <section id="windows-area">
@@ -8,6 +17,8 @@
       <Window id={windowID} {window} />
     {/await}
   {/each}
+  <!-- <iframe bind:this={iframe} class="h-screen w-screen" src="http://localhost/~p/4507/" /> -->
+  <!-- <iframe src="http://localhost:3000/p/4057/" class="h-screen w-screen" /> -->
 </section>
 
 <style lang="scss">

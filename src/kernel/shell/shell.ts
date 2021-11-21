@@ -1,8 +1,6 @@
 import type { IBufferLine } from 'xterm';
-
+import type { ActiveCharPrompt, ActivePrompt } from './shell-utils';
 import {
-  ActiveCharPrompt,
-  ActivePrompt,
   closestLeftBoundary,
   closestRightBoundary,
   collectAutocompleteCandidates,
@@ -11,11 +9,9 @@ import {
   isIncompleteInput,
 } from './shell-utils';
 import ShellHistory from './shell-history';
+import type { TTY } from '../kernel/tty';
 
-import CommandRunner from '../terminal/command-runner/command-runner';
-import { Process } from '../kernel/proc';
-
-type AutoCompleteHandler = (index: number, tokens: string[]) => string[];
+// import CommandRunner from "../command-runner/command-runner";
 
 /**
  * A shell is the primary interface that is used to start other programs.
@@ -26,9 +22,13 @@ type AutoCompleteHandler = (index: number, tokens: string[]) => string[];
  * - Output text to the tty -> terminal
  * - Interpret text within the tty to launch processes and interpret programs
  */
-export default class Shell extends Process {
+type AutoCompleteHandler = (index: number, tokens: string[]) => string[];
+
+export class Shell {
+  // wasmTerminalConfig: WasmTerminalConfig;
+  tty: TTY;
   history: ShellHistory;
-  commandRunner?: CommandRunner;
+  commandRunner?: any;
 
   maxAutocompleteEntries: number;
   _autocompleteHandlers: AutoCompleteHandler[];
@@ -37,16 +37,15 @@ export default class Shell extends Process {
   _activeCharPrompt?: ActiveCharPrompt;
 
   constructor(
+    tty: TTY,
     options: { historySize: number; maxAutocompleteEntries: number } = {
       historySize: 10,
       maxAutocompleteEntries: 100,
     },
   ) {
-    super({
-      name: 'shell',
-    });
+    this.tty = tty;
     this.history = new ShellHistory(options.historySize);
-    this.commandRunner = undefined;
+    // this.commandRunner = undefined;
 
     this.maxAutocompleteEntries = options.maxAutocompleteEntries;
     this._autocompleteHandlers = [
@@ -57,43 +56,93 @@ export default class Shell extends Process {
     this._active = false;
   }
 
+  getReadable() {
+    return new ReadableStream({
+      pull: async (controller) => {
+        if (!this.isPrompting()) {
+          this.prompt();
+        }
+
+        let input = await this._activePrompt.promise;
+        if (input === null) {
+          controller.close();
+        }
+        controller.enqueue(input);
+      },
+    });
+  }
+
+  // async *[Symbol.asyncIterator]() {
+  //   while (true) {
+  //     let prompt = await this.prompt();
+  //     if (prompt === null) {
+  //       break;
+  //     }
+  //     yield prompt;
+  //     this.printAndRestartPrompt(() => {
+
+  //     })
+
+  //     await new Promise()
+  //   }
+  // }
+
+  async _processPrompt() {
+    let line = await this._activePrompt.promise;
+    // if (this.commandRunner) {
+    //   this.commandRunner.kill();
+    // }
+
+    if (line === '') {
+      // Simply prompt again
+      this._activePrompt = null;
+      return await this.prompt();
+    }
+
+    if (line === '!!') {
+      // This means run the previous command
+      if (this.history && this.history.entries.length > 0) {
+        line = this.history.entries[this.history.entries.length - 1];
+      } else {
+        throw new Error('No Previous command in History');
+      }
+    } else if (this.history) {
+      this.history.push(this.tty.getInput());
+    }
+
+    // this.commandRunner = this.getCommandRunner(line);
+    // await this.commandRunner.runCommand();
+    return line;
+  }
+
+  async start() {
+    while (true) {
+      let line = await this.prompt();
+      if (line === null) {
+        break;
+      }
+
+      await this.handleCommand(line);
+    }
+  }
+
+  async handleCommand(line: string) {
+    throw new Error('Not Implemented');
+  }
+
   async prompt() {
     // If we are already prompting, do nothing...
     if (this._activePrompt) {
-      return;
+      return await this._processPrompt();
     }
 
     try {
       this._activePrompt = this.tty.prompt('$ ');
       this._active = true;
-      let line = await this._activePrompt.promise;
-      if (this.commandRunner) {
-        this.commandRunner.kill();
-      }
-
-      if (line === '') {
-        // Simply prompt again
-        this.prompt();
-        return;
-      }
-
-      if (line === '!!') {
-        // This means run the previous command
-        if (this.history && this.history.entries.length > 0) {
-          line = this.history.entries[this.history.entries.length - 1];
-        } else {
-          throw new Error('No Previous command in History');
-        }
-      } else if (this.history) {
-        this.history.push(this.tty.getInput());
-      }
-
-      this.commandRunner = this.getCommandRunner(line);
-      await this.commandRunner.runCommand();
+      return await this._processPrompt();
     } catch (e) {
       this.tty.println(`${e.toString()}`);
-      // tslint:disable-next-line
-      this.prompt();
+      return await this.prompt();
     }
   }
 
@@ -105,25 +154,27 @@ export default class Shell extends Process {
    * This function returns a command runner for the specified line
    */
   getCommandRunner(line: string) {
-    return new CommandRunner(
-      this.wasmTerminalConfig,
-      line,
-      // Command Read Callback
-      async () => {
-        this._activePrompt = this.tty.read('');
-        this._active = true;
-        return this._activePrompt.promise;
-      },
-      // Command End Callback
-      () => {
-        // Doing a set timeout to allow whatever killed the process to do it's thing first
-        setTimeout(() => {
-          this.prompt();
-        });
-      },
-      // TTY
-      this.tty,
-    );
+    throw new Error('Not Implemented');
+    // return new CommandRunner(
+    //   this.wasmTerminalConfig,
+    //   line,
+    //   // Command Read Callback
+    //   async () => {
+    //     this._activePrompt = this.tty.prompt('');
+    //     this._active = true;
+    //     return this._activePrompt.promise;
+    //   },
+    //   // Command End Callback
+    //   () => {
+    //     // Doing a set timeout to allow whatever killed the process to do it's thing first
+    //     setTimeout(() => {
+    //       // tslint:disable-next-line
+    //       this.prompt();
+    //     });
+    //   },
+    //   // TTY
+    //   this.tty,
+    // );
   }
 
   /**

@@ -1,10 +1,8 @@
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
 // import { WebglAddon } from 'xterm-addon-webgl';
-import { Terminal as XtermTerminal } from 'xterm';
-import TTYFile from './kernel/tty';
-import Shell from './shell/shell';
-import type WasmTerminalConfig from './terminal/wasm-terminal-config';
+import { TTY, Xterm } from './kernel/tty';
+import { Shell } from './shell/shell';
 
 export interface IDisposable {
   dispose(): void;
@@ -12,20 +10,13 @@ export interface IDisposable {
 
 const MOBILE_KEYBOARD_EVENTS = ['click', 'tap'];
 
-interface TerminalOptions {
-  config: WasmTerminalConfig;
-  tty: TTYFile;
-  shell: Shell;
-}
-
-export default class Terminal {
-  xterm: XtermTerminal;
+export class Terminal {
+  xterm: Xterm;
   container: HTMLElement | undefined;
   webLinksAddon: WebLinksAddon;
   fitAddon: FitAddon;
 
-  config: TerminalOptions;
-  tty: TTYFile;
+  tty: TTY;
   shell: Shell;
 
   isOpen: boolean;
@@ -33,9 +24,9 @@ export default class Terminal {
 
   disposables: IDisposable[] = [];
 
-  constructor(config: Partial<TerminalOptions>) {
+  constructor() {
     // Create our xterm element
-    this.xterm = new XtermTerminal({
+    this.xterm = new Xterm({
       // rendererType: 'dom'
     });
 
@@ -62,13 +53,12 @@ export default class Terminal {
     this.xterm.loadAddon(this.fitAddon);
     this.xterm.loadAddon(this.webLinksAddon);
 
-    this.config = config;
+    // this.config = config;
 
     // Create our Shell and tty
-    this.tty = new TTYFile(this.xterm);
-    this.shell = new Shell(this.config, this.tty);
-
-    this.disposables.push(this.xterm.onData(this.shell.handleTermData));
+    this.tty = new TTY(this.xterm);
+    this.shell = new Shell(this.tty);
+    this.disposables.push(this.tty.device.on('data', (data) => this.shell.handleTermData(data)));
 
     this.isOpen = false;
     this.pendingPrintOnOpen = '';
@@ -100,8 +90,6 @@ export default class Terminal {
         this.tty.print(this.pendingPrintOnOpen + '\n');
         this.pendingPrintOnOpen = '';
       }
-
-      this.shell.prompt();
     });
   }
 
@@ -145,7 +133,7 @@ export default class Terminal {
     window.scrollTo(scrollX, scrollY);
   }
 
-  print(message: string, sync?: boolean) {
+  print(message: string) {
     // For some reason, double new lines are not respected. Thus, fixing that here
     message = message.replace(/\n\n/g, '\n \n');
 
@@ -161,13 +149,13 @@ export default class Terminal {
     if (this.shell.isPrompting) {
       // Cancel the current prompt and restart
       this.shell.printAndRestartPrompt(() => {
-        this.tty.print(message + '\n', sync);
+        this.tty.print(message + '\n');
         return undefined;
       });
       return;
     }
 
-    this.tty.print(message, sync);
+    this.tty.print(message);
   }
 
   runCommand(line: string) {
