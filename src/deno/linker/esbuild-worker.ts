@@ -10,7 +10,7 @@ console.log = function () {
 };
 
 expose({
-  transpile: async (
+  transpileSync: async (
     sab: SharedArrayBuffer,
     {
       mode = 'script',
@@ -84,6 +84,43 @@ expose({
       Atomics.store(new Int32Array(sab, 0, 4), 0, 1);
       Atomics.store(new Int32Array(sab, 4, 8), 0, 0);
       Atomics.notify(new Int32Array(sab, 0, 4), 0, 64000);
+    }
+  },
+
+  transpile: async (
+    text: string,
+    {
+      mode = 'script',
+      url = '',
+    }: {
+      mode: 'script' | 'module';
+      url: string;
+    },
+  ) => {
+    if (text.startsWith('#')) {
+      console.log();
+      text = text.substr(text.indexOf('\n') + 1);
+    }
+    // }
+
+    try {
+      let result = await esbuild.transform(text, {
+        format: 'cjs',
+        loader: 'ts',
+        define: {
+          'import.meta.main': mode === 'script' ? 'true' : 'false',
+          'import.meta.url': `"${url}"`,
+        },
+      });
+
+      console.log('step 3', { result });
+      console.groupEnd();
+
+      let data = new TextEncoder().encode(result.code);
+      return data;
+    } catch (e) {
+      console.error(e);
+      return null;
     }
   },
   async init() {

@@ -32,6 +32,7 @@
       "os/*": ["./src/*"],
       "browserfs": ["./packages/browserfs/index.ts"],
       "browserfs/*": ["./packages/browserfs/*"],
+      "comlink": ["./deno/comlink/index.ts"],
       "vs/*": ["./packages/vscode/src/vs/*"]
     },
     "types": [

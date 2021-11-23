@@ -1,4 +1,6 @@
-import { transferHandlers } from 'comlink';
+export * from './comlink';
+
+import { transferHandlers } from './comlink';
 
 export class Channel {
   portToExpose: MessagePort;

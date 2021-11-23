@@ -1,59 +1,66 @@
 <script lang="ts">
   import { getContext, onMount } from 'svelte';
 
-  import 'xterm/css/xterm.css';
-  import { WebLinksAddon } from 'xterm-addon-web-links';
-  import { WebglAddon } from 'xterm-addon-webgl';
-  import { FitAddon } from 'xterm-addon-fit';
   import type { WindowAPI } from '__/stores/window.store';
   import TrafficLights from 'os/ui/Window/TrafficLights.svelte';
   import ExpandSvg from '@ui/components/SVG/traffic-lights/ExpandSVG.svelte';
-  import { TTYDevice, TTY, Xterm } from 'os/kernel/kernel/tty';
-  import DenoWebWorker from 'os/deno/deno-worker?worker';
-  import { wrap, proxy } from 'comlink';
-  import type { DenoWorker } from 'os/deno/deno-worker';
-  import { Terminal } from 'os/kernel/terminal';
+  import { TTY, Xterm } from 'os/kernel/kernel/tty';
+  import { proxy } from 'comlink';
+  import { DenoWorker } from 'os/deno/DenoWorker';
+  import { DenoREPL } from './desh';
 
   let divEl: HTMLDivElement = null;
 
   onMount(() => {
-    const terminal = new Terminal();
-    const worker = wrap<DenoWorker>(new DenoWebWorker());
+    const worker = new DenoWorker();
+    const terminal = new Xterm();
+    const tty = new TTY(terminal);
+    const shell = new DenoREPL(tty, worker.isolate);
+    console.log('write file');
 
     (async () => {
-      // let channel = await worker.connect();
-      await worker.init();
-      await worker.addEventListener(
+      await worker.isolate.attach();
+      console.log('write file');
+      await worker.isolate.addEventListener(
         'stdout',
         proxy((ev) => {
           terminal.tty.println(ev.detail.join(' '));
         }),
       );
+      console.log('write file');
 
-      terminal.shell.handleCommand = async (cmd) => {
-        try {
-          console.log(await worker.eval(cmd));
-        } catch (e) {
-          terminal.tty.print(e.message + '\n' + e.stack);
-        }
-        terminal.tty.println('');
-      };
+      console.log(await WebAssembly.compileStreaming(fetch('/sqlite.wasm')));
 
-      await terminal.shell.start();
+      await worker.isolate.Deno.writeTextFile(
+        '/script.ts',
+        `
+        import { DB } from "https://raw.githubusercontent.com/devinci-os/deno-sqlite/master/mod.ts";
 
-      // for (var input of shell.getReadable()))
+// Open a database
+(async () => {
+  const db = await DB.create("http://localhost/sqlite.wasm", "test.db");
+db.query(\`
+CREATE TABLE IF NOT EXISTS people (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT
+)
+\`);
 
-      // while (true) {
-      //   console.log(await tty.writeString('> '));
-      //   console.log('waiting for input');
-      //   let input = await tty.readString();
-      //   console.log(input);
-      //   try {
-      //     console.log(await worker.eval(input));
-      //   } catch (e) {
-      //     await tty.writeString(e.message + '\r\n' + e.stack.replaceAll('\n', '\r\n'));
-      //   }
-      // }
+})()
+
+
+      `,
+      );
+
+      console.log('write file');
+
+      await worker.isolate.run('/script.ts');
+
+      tty.device.addEventListener('data', (event) => {
+        shell.handleTermData(event.detail);
+      });
+
+      await shell.start();
     })();
 
     terminal.open(divEl);

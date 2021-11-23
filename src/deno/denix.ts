@@ -1,6 +1,6 @@
 import type { ResourceTable } from './interface';
 import { Resource } from './interface';
-import { proxy } from 'comlink';
+import { proxy, wrap } from 'comlink';
 import type { Remote } from 'comlink';
 import { ApiError, ERROR_KIND_TO_CODE } from 'os/kernel/fs/core/api_error';
 import { LocalNetwork, network, Socket } from './ops/network';
@@ -10,7 +10,8 @@ import { builtIns } from './ops/builtIns';
 import { fsOps } from './ops/fs';
 import { url } from './ops/url';
 import { VirtualFileSystem } from 'os/kernel/fs';
-
+import EsbuildWorker from './linker/esbuild-worker?worker';
+import { fromBase64 } from 'os/kernel/node/base64';
 function syncOpCallXhr(op_code: number, arg1: any, arg2: any) {
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/~deno/op/sync/' + op_code, false);
@@ -160,6 +161,15 @@ export class Kernel extends EventTarget {
     return rid;
   }
 
+  esbuild = wrap<{
+    init: () => void;
+    transpileSync: (
+      data: SharedArrayBuffer,
+      options: { url: string; mode: 'script' | 'module' },
+    ) => void;
+    transpile: (data: string, options: { url: string; mode: 'script' | 'module' }) => void;
+  }>(new EsbuildWorker());
+
   private nextRid = 0;
 
   stdin: number;
@@ -228,6 +238,12 @@ export class Kernel extends EventTarget {
           return res.decode(data);
         },
       },
+      {
+        name: 'op_base64_decode',
+        sync: (data) => {
+          return fromBase64(data);
+        },
+      },
     );
   }
 
@@ -235,6 +251,7 @@ export class Kernel extends EventTarget {
 
   async initNetwork() {
     const { setupWorker, rest } = await import('msw');
+    await this.esbuild.init();
 
     let requests = {};
     const handleResponse = (e) => {
@@ -250,7 +267,9 @@ export class Kernel extends EventTarget {
       rest.get('https://deno.land/*', async (req, res, ctx) => {
         console.log('/deno-land');
         let originalResponse = await ctx.fetch(req.url.href);
-        return res(ctx.text(await originalResponse.text()));
+        let text = await originalResponse.text();
+
+        return res(ctx.body(text), ctx.set('content-type', 'application/javascript'));
       }),
       rest.get('http://localhost:4507/*', async (req, res, ctx) => {
         console.log('/deno-land', 'MIGHT WORK');

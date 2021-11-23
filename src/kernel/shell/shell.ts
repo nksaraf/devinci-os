@@ -126,6 +126,13 @@ export class Shell {
     }
   }
 
+  async runCommand(line: string) {
+    if (this.isPrompting()) {
+      this.tty.setInput(line);
+      this.handleReadComplete();
+    }
+  }
+
   async handleCommand(line: string) {
     throw new Error('Not Implemented');
   }

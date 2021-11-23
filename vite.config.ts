@@ -168,6 +168,10 @@ export default defineConfig({
         replacement: new URL('./src/kernel/path/path.ts', import.meta.url).pathname,
       },
       { find: 'os', replacement: new URL('./src/', import.meta.url).pathname },
+      {
+        find: 'comlink',
+        replacement: new URL('./src/deno/comlink/index.ts', import.meta.url).pathname,
+      },
     ] as Alias[],
   },
   server: {

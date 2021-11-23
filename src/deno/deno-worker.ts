@@ -1,5 +1,9 @@
-import { expose, wrap } from 'comlink';
-import '../comlink';
+import type { Remote } from 'comlink';
+import { Kernel } from './denix';
+import { DenoIsolate } from './deno';
+import { Global } from '../kernel/global';
+import { expose } from './comlink';
+
 declare global {
   interface Window {
     parent: Window;
@@ -7,48 +11,32 @@ declare global {
   }
 }
 
-import '../comlink';
-import { Channel } from '../comlink';
-import { Kernel } from './denix';
-import { DenoIsolate, Linker } from './deno';
-import { Global } from '../kernel/global';
+export class DenoIsolateWorker extends DenoIsolate {
+  Deno: typeof Deno;
 
-//   for (var entry of Deno.readDirSync('/')) {
-//     console.log(entry);
-//   }
-//   console.log(await (await deno.context.fetch('http://localhost:4507')).text());
-// })();
-
-export class DenoWorker {
-  deno: DenoIsolate;
-  kernel: Kernel;
-  async init() {
-    this.kernel = await Kernel.create();
-    Global.fs = this.kernel.fs;
-
-    this.deno = new DenoIsolate();
-    await this.deno.create();
-    await this.deno.attach(this.kernel);
+  constructor() {
+    super();
   }
 
-  async run(script) {
-    console.log('running', script);
-    console.log(await this.deno.run(script));
-  }
+  async attach(kernel?: Remote<Kernel> | Kernel | undefined) {
+    console.log('heree');
+    if (typeof kernel === 'undefined') {
+      kernel = await Kernel.create();
+      Global.fs = kernel.fs;
+    } else {
+      Global.fs = await kernel.fs;
+    }
 
-  async eval(src) {
-    console.log('evaling', src);
-    console.log(await this.deno.eval(src));
-  }
+    console.log('heree');
 
-  addEventListener(event, listener) {
-    this.deno.addEventListener(event, listener);
-  }
+    await super.attach(kernel as Kernel);
 
-  async connect() {}
+    Global.Deno = this.context.Deno;
+    this.Deno = this.context.Deno;
+  }
 }
 
-let worker = new DenoWorker();
+let worker = new DenoIsolateWorker();
 
 expose(worker);
 // expose({
