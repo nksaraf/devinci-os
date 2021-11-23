@@ -18,7 +18,7 @@ export const fsOps = [
   {
     name: 'op_open_async',
     async: async function (this: Kernel, arg) {
-      let file = this.fs.openSync(arg.path, constants.fs.O_RDWR, arg.mode);
+      let file = this.fs.openSync(getAbsolutePath(arg.path, this), constants.fs.O_RDWR, arg.mode);
       console.log(file);
       return this.addResource(new FileResource(file, arg.path));
     },
@@ -26,13 +26,7 @@ export const fsOps = [
   {
     name: 'op_open_sync',
     sync: function (this: Kernel, arg) {
-      let file = this.fs.openSync(
-        path.isAbsolute(arg.path)
-          ? arg.path
-          : path.join(this.opSync(this.opCode('op_cwd'), arg.path)),
-        constants.fs.O_RDWR,
-        arg.mode,
-      );
+      let file = this.fs.openSync(getAbsolutePath(arg.path, this), constants.fs.O_RDWR, arg.mode);
       console.log(file);
       return this.addResource(new FileResource(file, arg.path));
     },
@@ -75,7 +69,7 @@ export const fsOps = [
   }),
 
   op_async('op_stat_async', async function (this: Kernel, { path, lstat }) {
-    let stat = this.fs.statSync(path, lstat);
+    let stat = this.fs.statSync(getAbsolutePath(path, this), lstat);
     return {
       size: stat.size,
       mode: stat.mode,
@@ -85,8 +79,14 @@ export const fsOps = [
     };
   }),
 
+  op_sync('op_seek_sync', function (this: Kernel, { rid, offset, whence }) {
+    console.log(rid, offset, whence);
+    (this.getResource(rid) as FileResource).seekSync(offset, whence);
+  }),
+
   op_sync('op_stat_sync', function (this: Kernel, { path, lstat }) {
-    let stat = this.fs.statSync(path, lstat);
+    let stat = this.fs.statSync(getAbsolutePath(path, this), lstat);
+    console.log(stat);
     return {
       size: stat.size,
       mode: stat.mode,
@@ -94,6 +94,12 @@ export const fsOps = [
       isDirectory: stat.isDirectory(),
       isSymbolicLink: stat.isSymbolicLink(),
     };
+  }),
+  op_sync('op_remove_sync', function (this: Kernel, { path }) {
+    this.fs.unlinkSync(getAbsolutePath(path, this));
+  }),
+  op_sync('op_fdatasync_sync', function (this: Kernel, rid) {
+    (this.getResource(rid) as FileResource).file.datasyncSync();
   }),
 
   op_async('op_read_dir_async', async function (this: Kernel, dirPath: string) {
@@ -146,6 +152,14 @@ class FileResource extends Resource {
   }
 
   position = 0;
+
+  seekSync(offset: number, whence: number) {
+    if (whence === (0 as Deno.SeekMode.Start)) {
+      this.position = offset;
+    }
+    return this.position;
+  }
+
   async read(data: Uint8Array) {
     if (this.position >= this.file.statSync().size) {
       return null;
@@ -153,7 +167,7 @@ class FileResource extends Resource {
     let container = Buffer.from(data);
     let nread = this.file.readSync(
       container,
-      0,
+      this.position,
       Math.min(this.file.statSync().size, data.byteLength),
       0,
     );
@@ -172,8 +186,8 @@ class FileResource extends Resource {
     let container = Buffer.from(data);
     let nread = this.file.readSync(
       container,
-      0,
-      Math.min(this.file.statSync().size, data.byteLength),
+      this.position,
+      Math.min(this.file.statSync().size - this.position, data.byteLength),
       0,
     );
 
@@ -200,12 +214,7 @@ class FileResource extends Resource {
 
   writeSync(data: Uint8Array) {
     let container = Buffer.from(data);
-    let nwritten = this.file.writeSync(
-      container,
-      0,
-      Math.max(this.file.statSync().size, data.byteLength),
-      0,
-    );
+    let nwritten = this.file.writeSync(container, 0, data.byteLength, this.position);
 
     this.position += nwritten;
 
@@ -215,4 +224,7 @@ class FileResource extends Resource {
   close() {
     this.file.closeSync();
   }
+}
+function getAbsolutePath(p: string, kernel: Kernel): string {
+  return path.isAbsolute(p) ? p : path.join(kernel.opSync(kernel.opCode('op_cwd')), p);
 }

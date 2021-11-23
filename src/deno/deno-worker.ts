@@ -27,12 +27,11 @@ export class DenoIsolateWorker extends DenoIsolate {
       Global.fs = await kernel.fs;
     }
 
-    console.log('heree');
-
     await super.attach(kernel as Kernel);
 
     Global.Deno = this.context.Deno;
     this.Deno = this.context.Deno;
+    Global.deno = this.context;
   }
 }
 

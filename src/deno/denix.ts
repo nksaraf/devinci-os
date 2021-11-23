@@ -232,6 +232,19 @@ export class Kernel extends EventTarget {
         },
       },
       {
+        name: 'op_wasm_streaming_set_url',
+        sync: function (this: Kernel, rid: number, url: string) {
+          (this.getResource(rid) as WasmStreamingResource).url = url;
+        },
+      },
+
+      {
+        name: 'op_wasm_streaming_feed',
+        sync: function (this: Kernel, rid: number, chunk: Uint8Array) {
+          (this.getResource(rid) as WasmStreamingResource).write(chunk);
+        },
+      },
+      {
         name: 'op_encoding_decode',
         sync: (data, { rid }) => {
           let res = this.resourceTable.get(rid) as TextDecoderResource;
@@ -410,6 +423,10 @@ export class RemoteKernel extends Kernel {
 }
 
 interface IKernel {}
+
+export class WasmStreamingResource extends Resource {
+  url: string;
+}
 
 class ConsoleLogResource extends Resource {
   name = 'console';

@@ -2,8 +2,9 @@ import HTTPRequest from '../kernel/fs/backend/HTTPRequest';
 import { createFileSystemBackend, VirtualFileSystem } from '../kernel/fs/create-fs';
 import * as path from 'path';
 import { constants } from '../kernel/kernel/constants';
-import type { Kernel } from './denix';
+import { Kernel, WasmStreamingResource } from './denix';
 import { Linker } from './Linker';
+import { Resource } from './interface';
 export type Context = typeof globalThis;
 
 let ISOLATE_ID = 0;
@@ -28,6 +29,8 @@ export class DenoIsolate extends EventTarget {
   kernel: Kernel;
   core: IDenoCore;
 
+  wasmStreamingCallback;
+
   constructor() {
     super();
 
@@ -36,13 +39,18 @@ export class DenoIsolate extends EventTarget {
       opcallAsync: this.opcallAsync.bind(this),
       callConsole: (oldLog, newLog, ...args) => {
         // newLog(...args);
-        this.dispatchEvent(new CustomEvent('stdout', { detail: [...args] }));
+        console.log(...args);
+        this.dispatchEvent(
+          new CustomEvent('stdout', {
+            detail: [...args.filter((a) => !(a instanceof Uint8Array))],
+          }),
+        );
       },
       setMacrotaskCallback: (cb) => {
         console.log('macrostask callback');
       },
       setWasmStreamingCallback: (cb) => {
-        console.log('wasm streaming callback');
+        this.wasmStreamingCallback = cb;
       },
       decode: function (data: Uint8Array) {
         return new TextDecoder().decode(data);
@@ -90,6 +98,28 @@ export class DenoIsolate extends EventTarget {
 
     this.linker = new Linker();
     this.linker.fs = kernel.fs;
+
+    Object.assign(this.context, {
+      WebAssembly: {
+        compileStreaming: async (source) => {
+          // let resource = new WasmStreamingResource();
+          // let rid = this.kernel.addResource(resource);
+          // this.wasmStreamingCallback(source, rid);
+          // return WebAssembly.compileStreaming(
+          //   new Response(
+          //     new ReadableStream({
+          //       start: async (controller) => {
+          //         resource.
+          //       },
+          //     }),
+          //   ),
+          // );
+          let res = await source;
+          return await WebAssembly.compileStreaming(fetch(res.url));
+        },
+        Instance: WebAssembly.Instance,
+      },
+    });
 
     Object.assign(this.context, {
       require: (src) => {

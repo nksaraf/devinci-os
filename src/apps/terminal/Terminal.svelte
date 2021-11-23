@@ -8,7 +8,8 @@
   import { proxy } from 'comlink';
   import { DenoWorker } from 'os/deno/DenoWorker';
   import { DenoREPL } from './desh';
-
+  import SQLiteWorker from './sqlite.worker?worker';
+  import { initBackend } from 'absurd-sql/dist/indexeddb-main-thread';
   let divEl: HTMLDivElement = null;
 
   onMount(() => {
@@ -31,20 +32,37 @@
 
       console.log(await WebAssembly.compileStreaming(fetch('/sqlite.wasm')));
 
+      function init() {
+        let worker = new SQLiteWorker();
+        // This is only required because Safari doesn't support nested
+        // workers. This installs a handler that will proxy creating web
+        // workers through the main thread
+        initBackend(worker);
+      }
+
+      init();
+
       await worker.isolate.Deno.writeTextFile(
         '/script.ts',
         `
-        import { DB } from "https://raw.githubusercontent.com/devinci-os/deno-sqlite/master/mod.ts";
+        import { DB } from "https://raw.githubusercontent.com/devinci-os/deno-sqlite/31ba590c0730d670134cda712816865e353efd31/mod.ts";
 
 // Open a database
 (async () => {
   const db = await DB.create("http://localhost/sqlite.wasm", "test.db");
-db.query(\`
+globalThis.db = db;
+  console.log(db.query(\`
 CREATE TABLE IF NOT EXISTS people (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT
-)
-\`);
+)\`))
+//   console.log(db.query(\`
+
+// INSERT INTO people (name) VALUES('Deno')
+// \`))
+//   console.log(db.query(\`
+// SELECT * FROM people
+// \`));
 
 })()
 

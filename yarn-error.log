@@ -1,8 +1,8 @@
 Arguments: 
-  /Users/nikhilsaraf/.fnm/node-versions/v14.15.1/installation/bin/node /usr/local/Cellar/yarn/1.22.10/libexec/bin/yarn.js add wrangler2
+  /Users/nikhilsaraf/.fnm/node-versions/v14.15.1/installation/bin/node /usr/local/Cellar/yarn/1.22.10/libexec/bin/yarn.js add @jlongster/sql.js absurd-sql
 
 PATH: 
-  /var/folders/vy/5v99851s36lfnhhyv0xnzr1r0000gn/T/fnm_multishells/56714_1637355079092/bin:~/.deno/bin:/Users/nikhilsaraf/.fnm:/usr/local/opt/maven@3.5/bin:/usr/local/opt/openjdk@8/libexec/openjdk.jdk/Contents/Home/bin:/Users/nikhilsaraf/garage/go/bin:/Users/nikhilsaraf/.deno/bin:/Users/nikhilsaraf/Library/Caches/.wasm-pack/.wasm-bindgen-cargo-install-0.2.74/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/go/bin:/usr/local/share/dotnet:~/.dotnet/tools:/Library/Apple/usr/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/var/folders/vy/5v99851s36lfnhhyv0xnzr1r0000gn/T/fnm_multishells/14295_1637273461251/bin:~/.deno/bin:/Users/nikhilsaraf/.fnm:/usr/local/opt/maven@3.5/bin:/usr/local/opt/openjdk@8/libexec/openjdk.jdk/Contents/Home/bin:/Users/nikhilsaraf/garage/go/bin:/Users/nikhilsaraf/.deno/bin:/Users/nikhilsaraf/Library/Caches/.wasm-pack/.wasm-bindgen-cargo-install-0.2.74/bin:/Users/nikhilsaraf/.cargo/bin:/Users/nikhilsaraf/.fig/bin
+  /var/folders/vy/5v99851s36lfnhhyv0xnzr1r0000gn/T/fnm_multishells/83949_1637664180488/bin:~/.deno/bin:/Users/nikhilsaraf/.fnm:/usr/local/opt/maven@3.5/bin:/usr/local/opt/openjdk@8/libexec/openjdk.jdk/Contents/Home/bin:/Users/nikhilsaraf/garage/go/bin:/Users/nikhilsaraf/.deno/bin:/Users/nikhilsaraf/Library/Caches/.wasm-pack/.wasm-bindgen-cargo-install-0.2.74/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/go/bin:/usr/local/share/dotnet:~/.dotnet/tools:/Library/Apple/usr/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/var/folders/vy/5v99851s36lfnhhyv0xnzr1r0000gn/T/fnm_multishells/14295_1637273461251/bin:~/.deno/bin:/Users/nikhilsaraf/.fnm:/usr/local/opt/maven@3.5/bin:/usr/local/opt/openjdk@8/libexec/openjdk.jdk/Contents/Home/bin:/Users/nikhilsaraf/garage/go/bin:/Users/nikhilsaraf/.deno/bin:/Users/nikhilsaraf/Library/Caches/.wasm-pack/.wasm-bindgen-cargo-install-0.2.74/bin:/Users/nikhilsaraf/.cargo/bin:/Users/nikhilsaraf/.fig/bin
 
 Yarn version: 
   1.22.10
@@ -14,17 +14,7 @@ Platform:
   darwin x64
 
 Trace: 
-  Error: https://registry.yarnpkg.com/wrangler2: Not found
-      at Request.params.callback [as _callback] (/usr/local/Cellar/yarn/1.22.10/libexec/lib/cli.js:66988:18)
-      at Request.self.callback (/usr/local/Cellar/yarn/1.22.10/libexec/lib/cli.js:140749:22)
-      at Request.emit (events.js:315:20)
-      at Request.<anonymous> (/usr/local/Cellar/yarn/1.22.10/libexec/lib/cli.js:141721:10)
-      at Request.emit (events.js:315:20)
-      at IncomingMessage.<anonymous> (/usr/local/Cellar/yarn/1.22.10/libexec/lib/cli.js:141643:12)
-      at Object.onceWrapper (events.js:421:28)
-      at IncomingMessage.emit (events.js:327:22)
-      at endReadableNT (_stream_readable.js:1327:12)
-      at processTicksAndRejections (internal/process/task_queues.js:80:21)
+  Error: EACCES: permission denied, unlink '/Users/nikhilsaraf/garage/projects/devinci-os/node_modules/.yarn-integrity'
 
 npm manifest: 
   {
@@ -65,7 +55,8 @@ npm manifest:
       "vite": "^2.6.14",
       "vite-plugin-dynamic-import": "^0.1.1",
       "vite-plugin-pwa": "^0.11.3",
-      "workbox-window": "^6.3.0"
+      "workbox-window": "^6.3.0",
+      "wrangler": "^0.0.2"
     },
     "dependencies": {
       "@assemblyscript/loader": "^0.19.17",
@@ -77,6 +68,8 @@ npm manifest:
       "@vscode/vscode-languagedetection": "1.0.21",
       "@wasmer/wasm-terminal": "^0.12.0",
       "@wasmer/wasm-transformer": "^0.12.0",
+      "acorn-jsx": "^5.3.2",
+      "acorn-stage3": "^4.0.0",
       "applicationinsights": "1.0.8",
       "assemblyscript": "^0.19.18",
       "async": "~2.6.1",
@@ -100,6 +93,7 @@ npm manifest:
       "js-base64": "^3.7.2",
       "jschardet": "3.0.0",
       "keytar": "7.2.0",
+      "magic-string": "^0.25.7",
       "marked": "^3.0.7",
       "minimist": "^1.2.5",
       "mitt": "^3.0.0",
@@ -123,6 +117,7 @@ npm manifest:
       "svelte-actions-resize": "^0.1.1",
       "svelte-drag": "^1.4.0",
       "svelte-hot-toast": "^0.0.6",
+      "svelte-knobby": "^0.3.3",
       "svelte-local-storage-store": "^0.2.4",
       "svelte-routing": "^1.6.0",
       "svelte-watch-resize": "^1.0.3",
@@ -1567,6 +1562,46 @@ Lockfile:
       mime-types "~2.1.24"
       negotiator "0.6.2"
   
+  acorn-class-fields@^0.3.7:
+    version "0.3.7"
+    resolved "https://registry.yarnpkg.com/acorn-class-fields/-/acorn-class-fields-0.3.7.tgz#a35122f3cc6ad2bb33b1857e79215677fcfdd720"
+    integrity sha512-jdUWSFce0fuADUljmExz4TWpPkxmRW/ZCPRqeeUzbGf0vFUcpQYbyq52l75qGd0oSwwtAepeL6hgb/naRgvcKQ==
+    dependencies:
+      acorn-private-class-elements "^0.2.7"
+  
+  acorn-jsx@^5.3.2:
+    version "5.3.2"
+    resolved "https://registry.yarnpkg.com/acorn-jsx/-/acorn-jsx-5.3.2.tgz#7ed5bb55908b3b2f1bc55c6af1653bada7f07937"
+    integrity sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==
+  
+  acorn-private-class-elements@^0.2.7:
+    version "0.2.7"
+    resolved "https://registry.yarnpkg.com/acorn-private-class-elements/-/acorn-private-class-elements-0.2.7.tgz#b14902c705bcff267adede1c9f61c1a317ef95d2"
+    integrity sha512-+GZH2wOKNZOBI4OOPmzpo4cs6mW297sn6fgIk1dUI08jGjhAaEwvC39mN2gJAg2lmAQJ1rBkFqKWonL3Zz6PVA==
+  
+  acorn-private-methods@^0.3.3:
+    version "0.3.3"
+    resolved "https://registry.yarnpkg.com/acorn-private-methods/-/acorn-private-methods-0.3.3.tgz#724414ce5b2fec733089d73a5cbba8f7beff75b1"
+    integrity sha512-46oeEol3YFvLSah5m9hGMlNpxDBCEkdceJgf01AjqKYTK9r6HexKs2rgSbLK81pYjZZMonhftuUReGMlbbv05w==
+    dependencies:
+      acorn-private-class-elements "^0.2.7"
+  
+  acorn-stage3@^4.0.0:
+    version "4.0.0"
+    resolved "https://registry.yarnpkg.com/acorn-stage3/-/acorn-stage3-4.0.0.tgz#e8b98ae2a9991be0ba1745b5b626211086b435a8"
+    integrity sha512-BR+LaADtA6GTB5prkNqWmlmCLYmkyW0whvSxdHhbupTaro2qBJ95fJDEiRLPUmiACGHPaYyeH9xmNJWdGfXRQw==
+    dependencies:
+      acorn-class-fields "^0.3.7"
+      acorn-private-methods "^0.3.3"
+      acorn-static-class-features "^0.2.4"
+  
+  acorn-static-class-features@^0.2.4:
+    version "0.2.4"
+    resolved "https://registry.yarnpkg.com/acorn-static-class-features/-/acorn-static-class-features-0.2.4.tgz#a0f5261dd483f25196716854f2d7652a1deb39ee"
+    integrity sha512-5X4mpYq5J3pdndLmIB0+WtFd/mKWnNYpuTlTzj32wUu/PMmEGOiayQ5UrqgwdBNiaZBtDDh5kddpP7Yg2QaQYA==
+    dependencies:
+      acorn-private-class-elements "^0.2.7"
+  
   acorn-walk@^8.2.0:
     version "8.2.0"
     resolved "https://registry.yarnpkg.com/acorn-walk/-/acorn-walk-8.2.0.tgz#741210f2e2426454508853a2f44d0ab83b7f69c1"
@@ -1769,6 +1804,11 @@ Lockfile:
     version "1.0.0"
     resolved "https://registry.yarnpkg.com/batch-processor/-/batch-processor-1.0.0.tgz#75c95c32b748e0850d10c2b168f6bdbe9891ace8"
     integrity sha1-dclcMrdI4IUNEMKxaPa9vpiRrOg=
+  
+  bezier-easing@^2.1.0:
+    version "2.1.0"
+    resolved "https://registry.yarnpkg.com/bezier-easing/-/bezier-easing-2.1.0.tgz#c04dfe8b926d6ecaca1813d69ff179b7c2025d86"
+    integrity sha1-wE3+i5JtbsrKGBPWn/F5t8ICXYY=
   
   bfs-path@^1.0.2:
     version "1.0.2"
@@ -4833,6 +4873,15 @@ Lockfile:
     resolved "https://registry.yarnpkg.com/svelte-hot-toast/-/svelte-hot-toast-0.0.6.tgz#4e892a9c40008914f231c084638904aae70684f9"
     integrity sha512-Q2mxB26T7PS18HssulvbOPPph8NMDhISULjuapJBVDAJNAsyvglKG91e4uBDAw/QJaCUzohzPpszfUO6NsfzUA==
   
+  svelte-knobby@^0.3.3:
+    version "0.3.3"
+    resolved "https://registry.yarnpkg.com/svelte-knobby/-/svelte-knobby-0.3.3.tgz#09e4d524987fe993418b2d2e1543716ed682e2d8"
+    integrity sha512-7vkwn4wBK8kGBggopecDyf6v2Td4IeaX4IvK96dw4YfajE5SjBvE50LYPsp+GoFv1KtROdLZs3hFx901e9fabg==
+    dependencies:
+      bezier-easing "^2.1.0"
+      svelte-undo "^1.0.2"
+      yootils "^0.3.0"
+  
   svelte-local-storage-store@^0.2.4:
     version "0.2.4"
     resolved "https://registry.yarnpkg.com/svelte-local-storage-store/-/svelte-local-storage-store-0.2.4.tgz#56341abc2750a70b0c736e45c38736e9f94bb90c"
@@ -4856,6 +4905,11 @@ Lockfile:
     integrity sha512-+DbrSGttLA6lan7oWFz1MjyGabdn3tPRqn8Osyc471ut2UgCrzM5x1qViNMc2gahOP6fKbKK1aNtZMJEQP2vHQ==
     dependencies:
       svelte2tsx "^0.1.157"
+  
+  svelte-undo@^1.0.2:
+    version "1.0.2"
+    resolved "https://registry.yarnpkg.com/svelte-undo/-/svelte-undo-1.0.2.tgz#90fba5f3137115166e815648419c606ef591767f"
+    integrity sha512-k8W2RYKJM/kpA0bfSk0bjX/vhC705/2V1T/ew7U8c8wMkVS2f0wajCGokLH/zfZC5/N84bwPdAQvGte6LWBr7Q==
   
   svelte-watch-resize@^1.0.3:
     version "1.0.3"
@@ -5475,6 +5529,11 @@ Lockfile:
       "@types/trusted-types" "^2.0.2"
       workbox-core "6.3.0"
   
+  wrangler@^0.0.2:
+    version "0.0.2"
+    resolved "https://registry.yarnpkg.com/wrangler/-/wrangler-0.0.2.tgz#febad5d77b62dd2c7806a5e437f43868cbe2df61"
+    integrity sha1-/rrV13ti3Sx4BqXkN/Q4aMvi32E=
+  
   wrap-ansi@^7.0.0:
     version "7.0.0"
     resolved "https://registry.yarnpkg.com/wrap-ansi/-/wrap-ansi-7.0.0.tgz#67e145cff510a6a6984bdf1152911d69d2eb9e43"
@@ -5606,6 +5665,11 @@ Lockfile:
     version "0.1.0"
     resolved "https://registry.yarnpkg.com/yocto-queue/-/yocto-queue-0.1.0.tgz#0294eb3dee05028d31ee1a5fa2c556a6aaf10a1b"
     integrity sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==
+  
+  yootils@^0.3.0:
+    version "0.3.1"
+    resolved "https://registry.yarnpkg.com/yootils/-/yootils-0.3.1.tgz#c3122bd81423640bbb0b4fd46af7d254f531af51"
+    integrity sha512-A7AMeJfGefk317I/3tBoUYRcDcNavKEkpiPN/nQsBz/viI2GvT7BtrqdPD6rGqBFN8Ax7v4obf+Cl32JF9DDVw==
   
   zone.js@0.7.6:
     version "0.7.6"
