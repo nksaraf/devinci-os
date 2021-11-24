@@ -23,6 +23,7 @@ async function runQueries() {
 
   try {
     db.exec('CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT)');
+    db.exec('CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT)');
   } catch (e) {}
 
   db.exec('BEGIN TRANSACTION');

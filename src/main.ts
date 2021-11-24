@@ -1,5 +1,5 @@
-import '@ui/css/global.scss';
 import 'uno.css';
+import '@ui/css/global.scss';
 import MacOS from 'os/ui/OS/OS.svelte';
 import calculator from 'os/apps/calculator/calculator';
 import calendar from 'os/apps/calendar/calendar';
@@ -9,9 +9,10 @@ import terminal from 'os/apps/terminal/terminal';
 import vscode from 'os/apps/vscode/vscode';
 import wallpaper from 'os/apps/wallpaper/wallpaper';
 import { createAppConfig, installApp } from './stores/apps.store';
-import { Kernel } from './deno/denix';
+import { Kernel, ServiceWorker } from './deno/denix/denix';
 import { constants } from 'os/kernel/kernel/constants';
 import Global from './kernel/global';
+import { Network } from './deno/denix/network';
 
 installApp(finder());
 installApp(calculator());
@@ -67,7 +68,12 @@ export const initKernel = async () => {
   // let denoLocal = await DenoRuntime.bootstrapInWorker();
   // await denoLocal.eval(`console.log('herello world')`);
   const denix = await Kernel.create();
-  await denix.initNetwork();
+  await Network.connect();
+
+  // Network.handle('http://localhost/src/*', async (request) => {});
+
+  let sw = await new ServiceWorker(new BroadcastChannel('localhost')).start();
+
   Global.fs = denix.fs;
   denix.fs.writeFileSync('/hello.txt', 'Hello World', 'utf-8', constants.fs.O_RDWR, 0x644);
 

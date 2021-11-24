@@ -1,4 +1,4 @@
-import { Resource } from '../interface';
+import { Resource } from '../interfaces';
 import type { Kernel } from '../denix';
 import { op_sync, op_async } from '../interfaces';
 import { pull } from 'isomorphic-git';

@@ -1,4 +1,4 @@
-import { Resource } from 'os/deno/interface';
+import { Resource } from 'os/deno/denix/interfaces';
 import type { Kernel } from '../denix';
 import { op_sync, op_async } from '../interfaces';
 import type { File } from 'os/kernel/fs/core/file';
@@ -19,7 +19,6 @@ export const fsOps = [
     name: 'op_open_async',
     async: async function (this: Kernel, arg) {
       let file = this.fs.openSync(getAbsolutePath(arg.path, this), constants.fs.O_RDWR, arg.mode);
-      console.log(file);
       return this.addResource(new FileResource(file, arg.path));
     },
   },
@@ -27,7 +26,6 @@ export const fsOps = [
     name: 'op_open_sync',
     sync: function (this: Kernel, arg) {
       let file = this.fs.openSync(getAbsolutePath(arg.path, this), constants.fs.O_RDWR, arg.mode);
-      console.log(file);
       return this.addResource(new FileResource(file, arg.path));
     },
   },
@@ -200,12 +198,7 @@ class FileResource extends Resource {
 
   async write(data: Uint8Array) {
     let container = Buffer.from(data);
-    let nwritten = this.file.writeSync(
-      container,
-      0,
-      Math.max(this.file.statSync().size, data.byteLength),
-      0,
-    );
+    let nwritten = this.file.writeSync(container, 0, data.byteLength, this.position);
 
     this.position += nwritten;
 
@@ -225,6 +218,7 @@ class FileResource extends Resource {
     this.file.closeSync();
   }
 }
+
 function getAbsolutePath(p: string, kernel: Kernel): string {
   return path.isAbsolute(p) ? p : path.join(kernel.opSync(kernel.opCode('op_cwd')), p);
 }

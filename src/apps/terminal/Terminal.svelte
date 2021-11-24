@@ -42,35 +42,14 @@
 
       init();
 
-      await worker.isolate.Deno.writeTextFile(
+      await worker.Deno.writeTextFile(
         '/script.ts',
         `
         import { DB } from "https://raw.githubusercontent.com/devinci-os/deno-sqlite/31ba590c0730d670134cda712816865e353efd31/mod.ts";
-
-// Open a database
-(async () => {
-  const db = await DB.create("http://localhost/sqlite.wasm", "test.db");
-globalThis.db = db;
-  console.log(db.query(\`
-CREATE TABLE IF NOT EXISTS people (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT
-)\`))
-//   console.log(db.query(\`
-
-// INSERT INTO people (name) VALUES('Deno')
-// \`))
-//   console.log(db.query(\`
-// SELECT * FROM people
-// \`));
-
-})()
-
-
+        import schema from "https://raw.githubusercontent.com/withfig/autocomplete/master/src/deno.ts"
+        console.log(JSON.stringify(schema))
       `,
       );
-
-      console.log('write file');
 
       await worker.isolate.run('/script.ts');
 

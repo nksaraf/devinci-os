@@ -1,5 +1,5 @@
 import type { Remote } from 'comlink';
-import { Kernel } from './denix';
+import { Kernel } from './denix/denix';
 import { DenoIsolate } from './deno';
 import { Global } from '../kernel/global';
 import { expose } from './comlink';
@@ -13,6 +13,8 @@ declare global {
 
 export class DenoIsolateWorker extends DenoIsolate {
   Deno: typeof Deno;
+
+  isAttached: false
 
   constructor() {
     super();

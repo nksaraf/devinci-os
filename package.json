@@ -37,10 +37,11 @@
     "vite-plugin-dynamic-import": "^0.1.1",
     "vite-plugin-pwa": "^0.11.3",
     "workbox-window": "^6.3.0",
-    "wrangler": "^0.0.2"
+    "wrangler": "^0.0.0-fsw-beta.5"
   },
   "dependencies": {
     "@assemblyscript/loader": "^0.19.17",
+    "@cloudflare/wrangler": "^1.19.5",
     "@isomorphic-git/lightning-fs": "^4.4.1",
     "@jlongster/sql.js": "^1.6.7",
     "@mdi/js": "^5.9.55",
@@ -106,6 +107,7 @@
     "svelte-watch-resize": "^1.0.3",
     "tar-stream": "^2.2.0",
     "tas-client-umd": "0.1.4",
+    "trouter": "^3.2.0",
     "v8-inspect-profiler": "^0.0.22",
     "vscode-nsfw": "2.1.8",
     "vscode-oniguruma": "1.5.1",

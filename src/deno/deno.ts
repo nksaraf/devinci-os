@@ -2,9 +2,9 @@ import HTTPRequest from '../kernel/fs/backend/HTTPRequest';
 import { createFileSystemBackend, VirtualFileSystem } from '../kernel/fs/create-fs';
 import * as path from 'path';
 import { constants } from '../kernel/kernel/constants';
-import { Kernel, WasmStreamingResource } from './denix';
-import { Linker } from './Linker';
-import { Resource } from './interface';
+import type { Kernel } from './denix/denix';
+import { Linker } from './linker/Linker';
+
 export type Context = typeof globalThis;
 
 let ISOLATE_ID = 0;
@@ -144,6 +144,20 @@ type DenoBootstrapCore = any;
 async function loadDenoBootstrapper(core: DenoBootstrapCore, fs: VirtualFileSystem) {
   await mountDenoLib(fs);
 
+  function evalBootstrapModule(src: string, context) {
+    fs.readdirSync(src).forEach((path) => {
+      if (path.endsWith('.js') && !Number.isNaN(Number(path[0]))) {
+        evalScript(`${src}/${path}`, context);
+      }
+    });
+  }
+
+  function evalScript(src, context) {
+    console.time('evaluating ' + src);
+    evalWithContext(fs.readFileSync(src, 'utf-8', constants.fs.O_RDONLY), context);
+    console.timeEnd('evaluating ' + src);
+  }
+
   let denoGlobal = {
     JSON,
     Math,
@@ -204,6 +218,14 @@ async function loadDenoBootstrapper(core: DenoBootstrapCore, fs: VirtualFileSyst
     decodeURIComponent,
     encodeURI,
     encodeURIComponent,
+
+    console,
+    // original deno global comes from host
+    // this will be overwitten by the runtime
+
+    Deno: {
+      core: core,
+    },
   };
 
   let globalContext = new Proxy(denoGlobal as any, {
@@ -214,17 +236,6 @@ async function loadDenoBootstrapper(core: DenoBootstrapCore, fs: VirtualFileSyst
     set: (o, k, v) => {
       o[k] = v;
       return true;
-    },
-  });
-
-  // globals that remain same for all requires
-  Object.assign(globalContext, {
-    console,
-    // original deno global comes from host
-    // this will be overwitten by the runtime
-
-    Deno: {
-      core: core,
     },
   });
 
@@ -271,20 +282,6 @@ async function mountDenoLib(fs: VirtualFileSystem) {
   }
 
   fs.mount('/lib/deno', testFS);
-}
-
-function evalBootstrapModule(src: string, context) {
-  fs.readdirSync(src).forEach((path) => {
-    if (path.endsWith('.js') && !Number.isNaN(Number(path[0]))) {
-      evalScript(`${src}/${path}`, context);
-    }
-  });
-}
-
-function evalScript(src, context) {
-  console.time('evaluating ' + src);
-  evalWithContext(fs.readFileSync(src, 'utf-8', constants.fs.O_RDONLY), context);
-  console.timeEnd('evaluating ' + src);
 }
 
 export function getModuleFn(

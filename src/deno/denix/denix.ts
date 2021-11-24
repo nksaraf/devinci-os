@@ -1,5 +1,5 @@
-import type { ResourceTable } from './interface';
-import { Resource } from './interface';
+import type { ResourceTable } from './interfaces';
+import { Resource } from './interfaces';
 import { proxy, wrap } from 'comlink';
 import type { Remote } from 'comlink';
 import { ApiError, ERROR_KIND_TO_CODE } from 'os/kernel/fs/core/api_error';
@@ -10,8 +10,10 @@ import { builtIns } from './ops/builtIns';
 import { fsOps } from './ops/fs';
 import { url } from './ops/url';
 import { VirtualFileSystem } from 'os/kernel/fs';
-import EsbuildWorker from './linker/esbuild-worker?worker';
+import EsbuildWorker from '../linker/esbuild-worker?worker';
 import { fromBase64 } from 'os/kernel/node/base64';
+import type { MockedRequest } from 'msw';
+
 function syncOpCallXhr(op_code: number, arg1: any, arg2: any) {
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/~deno/op/sync/' + op_code, false);
@@ -262,109 +264,6 @@ export class Kernel extends EventTarget {
 
   createRequest() {}
 
-  async initNetwork() {
-    const { setupWorker, rest } = await import('msw');
-    await this.esbuild.init();
-
-    let requests = {};
-    const handleResponse = (e) => {
-      this.console.log('evenntttttt', e);
-      if (e.data.type === 'RESPONSE' && requests[e.data.requestId]) {
-        requests[e.data.requestId].resolve(e.data.response);
-      }
-    };
-
-    this.net.channel.addEventListener('message', handleResponse);
-
-    let worker = setupWorker(
-      rest.get('https://deno.land/*', async (req, res, ctx) => {
-        console.log('/deno-land');
-        let originalResponse = await ctx.fetch(req.url.href);
-        let text = await originalResponse.text();
-
-        return res(ctx.body(text), ctx.set('content-type', 'application/javascript'));
-      }),
-      rest.get('http://localhost:4507/*', async (req, res, ctx) => {
-        console.log('/deno-land', 'MIGHT WORK');
-        let originalResponse = await ctx.fetch(req.url.href);
-        return res(ctx.text(await originalResponse.text()));
-      }),
-      rest.get('/~p/:port/*', async (req, res, ctx) => {
-        this.console.log(req);
-        console.log('/~p/:port/*', req.url.href);
-        // somebody made some kind of request to my server
-
-        let resolve, reject;
-        let prom = new Promise((res, rej) => {
-          resolve = res;
-          reject = rej;
-        });
-
-        requests[req.id] = { resolve, reject };
-
-        setTimeout(() => {
-          delete requests[req.id];
-          resolve({ body: 'timed out in 10 seconds', status: 404, headers: [] });
-        }, 10000);
-
-        let url = new URL('http://localhost:' + req.params.port + req.url.pathname.slice(7)).href;
-        console.log(url);
-
-        this.net.channel.postMessage({
-          type: 'HTTP_REQUEST',
-          url: url,
-          port: req.params.port,
-          method: req.method,
-          headers: [...req.headers.entries()],
-          requestId: req.id,
-          referrer: req.referrer,
-        });
-
-        try {
-          let { body, status, headers } = await prom;
-          this.console.log('result', { body, status, headers });
-          return res(
-            ctx.set(Object.fromEntries(headers)),
-            ctx.body(body),
-            ctx.status(status),
-            ctx.set('Cross-Origin-Embedder-Policy', 'require-corp'),
-          );
-        } catch (e) {
-          return res(ctx.text(e.message));
-        }
-      }),
-      rest.post('/~deno/op/sync/:id', async (req, res, ctx) => {
-        let id = JSON.parse(req.body as string);
-        try {
-          let result = this.opSync(req.params.id, id[1], id[2]);
-          return res(ctx.json(result ?? null));
-        } catch (e) {
-          if (e instanceof ApiError) {
-            console.log(e.code);
-            let getCode = Object.entries(ERROR_KIND_TO_CODE).find(([k, v]) => v === e.errno);
-            console.log('error code', getCode);
-            return res(
-              ctx.json({
-                $err_class_name: getCode[0],
-                code: getCode[1],
-              }),
-            );
-          }
-          throw e;
-        }
-      }),
-    );
-
-    this.console.log(import.meta);
-
-    await worker.start({
-      onUnhandledRequest: 'bypass',
-      serviceWorker: {
-        url: '/deno-sw.js',
-      },
-    });
-  }
-
   static async create() {
     let kernel = new Kernel();
     kernel.init();
@@ -376,6 +275,132 @@ export class Kernel extends EventTarget {
 
   protected get ops() {
     return this._ops;
+  }
+}
+
+export class ServiceWorker {
+  constructor(public broadcastChannel: BroadcastChannel) {}
+
+  register(...handlers) {}
+
+  async start() {
+    const { rest } = await import('msw');
+
+    // let requests = {};
+    // const handleResponse = (e) => {
+    //   if (e.data.type === 'RESPONSE' && requests[e.data.requestId]) {
+    //     requests[e.data.requestId].resolve(e.data.response);
+    //   }
+    // };
+
+    this.broadcastChannel.addEventListener('message', (ev) => {
+      console.log(ev);
+    });
+
+    // let httpReq = new Request('https://deno.land/abcd', {});
+    // // @ts-ignore
+    // let request = Object.assign({}, httpReq, {
+    //   id: '1',
+    //   cookies: {},
+    //   url: new URL(httpReq.url),
+    //   method: 'GET',
+    // }) as MockedRequest<Promise<string>>;
+    // console.log(request);
+    // console.log(
+    //   rest
+    //     .get('https://deno.land/*', async (req, res, ctx) => {
+    //       console.log('/deno-land');
+    //       let originalResponse = await ctx.fetch(req.url.href);
+    //       let text = await originalResponse.text();
+
+    //       return res(ctx.body(text), ctx.set('content-type', 'application/javascript'));
+    //     })
+    //     .test(request),
+    // );
+
+    // let worker = setupWorker(
+    //   rest.get('https://deno.land/*', async (req, res, ctx) => {
+    //     console.log('/deno-land');
+    //     let originalResponse = await ctx.fetch(req.url.href);
+    //     let text = await originalResponse.text();
+
+    //     return res(ctx.body(text), ctx.set('content-type', 'application/javascript'));
+    //   }),
+    // rest.get('http://localhost:4507/*', async (req, res, ctx) => {
+    //   let originalResponse = await ctx.fetch(req.url.href);
+    //   return res(ctx.text(await originalResponse.text()));
+    // }),
+    // rest.get('/~p/:port/*', async (req, res, ctx) => {
+    //   console.log(req);
+    //   console.log('/~p/:port/*', req.url.href);
+    //   // somebody made some kind of request to my server
+
+    //   let resolve, reject;
+    //   let prom = new Promise<{
+    //     body: string;
+    //     headers: [string, string][];
+    //     status: number;
+    //   }>((res, rej) => {
+    //     resolve = res;
+    //     reject = rej;
+    //   });
+
+    //   requests[req.id] = { resolve, reject };
+
+    //   setTimeout(() => {
+    //     delete requests[req.id];
+    //     resolve({ body: 'timed out in 10 seconds', status: 404, headers: [] });
+    //   }, 10000);
+
+    //   let url = new URL('http://localhost:' + req.params.port + req.url.pathname.slice(7)).href;
+    //   console.log(url);
+
+    //   broadcastChannel.postMessage({
+    //     type: 'HTTP_REQUEST',
+    //     url: url,
+    //     port: req.params.port,
+    //     method: req.method,
+    //     headers: [...req.headers.entries()],
+    //     requestId: req.id,
+    //     referrer: req.referrer,
+    //   });
+
+    //   try {
+    //     let { body, status, headers } = await prom;
+    //     console.log('result', { body, status, headers });
+    //     return res(
+    //       ctx.set(Object.fromEntries(headers)),
+    //       ctx.body(body),
+    //       ctx.status(status),
+    //       ctx.set('Cross-Origin-Embedder-Policy', 'require-corp'),
+    //     );
+    //   } catch (e) {
+    //     return res(ctx.text(e.message));
+    //   }
+    // });
+    //   rest.post('/~deno/op/sync/:id', async (req, res, ctx) => {
+    //     let id = JSON.parse(req.body as string);
+    //     try {
+    //       let result = this.opSync(req.params.id, id[1], id[2]);
+    //       return res(ctx.json(result ?? null));
+    //     } catch (e) {
+    //       if (e instanceof ApiError) {
+    //         console.log(e.code);
+    //         let getCode = Object.entries(ERROR_KIND_TO_CODE).find(([k, v]) => v === e.errno);
+    //         console.log('error code', getCode);
+    //         return res(
+    //           ctx.json({
+    //             $err_class_name: getCode[0],
+    //             code: getCode[1],
+    //           }),
+    //         );
+    //       }
+    //       throw e;
+    //     }
+    //   }),
+    // );
+
+    console.log(import.meta);
   }
 }
 

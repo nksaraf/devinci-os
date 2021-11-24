@@ -260,6 +260,10 @@ export const transferHandlers = new Map<string, TransferHandler<unknown, unknown
 ]);
 
 export function expose(obj: any, ep: Endpoint = self as any) {
+  // dont allow expose on main window object
+  // if (self instanceof Window) {
+  //   return;
+  // }
   ep.addEventListener('message', function callback(ev: MessageEvent) {
     if (!ev || !ev.data) {
       return;

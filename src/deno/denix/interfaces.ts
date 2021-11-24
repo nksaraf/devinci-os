@@ -1,3 +1,9 @@
+export type Op = {
+  name: string;
+  sync?: Function;
+  async?: Function;
+};
+
 export interface Resource {
   name: string;
   read(data: Uint8Array): Promise<number>;
@@ -25,3 +31,35 @@ export class Resource implements Resource {
 }
 
 export type ResourceTable = Map<number, Resource>;
+
+function op(
+  name: string,
+  execute: {
+    async: Function;
+    sync: Function;
+  },
+): Op {
+  return {
+    name,
+    ...execute,
+  };
+}
+
+export function op_sync(name: string, execute: Function): Op {
+  return {
+    name,
+    async: execute,
+    sync: execute,
+  };
+}
+
+export function op_async(
+  name: string,
+  execute: (this: any, arg1: any, arg2: any) => Promise<any>,
+): Op {
+  return {
+    name,
+    sync: execute,
+    async: execute,
+  };
+}

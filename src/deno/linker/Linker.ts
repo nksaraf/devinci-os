@@ -1,13 +1,14 @@
-import type { VirtualFileSystem } from '../kernel/fs/create-fs';
+import type { VirtualFileSystem } from '../../kernel/fs/create-fs';
 import * as path from 'path';
 import { wrap } from 'comlink';
-import EsbuildWorker from './linker/esbuild-worker?worker';
+import EsbuildWorker from './esbuild-worker?worker';
 import { syncDownloadFile } from 'os/kernel/fs/generic/xhr';
 import Global from 'os/kernel/global';
-import type { Context } from './deno';
-import { getEvalAsyncFunction, getModuleFn } from './deno';
+import type { Context } from '../deno';
+import { getEvalAsyncFunction, getModuleFn } from '../deno';
 
 // Assumes Deno environment
+// if we want to intercept the require calls, but we should probably convert to urls
 export class Linker {
   private moduleCache: Map<string, any>;
   esbuild = wrap<{

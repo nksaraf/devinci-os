@@ -3,7 +3,7 @@ import { ApiError } from '../fs/core/api_error';
 import { isReadable, isWriteable } from '../fs/core/file_flag';
 import { constants } from '../kernel/constants';
 import './file-access.d.ts';
-import type { Resource } from '../../deno/interface';
+import type { Resource } from '../../deno/denix/interface';
 
 enum FileSystemHandleKind {
   file = 'file',
