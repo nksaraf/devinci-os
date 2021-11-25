@@ -5241,6 +5241,15 @@ style-value-types@5.0.0:
     hey-listen "^1.0.8"
     tslib "^2.1.0"
 
+sucrase-browser-lite@^3.16.2:
+  version "3.16.2"
+  resolved "https://registry.yarnpkg.com/sucrase-browser-lite/-/sucrase-browser-lite-3.16.2.tgz#56d22c627529667b76131c1c2a479b87e69064d5"
+  integrity sha512-41eIbq7mGlYT7gPnt0STjAAS0JEYvY/agb37d1lXUlUV8v0mHuDP2dJ9cLzUpzsc9E4CGUB6CvE8siQy52O4XQ==
+  dependencies:
+    lines-and-columns "^1.1.6"
+    pirates "^4.0.1"
+    ts-interface-checker "^0.1.9"
+
 sucrase@^3.20.3:
   version "3.20.3"
   resolved "https://registry.yarnpkg.com/sucrase/-/sucrase-3.20.3.tgz#424f1e75b77f955724b06060f1ae708f5f0935cf"

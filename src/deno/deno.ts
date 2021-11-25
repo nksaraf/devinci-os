@@ -9,6 +9,7 @@ export type Context = typeof globalThis;
 
 let ISOLATE_ID = 0;
 
+//
 interface IDenoCore {
   opcallSync: any;
   opcallAsync: (op_code: number, promiseId: number, arg1: any, arg2: any) => void;
@@ -18,7 +19,7 @@ interface IDenoCore {
   decode: (data: Uint8Array) => string;
   encode: (data: string) => Uint8Array;
   isProxy: (v: any) => boolean;
-
+  getProxyDetails: (v: any) => any;
   opresolve?(...args): void;
   syncOpsCache?(): void;
 }
@@ -38,13 +39,20 @@ export class DenoIsolate extends EventTarget {
       opcallSync: this.opcallSync.bind(this),
       opcallAsync: this.opcallAsync.bind(this),
       callConsole: (oldLog, newLog, ...args) => {
-        // newLog(...args);
         console.log(...args);
-        this.dispatchEvent(
-          new CustomEvent('stdout', {
-            detail: [...args.filter((a) => !(a instanceof Uint8Array))],
-          }),
-        );
+
+        if (args[0].startsWith('op sync') || args[0].startsWith('op async')) {
+          return;
+        }
+
+        this.kernel.dispatchEvent(new CustomEvent('console', { detail: args.toString() }));
+        // newLog(...args)
+        // newLog(...args);
+        // this.dispatchEvent(
+        //   new CustomEvent('stdout', {
+        //     detail: [...args.filter((a) => !(a instanceof Uint8Array))],
+        //   }),
+        // );
       },
       setMacrotaskCallback: (cb) => {
         console.log('macrostask callback');
@@ -60,6 +68,9 @@ export class DenoIsolate extends EventTarget {
       },
       isProxy: function (obj) {
         return false;
+      },
+      getProxyDetails: function (obj) {
+        return null;
       },
     };
 
@@ -91,6 +102,7 @@ export class DenoIsolate extends EventTarget {
     context.bootstrap.mainRuntime({
       target: 'arm64-devinci-darwin-dev',
       debugFlag: true,
+      noColor: false,
       args: [],
       // location: window.location.href,
       // ...options,
@@ -118,6 +130,9 @@ export class DenoIsolate extends EventTarget {
           return await WebAssembly.compileStreaming(fetch(res.url));
         },
         Instance: WebAssembly.Instance,
+        instantiate: WebAssembly.instantiate,
+        instantiateStreaming: WebAssembly.instantiateStreaming,
+        compile: WebAssembly.compile,
       },
     });
 
@@ -158,7 +173,52 @@ async function loadDenoBootstrapper(core: DenoBootstrapCore, fs: VirtualFileSyst
     console.timeEnd('evaluating ' + src);
   }
 
-  let denoGlobal = {
+  let denoGlobal = getGlobalThis(core);
+
+  let globalContext = new Proxy(denoGlobal as any, {
+    has: (o, k) => k in o || k in denoGlobal,
+    get: (o, k) => {
+      return o[k] ?? undefined;
+    },
+    set: (o, k, v) => {
+      o[k] = v;
+      return true;
+    },
+  });
+
+  // @ts-ignore
+  denoGlobal.globalThis = denoGlobal;
+  // @ts-ignore
+  denoGlobal.global = denoGlobal;
+
+  // core
+  evalBootstrapModule('/lib/deno/core', globalContext);
+
+  // extensions
+  evalBootstrapModule('/lib/deno/ext/console', globalContext);
+  evalBootstrapModule('/lib/deno/ext/webidl', globalContext);
+  evalBootstrapModule('/lib/deno/ext/url', globalContext);
+  evalBootstrapModule('/lib/deno/ext/web', globalContext);
+  evalBootstrapModule('/lib/deno/ext/fetch', globalContext);
+  evalBootstrapModule('/lib/deno/ext/websocket', globalContext);
+  evalBootstrapModule('/lib/deno/ext/webstorage', globalContext);
+  evalBootstrapModule('/lib/deno/ext/net', globalContext);
+  evalBootstrapModule('/lib/deno/ext/timers', globalContext);
+  evalBootstrapModule('/lib/deno/ext/crypto', globalContext);
+  evalBootstrapModule('/lib/deno/ext/broadcast_channel', globalContext);
+  evalBootstrapModule('/lib/deno/ext/ffi', globalContext);
+  evalBootstrapModule('/lib/deno/ext/http', globalContext);
+  evalBootstrapModule('/lib/deno/ext/tls', globalContext);
+  evalBootstrapModule('/lib/deno/ext/webgpu', globalContext);
+
+  // Deno runtime + Web globals (lot of them are coming from utilities)
+  evalBootstrapModule('/lib/deno/runtime/js', globalContext);
+
+  return globalContext as Context;
+}
+
+function getGlobalThis(core: any) {
+  return {
     JSON,
     Math,
     Proxy,
@@ -213,7 +273,6 @@ async function loadDenoBootstrapper(core: DenoBootstrapCore, fs: VirtualFileSyst
             }
           },
     // Atomics,
-
     decodeURI,
     decodeURIComponent,
     encodeURI,
@@ -222,52 +281,10 @@ async function loadDenoBootstrapper(core: DenoBootstrapCore, fs: VirtualFileSyst
     console,
     // original deno global comes from host
     // this will be overwitten by the runtime
-
     Deno: {
       core: core,
     },
   };
-
-  let globalContext = new Proxy(denoGlobal as any, {
-    has: (o, k) => k in o || k in denoGlobal,
-    get: (o, k) => {
-      return o[k] ?? undefined;
-    },
-    set: (o, k, v) => {
-      o[k] = v;
-      return true;
-    },
-  });
-
-  // @ts-ignore
-  denoGlobal.globalThis = denoGlobal;
-  // @ts-ignore
-  denoGlobal.global = denoGlobal;
-
-  // core
-  evalBootstrapModule('/lib/deno/core', globalContext);
-
-  // extensions
-  evalBootstrapModule('/lib/deno/ext/console', globalContext);
-  evalBootstrapModule('/lib/deno/ext/webidl', globalContext);
-  evalBootstrapModule('/lib/deno/ext/url', globalContext);
-  evalBootstrapModule('/lib/deno/ext/web', globalContext);
-  evalBootstrapModule('/lib/deno/ext/fetch', globalContext);
-  evalBootstrapModule('/lib/deno/ext/websocket', globalContext);
-  evalBootstrapModule('/lib/deno/ext/webstorage', globalContext);
-  evalBootstrapModule('/lib/deno/ext/net', globalContext);
-  evalBootstrapModule('/lib/deno/ext/timers', globalContext);
-  evalBootstrapModule('/lib/deno/ext/crypto', globalContext);
-  evalBootstrapModule('/lib/deno/ext/broadcast_channel', globalContext);
-  evalBootstrapModule('/lib/deno/ext/ffi', globalContext);
-  evalBootstrapModule('/lib/deno/ext/http', globalContext);
-  evalBootstrapModule('/lib/deno/ext/tls', globalContext);
-  evalBootstrapModule('/lib/deno/ext/webgpu', globalContext);
-
-  // Deno runtime + Web globals (lot of them are coming from utilities)
-  evalBootstrapModule('/lib/deno/runtime/js', globalContext);
-
-  return globalContext as Context;
 }
 
 async function mountDenoLib(fs: VirtualFileSystem) {

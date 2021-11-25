@@ -107,6 +107,8 @@ enum ErrorKind {
   ///
   /// This means that the operation can never succeed.
   Unsupported = 'Unsupported',
+
+  IsADirectory = 'IsADirectory',
 }
 
 export const ERROR_KIND_TO_CODE = {
@@ -124,7 +126,7 @@ export const ERROR_KIND_TO_CODE = {
   // [ErrorKind.HostUnreachable]:  ErrorCode.EHOSTUNREACH,
   [ErrorKind.Interrupted]: ErrorCode.EINTR,
   [ErrorKind.InvalidInput]: ErrorCode.EINVAL,
-  // [ErrorKind.IsADirectory]:  ErrorCode.EISDIR,
+  [ErrorKind.IsADirectory]: ErrorCode.EISDIR,
   // [ErrorKind.FilesystemLoop]:  ErrorCode.ELOOP,
   [ErrorKind.NotFound]: ErrorCode.ENOENT,
   // [ErrorKind.OutOfMemory]: ErrorCode.ENOMEM,
@@ -214,8 +216,8 @@ export class ApiError extends Error implements NodeJS.ErrnoException {
     return this.FileError(ErrorCode.ENOTDIR, path);
   }
 
-  public static EPERM(path: string): ApiError {
-    return this.FileError(ErrorCode.EPERM, path);
+  public static EACCES(path: string): ApiError {
+    return this.FileError(ErrorCode.EACCES, path);
   }
 
   public static ENOTEMPTY(path: string): ApiError {

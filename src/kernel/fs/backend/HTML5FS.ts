@@ -1,4 +1,4 @@
-import PreloadFile from '../generic/preload_file';
+import InMemoryFile from '../generic/preload_file';
 import {
   BaseFileSystem,
   IFileSystem as IFileSystem,
@@ -122,7 +122,7 @@ function convertError(err: DOMError, p: string, expectedDir: boolean): ApiError 
 //   - exclusive: If true, only create the entry if it doesn't already exist,
 //                and throw an error if it does.
 
-export class HTML5FSFile extends PreloadFile<HTML5FS> implements IFile {
+export class HTML5FSFile extends InMemoryFile<HTML5FS> implements IFile {
   private _entry: FileEntry;
 
   constructor(

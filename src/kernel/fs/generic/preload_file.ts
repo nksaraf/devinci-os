@@ -17,7 +17,7 @@ import VirtualFile from './virtual_file';
  *
  * this handles the tracking of the stats object passed in
  */
-export default abstract class PreloadFile<T extends IFileSystem>
+export default abstract class InMemoryFile<T extends IFileSystem>
   extends VirtualFile
   implements File
 {
@@ -75,7 +75,7 @@ export default abstract class PreloadFile<T extends IFileSystem>
  * File class for the InMemory and XHR file systems.
  * Doesn't sync to anything, so it works nicely for memory-only files.
  */
-export class NoSyncFile<T extends IFileSystem> extends PreloadFile<T> implements File {
+export class NoSyncFile<T extends IFileSystem> extends InMemoryFile<T> implements File {
   constructor(_fs: T, _path: string, _flag: FileFlagString, _stat: Stats, contents?: Buffer) {
     super(_fs, _path, _flag, _stat, contents);
   }

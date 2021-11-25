@@ -1,5 +1,5 @@
 import type MountableFileSystem from 'os/kernel/fs/backend/MountableFileSystem';
-import type PreloadFile from 'os/kernel/fs/generic/preload_file';
+import type InMemoryFile from 'os/kernel/fs/generic/preload_file';
 import type { Kernel } from 'os/kernel/kernel';
 import { Buffer } from 'buffer';
 export const fsBinding = (kernel: Kernel) => {
@@ -73,7 +73,7 @@ export const fsBinding = (kernel: Kernel) => {
 
   function _open(path: StringOrBuffer, flags: number, mode: number): number | Promise<number> {
     console.log('opening', arguments);
-    let file = kernel.fs.openSync(path as string, flags, mode) as PreloadFile<MountableFileSystem>;
+    let file = kernel.fs.openSync(path as string, flags, mode) as InMemoryFile<MountableFileSystem>;
 
     return kernel.process.addFile(file);
   }

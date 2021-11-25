@@ -5,20 +5,56 @@ import type { File } from 'os/kernel/fs/core/file';
 import { constants } from 'os/kernel/kernel/constants';
 import { Buffer } from 'buffer';
 import path from 'path-browserify';
+
+export interface DirEntry {
+  name: string;
+  isFile: boolean;
+  isDirectory: boolean;
+  isSymlink: boolean;
+}
+
+const getFlagFromOptions = (options: Deno.OpenOptions): number => {
+  let flag = constants.fs.O_RDONLY;
+  if (options.read && options.write) {
+    flag |= constants.fs.O_RDWR;
+  }
+
+  if (options.create) {
+    flag |= constants.fs.O_CREAT;
+  }
+
+  if (options.truncate) {
+    flag |= constants.fs.O_TRUNC;
+  }
+
+  if (options.append) {
+    flag |= constants.fs.O_APPEND;
+  }
+  return flag;
+};
+
 export const fsOps = [
-  op_sync('op_read_sync', function (this: Kernel, rid, data) {
+  op_sync('op_read_sync', function (this: Kernel, rid: number, data: Uint8Array) {
     let res = this.getResource(rid) as FileResource;
     return res.readSync(data);
   }),
-  op_sync('op_write_sync', function (this: Kernel, rid, data) {
+  op_sync('op_write_sync', function (this: Kernel, rid: number, data: Uint8Array) {
     let res = this.getResource(rid) as FileResource;
     return res.writeSync(data);
   }),
 
   {
     name: 'op_open_async',
-    async: async function (this: Kernel, arg) {
-      let file = this.fs.openSync(getAbsolutePath(arg.path, this), constants.fs.O_RDWR, arg.mode);
+    async: async function (
+      this: Kernel,
+      arg: { path: string; options: Deno.OpenOptions; mode: number },
+    ) {
+      let file = this.fs.openSync(
+        getAbsolutePath(arg.path, this),
+        getFlagFromOptions(arg.options),
+        arg.mode,
+      );
+
       return this.addResource(new FileResource(file, arg.path));
     },
   },
@@ -151,7 +187,14 @@ class FileResource extends Resource {
 
   position = 0;
 
-  seekSync(offset: number, whence: number) {
+  seekSync(offset: number, whence: Deno.SeekMode) {
+    if (whence === (0 as Deno.SeekMode.Start)) {
+      this.position = offset;
+    }
+    return this.position;
+  }
+
+  async seek(offset: number, whence: Deno.SeekMode) {
     if (whence === (0 as Deno.SeekMode.Start)) {
       this.position = offset;
     }

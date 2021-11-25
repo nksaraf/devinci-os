@@ -1,8 +1,8 @@
 /// <reference path="./webworker.d.ts" />
 
 import { expose } from 'comlink';
-import { transferHandlers } from '../comlink';
 import Router from 'trouter';
+import type { Methods } from 'trouter';
 // export empty type because of tsc --isolatedModules flag
 export type {};
 declare const self: ServiceWorkerGlobalScope;
@@ -19,7 +19,6 @@ declare const self: ServiceWorkerGlobalScope;
 
 //  const INTEGRITY_CHECKSUM = 'f0a916b13c8acc2b526a03a6d26df85f';
 const bypassHeaderName = 'x-msw-bypass';
-const activeClientIds = new Set();
 
 self.addEventListener('install', function () {
   return self.skipWaiting();
@@ -34,6 +33,7 @@ router.add('GET', '/src/*', async (req) => {
   console.log('vite server', req.url);
   return await fetch(req);
 });
+
 self.addEventListener('message', async function (event) {
   if (event.data.type === 'CONNECT') {
     // activeClientIds.set(event.source.id, event.data.data.port);
@@ -195,6 +195,12 @@ channel.addEventListener('message', (event) => {
   }
 });
 
+function getHandler(handlers: Function[]) {
+  return handlers.sort((a, b) => {
+    return a.priority ?? 0 - b.priority ?? 0;
+  })[handlers.length - 1];
+}
+
 async function handleRequest(event: FetchEvent, requestId: string): Promise<Response> {
   let ops;
   let prom = new Promise<Response>((res, rej) => {
@@ -204,20 +210,20 @@ async function handleRequest(event: FetchEvent, requestId: string): Promise<Resp
     };
   });
 
-  let { params, handlers } = router.find('GET', new URL(event.request.url).pathname);
+  let { params, handlers } = router.find(
+    event.request.method as Methods,
+    new URL(event.request.url).pathname,
+  );
 
   if (handlers.length === 0 || event.request.headers.has(bypassHeaderName)) {
     return await fetch(event.request);
   }
 
-  console.log(handlers);
-  let handler = handlers.sort((a, b) => {
-    return a.priority ?? 0 - b.priority ?? 0;
-  })[handlers.length - 1];
+  let handler = getHandler(handlers);
 
   let t = setTimeout(() => {
     fetch(event.request).then((res) => ops.res(res));
-  }, 500);
+  }, 1000);
 
   handler(event.request)
     .then(ops.res, ops.rej)

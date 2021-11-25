@@ -97,6 +97,8 @@
     "spdlog": "^0.13.0",
     "spyfs": "^1.0.2",
     "stream": "^0.0.2",
+    "sucrase": "^3.20.3",
+    "sucrase-browser-lite": "^3.16.2",
     "sudo-prompt": "9.2.1",
     "svelte-actions-resize": "^0.1.1",
     "svelte-drag": "^1.4.0",

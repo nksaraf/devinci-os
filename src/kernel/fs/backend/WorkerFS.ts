@@ -6,16 +6,10 @@ import {
   FileSystemOptions,
 } from '../core/file_system';
 import { ApiError, ErrorCode } from '../core/api_error';
-import {
-  FileFlagString,
-  getFlagString,
-  isAppendable,
-  isReadable,
-  isWriteable,
-} from '../core/file_flag';
+import { FileFlagString, isAppendable, isReadable, isWriteable } from '../core/file_flag';
 import { buffer2ArrayBuffer, arrayBuffer2Buffer, emptyBuffer } from '../core/util';
 import { File, BaseFile } from '../core/file';
-import PreloadFile from '../generic/preload_file';
+import InMemoryFile from '../generic/preload_file';
 import global from '../../global';
 import Stats from '../core/stats';
 
@@ -446,7 +440,7 @@ function isAPIResponse(data: any): data is IAPIResponse {
 /**
  * Represents a remote file in a different worker/thread.
  */
-class WorkerFile extends PreloadFile<WorkerFS> {
+class WorkerFile extends InMemoryFile<WorkerFS> {
   private _remoteFdId: number;
 
   constructor(

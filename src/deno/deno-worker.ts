@@ -14,7 +14,7 @@ declare global {
 export class DenoIsolateWorker extends DenoIsolate {
   Deno: typeof Deno;
 
-  isAttached: false
+  isAttached: false;
 
   constructor() {
     super();
@@ -35,21 +35,36 @@ export class DenoIsolateWorker extends DenoIsolate {
     this.Deno = this.context.Deno;
     Global.deno = this.context;
   }
+
+  async run(url) {
+    if (url.endsWith('.wasm')) {
+      const { default: Context } = await import(
+        'https://deno.land/std@0.115.1/wasi/snapshot_preview1.ts'
+      );
+
+      const context = new Context({
+        args: ['exa', '-al', 'lib/deno'],
+        env: Deno.env.toObject(),
+        preopens: {
+          '/lib': '/lib',
+          '/lib/deno': '/lib/deno',
+        },
+      });
+
+      const wasm = await WebAssembly.compileStreaming(fetch(url));
+
+      let instance = await WebAssembly.instantiate(wasm, {
+        wasi_snapshot_preview1: context.exports,
+      });
+
+      await context.start(instance);
+      return;
+    } else {
+      return await super.run(url);
+    }
+  }
 }
 
 let worker = new DenoIsolateWorker();
 
 expose(worker);
-// expose({
-// connect: () => {
-//   const remoteExpose = new MessageChannel();
-//   const localExpose = new MessageChannel();
-
-//   wrap(remoteExpose.port1);
-//   expose({}, localExpose.port1);
-//   let channel = new Channel();
-//   channel.portToExpose = remoteExpose.port2;
-//   channel.portToWrap = localExpose.port2;
-//   return channel;
-// },
-// });

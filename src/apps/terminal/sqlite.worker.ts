@@ -34,7 +34,7 @@ async function runQueries() {
   stmt.free();
   db.exec('COMMIT');
 
-  stmt = db.prepare(`SELECT SUM(value) FROM kv`);
+  stmt = db.prepare(`SELECT * FROM kv`);
   stmt.step();
   console.log('Result:', stmt.getAsObject());
   stmt.free();

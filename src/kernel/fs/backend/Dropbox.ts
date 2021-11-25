@@ -1,4 +1,4 @@
-import PreloadFile from '../generic/preload_file';
+import InMemoryFile from '../generic/preload_file';
 import {BaseFileSystem, IFileSystem, CallbackOneArg, CallbackTwoArgs, FileSystemOptions} from '../core/file_system';
 import {FileFlagString} from '../core/file_flag';
 import {default as Stats, FileType} from '../../node/fs/node_fs_statsfs_stats';
@@ -145,7 +145,7 @@ function FilesDeleteWrapped(client: DropboxClient, p: string, cb: CallbackOneArg
     });
 }
 
-export class DropboxFile extends PreloadFile<DropboxFileSystem> implements File {
+export class DropboxFile extends InMemoryFile<DropboxFileSystem> implements File {
   constructor(_fs: DropboxFileSystem, _path: string, _flag: FileFlagString, _stat: Stats, contents?: Buffer) {
     super(_fs, _path, _flag, _stat, contents);
   }

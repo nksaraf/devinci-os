@@ -23,94 +23,95 @@ self.addEventListener('activate', async function (event) {
   return self.clients.claim();
 });
 
-// self.addEventListener('message', async function (event) {
-//   const clientId = event.source.id;
+self.addEventListener('message', async function (event) {
+  const clientId = event.source.id;
 
-//   // if (!clientId || !self.clients) {
-//   //   return;
-//   // }
+  // if (!clientId || !self.clients) {
+  //   return;
+  // }
 
-//   // if (!client) {
-//   //   return;
-//   // }
+  // if (!client) {
+  //   return;
+  // }
 
-//   const allClients = await self.clients.matchAll();
-//   let client = allClients[0];
+  const client = (await self.clients.matchAll()).find((client) => {
+    return client.id === clientId;
+  });
 
-//   switch (
-//     event.data
-//     // case 'KEEPALIVE_REQUEST': {
-//     //   sendToClient(client, {
-//     //     type: 'KEEPALIVE_RESPONSE',
-//     //   });
-//     //   break;
-//     // }
+  switch (event.data) {
+    case 'KEEPALIVE_REQUEST': {
+      sendToClient(client, {
+        type: 'KEEPALIVE_RESPONSE',
+      });
+      break;
+    }
 
-//     // case 'INTEGRITY_CHECK_REQUEST': {
-//     //   sendToClient(client, {
-//     //     type: 'INTEGRITY_CHECK_RESPONSE',
-//     //     payload: INTEGRITY_CHECKSUM,
-//     //   });
-//     //   break;
-//     // }
+    case 'INTEGRITY_CHECK_REQUEST': {
+      sendToClient(client, {
+        type: 'INTEGRITY_CHECK_RESPONSE',
+        payload: INTEGRITY_CHECKSUM,
+      });
+      break;
+    }
 
-//     // case 'MOCK_ACTIVATE': {
-//     //   activeClientIds.add(clientId);
+    case 'MOCK_ACTIVATE': {
+      activeClientIds.add(clientId);
 
-//     //   sendToClient(client, {
-//     //     type: 'MOCKING_ENABLED',
-//     //     payload: true,
-//     //   });
-//     //   break;
-//     // }
+      sendToClient(client, {
+        type: 'MOCKING_ENABLED',
+        payload: true,
+      });
+      break;
+    }
 
-//     // case 'MOCK_DEACTIVATE': {
-//     //   activeClientIds.delete(clientId);
-//     //   break;
-//     // }
+    case 'MOCK_DEACTIVATE': {
+      activeClientIds.delete(clientId);
+      break;
+    }
 
-//     // case 'CLIENT_CLOSED': {
-//     //   activeClientIds.delete(clientId);
+    case 'CLIENT_CLOSED': {
+      activeClientIds.delete(clientId);
 
-//     //   const remainingClients = allClients.filter((client) => {
-//     //     return client.id !== clientId;
-//     //   });
+      const remainingClients = (await self.clients.matchAll()).filter((client) => {
+        return client.id !== clientId;
+      });
 
-//     //   // Unregister itself when there are no more clients
-//     //   if (remainingClients.length === 0) {
-//     //     self.registration.unregister();
-//     //   }
+      // Unregister itself when there are no more clients
+      if (remainingClients.length === 0) {
+        self.registration.unregister();
+      }
 
-//     //   break;
-//     // }
-//   ) {
-//   }
-// });
+      break;
+    }
+  }
+});
 
 // Resolve the "master" client for the given event.
 // Client that issues a request doesn't necessarily equal the client
 // that registered the worker. It's with the latter the worker should
 // communicate with during the response resolving phase.
-// async function resolveMasterClient(event) {
-//   // const client = await self.clients.get(event.clientId);
+async function resolveMasterClient(event) {
+  // const client = await self.clients.get(event.clientId);
 
-//   // if (client.frameType === 'top-level') {
-//   //   return client;
-//   // }
+  // if (client.frameType === 'top-level') {
+  //   return client;
+  // }
 
-//   const allClients = await self.clients.matchAll();
+  const allClients = await self.clients.matchAll();
 
-//   return allClients
-//     .filter((client) => {
-//       // Get only those clients that are currently visible.
-//       return client.visibilityState === 'visible';
-//     })
-//     .find((client) => {
-//       // Find the client ID that's recorded in the
-//       // set of clients that have registered the worker.
-//       return activeClientIds.has(client.id);
-//     });
-// }
+  return (
+    allClients
+      // .filter((client) => {
+      //   // Get only those clients that are currently visible.
+      //   return client.visibilityState === 'visible';
+      // })
+      .find((client) => {
+        // Find the client ID that's recorded in the
+        // set of clients that have registered the worker.
+        return activeClientIds.has(client.id);
+      })
+  );
+}
 
 async function handleRequest(event, requestId) {
   const client = await resolveMasterClient(event);
@@ -124,6 +125,7 @@ async function handleRequest(event, requestId) {
   }
   // (async function () {
   const clonedResponse = response.clone();
+
   sendToClient(client, {
     type: 'RESPONSE',
     payload: {

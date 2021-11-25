@@ -13,6 +13,9 @@ import { Kernel, ServiceWorker } from './deno/denix/denix';
 import { constants } from 'os/kernel/kernel/constants';
 import Global from './kernel/global';
 import { Network } from './deno/denix/network';
+import { rest } from 'msw';
+import TranspileWorker from './transpiler?worker';
+import { wrap } from './deno/comlink';
 
 installApp(finder());
 installApp(calculator());
@@ -39,40 +42,11 @@ export const initKernel = async () => {
   console.log(new ReadableStream());
   console.log('booting Kernel');
 
-  // let iframe = document.createElement('iframe');
-  // // iframe.src = 'http://localhost:80/listener.html';
-  // iframe.src = 'http://localhost:80/kernel.html';
-  // iframe.allow = 'cross-origin-isolated';
-
-  // document.body.appendChild(iframe);
-
-  // if ('serviceWorker' in navigator) {
-  //   window.addEventListener('load', function() {
-  //     navigator.serviceWorker.register('/sw.js').then(function(registration) {
-  //       // Registration was successful
-  //       console.log('ServiceWorker registration successful with scope: ', registration.scope);
-  //     }, function(err) {
-  //       // registration failed :(
-  //       console.log('ServiceWorker registration failed: ', err);
-  //     });
-  //   });
-  // }
-
-  // let deno = await DenoRuntime.bootstrapInWorker();
-  // console.log(deno);
-
-  // await deno.eval(`console.log('herello world')`);
-
-  // worker.resetHandlers();
-  // All on main thread:
-  // let denoLocal = await DenoRuntime.bootstrapInWorker();
-  // await denoLocal.eval(`console.log('herello world')`);
   const denix = await Kernel.create();
   await Network.connect();
+  createLocalNetwork();
 
   // Network.handle('http://localhost/src/*', async (request) => {});
-
-  let sw = await new ServiceWorker(new BroadcastChannel('localhost')).start();
 
   Global.fs = denix.fs;
   denix.fs.writeFileSync('/hello.txt', 'Hello World', 'utf-8', constants.fs.O_RDWR, 0x644);
@@ -103,6 +77,19 @@ initKernel()
     // createVSCode(document.getElementById('root'), {});
   });
 
+function createLocalNetwork() {
+  const transpiler = wrap<{ transpile(data: ArrayBuffer | ReadableStream): string }>(
+    new TranspileWorker(),
+  );
+
+  Network.worker.use(
+    rest.get('https://deno.land/std*', async (req, res, ctx) => {
+      const orig = await ctx.fetch(req);
+      let data = await transpiler.transpile(orig.body);
+      return res(ctx.body(data), ctx.set('Content-Type', 'application/javascript'));
+    }),
+  );
+}
 // initKernel().then((kernel) => {
 // console.log(kernel);
 // const desktop = new MacOS({

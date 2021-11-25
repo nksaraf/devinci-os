@@ -9,7 +9,7 @@ import { ApiError, ErrorCode } from '../core/api_error';
 import type { FileFlagString } from '../core/file_flag';
 import type { File } from '../core/file';
 import type Stats from '../core/stats';
-import PreloadFile from '../generic/preload_file';
+import InMemoryFile from '../generic/preload_file';
 import * as path from 'path';
 
 /**
@@ -23,7 +23,7 @@ interface IAsyncOperation {
 /**
  * We define our own file to interpose on syncSync() for mirroring purposes.
  */
-class MirrorFile extends PreloadFile<AsyncMirror> implements File {
+class MirrorFile extends InMemoryFile<AsyncMirror> implements File {
   constructor(fs: AsyncMirror, path: string, flag: FileFlagString, stat: Stats, data: Buffer) {
     super(fs, path, flag, stat, data);
   }
@@ -168,7 +168,7 @@ export default class AsyncMirror extends SynchronousFileSystem implements IFileS
     return AsyncMirror.Name;
   }
 
-  public _syncSync(fd: PreloadFile<any>) {
+  public _syncSync(fd: InMemoryFile<any>) {
     this._sync.writeFileSync(fd.getPath(), fd.getBuffer(), null, 'w', fd.getStats().mode);
     this.enqueueOp({
       apiMethod: 'writeFile',

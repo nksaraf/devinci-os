@@ -7,51 +7,43 @@
   import { TTY, Xterm } from 'os/kernel/kernel/tty';
   import { proxy } from 'comlink';
   import { DenoWorker } from 'os/deno/DenoWorker';
-  import { DenoREPL } from './desh';
+  import { DenoREPL, Desh } from './desh';
   import SQLiteWorker from './sqlite.worker?worker';
   import { initBackend } from 'absurd-sql/dist/indexeddb-main-thread';
   let divEl: HTMLDivElement = null;
+
+  import scriptURL from './execute.ts?raw';
+  import { getWAPMUrlForCommandName } from './wapm';
 
   onMount(() => {
     const worker = new DenoWorker();
     const terminal = new Xterm();
     const tty = new TTY(terminal);
-    const shell = new DenoREPL(tty, worker.isolate);
-    console.log('write file');
+    const shell = new Desh(tty, worker.isolate);
 
     (async () => {
       await worker.isolate.attach();
-      console.log('write file');
-      await worker.isolate.addEventListener(
+      await worker.isolate.kernel.addEventListener(
         'stdout',
         proxy((ev) => {
-          terminal.tty.println(ev.detail.join(' '));
+          terminal.tty.print(typeof ev.detail === 'string' ? ev.detail : ev.detail.join(' '));
         }),
       );
-      console.log('write file');
 
-      console.log(await WebAssembly.compileStreaming(fetch('/sqlite.wasm')));
+      await worker.isolate.run(await getWAPMUrlForCommandName('exa'));
 
-      function init() {
-        let worker = new SQLiteWorker();
-        // This is only required because Safari doesn't support nested
-        // workers. This installs a handler that will proxy creating web
-        // workers through the main thread
-        initBackend(worker);
-      }
+      // function init() {
+      //   let worker = new SQLiteWorker();
+      //   // This is only required because Safari doesn't support nested
+      //   // workers. This installs a handler that will proxy creating web
+      //   // workers through the main thread
+      //   initBackend(worker);
+      // }
 
-      init();
+      // init();
 
-      await worker.Deno.writeTextFile(
-        '/script.ts',
-        `
-        import { DB } from "https://raw.githubusercontent.com/devinci-os/deno-sqlite/31ba590c0730d670134cda712816865e353efd31/mod.ts";
-        import schema from "https://raw.githubusercontent.com/withfig/autocomplete/master/src/deno.ts"
-        console.log(JSON.stringify(schema))
-      `,
-      );
-
-      await worker.isolate.run('/script.ts');
+      // await worker.Deno.writeTextFile('/script.ts', scriptURL);
+      // await worker.isolate.run('/script.ts');
 
       tty.device.addEventListener('data', (event) => {
         shell.handleTermData(event.detail);

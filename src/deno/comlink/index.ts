@@ -33,13 +33,13 @@ transferHandlers.set('CHANNEL', {
   deserialize: (obj) => obj,
 });
 
-// transferHandlers.set('READABLE_STREAM', {
-//   canHandle: (obj): obj is Channel => obj instanceof Channel,
-//   serialize: (obj: Channel) => {
-//     return [obj, [obj.portToWrap, obj.portToExpose]];
-//   },
-//   deserialize: (obj) => obj,
-// });
+transferHandlers.set('READABLE_STREAM', {
+  canHandle: (obj): obj is ReadableStream => obj instanceof ReadableStream,
+  serialize: (obj: ReadableStream) => {
+    return [obj, [obj]];
+  },
+  deserialize: (obj) => obj,
+});
 
 transferHandlers.set('EVENT', {
   canHandle: (obj): obj is CustomEvent => obj instanceof CustomEvent,

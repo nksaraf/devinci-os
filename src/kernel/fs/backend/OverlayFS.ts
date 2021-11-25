@@ -9,7 +9,7 @@ import { ApiError, ErrorCode } from '../core/api_error';
 import { FileFlagString, ActionType } from '../core/file_flag';
 import type { File } from '../core/file';
 import { default as Stats } from '../../node/fs/node_fs_statsfs_stats';
-import PreloadFile from '../generic/preload_file';
+import InMemoryFile from '../generic/preload_file';
 import LockedFS from '../generic/locked_fs';
 import * as path from 'path';
 
@@ -36,7 +36,7 @@ function getFlag(f: string): FileFlagString {
 /**
  * Overlays a RO file to make it writable.
  */
-class OverlayFile extends PreloadFile<UnlockedOverlayFS> implements File {
+class OverlayFile extends InMemoryFile<UnlockedOverlayFS> implements File {
   constructor(
     fs: UnlockedOverlayFS,
     path: string,
@@ -116,7 +116,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
     };
   }
 
-  public _syncAsync(file: PreloadFile<UnlockedOverlayFS>, cb: CallbackOneArg): void {
+  public _syncAsync(file: InMemoryFile<UnlockedOverlayFS>, cb: CallbackOneArg): void {
     this.createParentDirectoriesAsync(file.getPath(), (err?: ApiError) => {
       if (err) {
         return cb(err);
@@ -132,7 +132,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
     });
   }
 
-  public _syncSync(file: PreloadFile<UnlockedOverlayFS>): void {
+  public _syncSync(file: InMemoryFile<UnlockedOverlayFS>): void {
     this.createParentDirectories(file.getPath());
     this._writable.writeFileSync(
       file.getPath(),

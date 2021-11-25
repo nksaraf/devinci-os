@@ -6,7 +6,7 @@ import type { File } from '../core/file';
 import type { FileFlagString } from '../core/file_flag';
 import * as path from 'path';
 import Inode from './inode';
-import PreloadFile from './preload_file';
+import InMemoryFile from './preload_file';
 import { emptyBuffer } from '../core/util';
 import { Buffer } from 'buffer';
 /**
@@ -334,7 +334,7 @@ export interface SyncKeyValueFileSystemOptions {
   // supportLinks?: boolean;
 }
 
-export class SyncKeyValueFile extends PreloadFile<SyncKeyValueFileSystem> implements File {
+export class SyncKeyValueFile extends InMemoryFile<SyncKeyValueFileSystem> implements File {
   constructor(
     _fs: SyncKeyValueFileSystem,
     _path: string,
@@ -458,7 +458,7 @@ export class SyncKeyValueFileSystem extends SynchronousFileSystem {
         }
       } else {
         // If it's a directory, throw a permissions error.
-        throw ApiError.EPERM(newPath);
+        throw ApiError.EACCES(newPath);
       }
     }
     newDirList[newName] = nodeId;
@@ -828,7 +828,7 @@ export interface AsyncKeyValueRWTransaction extends AsyncKeyValueROTransaction {
   abort(cb: CallbackOneArg): void;
 }
 
-export class AsyncKeyValueFile extends PreloadFile<AsyncKeyValueFileSystem> implements File {
+export class AsyncKeyValueFile extends InMemoryFile<AsyncKeyValueFileSystem> implements File {
   constructor(
     _fs: AsyncKeyValueFileSystem,
     _path: string,
@@ -1023,7 +1023,7 @@ export class AsyncKeyValueFileSystem extends BaseFileSystem {
               } else {
                 // Can't overwrite a directory using rename.
                 tx.abort((e?) => {
-                  cb(ApiError.EPERM(newPath));
+                  cb(ApiError.EACCES(newPath));
                 });
               }
             }

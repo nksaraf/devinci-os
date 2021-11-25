@@ -12,7 +12,6 @@ import { url } from './ops/url';
 import { VirtualFileSystem } from 'os/kernel/fs';
 import EsbuildWorker from '../linker/esbuild-worker?worker';
 import { fromBase64 } from 'os/kernel/node/base64';
-import type { MockedRequest } from 'msw';
 
 function syncOpCallXhr(op_code: number, arg1: any, arg2: any) {
   const xhr = new XMLHttpRequest();
@@ -185,11 +184,11 @@ export class Kernel extends EventTarget {
   private init() {
     this.resourceTable = new Map<number, Resource>();
 
-    this.stdin = this.addResource(new ConsoleLogResource());
-    this.stdout = this.addResource(new ConsoleLogResource());
-    this.stderr = this.addResource(new ConsoleLogResource());
+    this.stdin = this.addResource(new StdioResource(this, 'stdin'));
+    this.stdout = this.addResource(new StdioResource(this, 'stdout'));
+    this.stderr = this.addResource(new StdioResource(this, 'stderr'));
 
-    this._ops = [
+    this.#_ops = [
       op_sync('ops_sync', () => {
         // this is called when Deno.core.syncOpsCache is run
         // we have to reply with an array of [op_name, id in op_cache]]
@@ -199,7 +198,7 @@ export class Kernel extends EventTarget {
       }),
     ];
 
-    this._ops.push(
+    this.#_ops.push(
       {
         name: 'op_cwd',
         sync: () => {
@@ -233,6 +232,11 @@ export class Kernel extends EventTarget {
           return this.addResource(new TextDecoderResource());
         },
       },
+      op_sync('op_env', function (this: Kernel) {
+        return {
+          PWD: '/',
+        };
+      }),
       {
         name: 'op_wasm_streaming_set_url',
         sync: function (this: Kernel, rid: number, url: string) {
@@ -262,8 +266,6 @@ export class Kernel extends EventTarget {
     );
   }
 
-  createRequest() {}
-
   static async create() {
     let kernel = new Kernel();
     kernel.init();
@@ -271,10 +273,10 @@ export class Kernel extends EventTarget {
     return kernel;
   }
 
-  private _ops: Op[];
+  #_ops: Op[];
 
   protected get ops() {
-    return this._ops;
+    return this.#_ops;
   }
 }
 
@@ -453,8 +455,10 @@ export class WasmStreamingResource extends Resource {
   url: string;
 }
 
-class ConsoleLogResource extends Resource {
-  name = 'console';
+class StdioResource extends Resource {
+  constructor(public kernel: Kernel, public std: string) {
+    super();
+  }
   async read(data: Uint8Array) {
     return 0;
   }
@@ -462,6 +466,20 @@ class ConsoleLogResource extends Resource {
     let str = new TextDecoder().decode(data);
     // console.log(str);
     console.log(str);
+
+    this.kernel.dispatchEvent(new CustomEvent('stdout', { detail: [str] }));
+
+    return data.length;
+  }
+
+  writeSync(data: Uint8Array) {
+    console.log(data);
+    let str = new TextDecoder().decode(data);
+    // console.log(str);
+    console.log(str);
+
+    this.kernel.dispatchEvent(new CustomEvent('stdout', { detail: [str] }));
+
     return data.length;
   }
   close() {

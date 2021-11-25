@@ -1,42 +1,86 @@
-import * as path from 'path';
-import { ApiError } from '../fs/core/api_error';
-import { isReadable, isWriteable } from '../fs/core/file_flag';
-import { constants } from '../kernel/constants';
+import { ApiError } from '../../../kernel/fs/core/api_error';
 import './file-access.d.ts';
 
-export enum FileSystemHandleKind {
+export enum EntryKind {
   file = 'file',
   directory = 'directory',
+  symlink = 'symlink',
 }
 
-export class FileEntry {
-  async getData(): Promise<ArrayBuffer> {
+export class BaseEntry {
+  // A valid file name is a string that is not an empty string, is not equal to "." or "..", and does not contain '/' or any other character used as path separator on the underlying platform.
+  constructor(public url: URL, public name: string | undefined, public type: EntryKind) {}
+
+  get isFile(): boolean {
+    return this.type === EntryKind.file;
+  }
+  get isSymlink(): boolean {
+    return this.type === EntryKind.symlink;
+  }
+  get isDirectory(): boolean {
+    return this.type === EntryKind.directory;
+  }
+}
+
+export class FileEntry extends BaseEntry implements Deno.FileInfo {
+  // A valid file name is a string that is not an empty string, is not equal to "." or "..", and does not contain '/' or any other character used as path separator on the underlying platform.
+  constructor(url: URL, name: string | undefined, existingData?: ArrayBuffer) {
+    super(url, name, EntryKind.file);
+    this.write(existingData ?? new Uint8Array(0));
+  }
+
+  get mtime(): Date {
+    return new Date(this.lastModified);
+  }
+
+  atime: Date;
+  birthtime: Date;
+
+  // available on linux only
+  dev: number;
+  ino: number;
+  mode: number;
+  nlink: number;
+  uid: number;
+  gid: number;
+  rdev: number;
+  blksize: number;
+  blocks: number;
+
+  async read(): Promise<ArrayBuffer> {
     return this._data;
   }
+
+  getBufferSync(): ArrayBuffer {
+    return this._data;
+  }
+
   _data: ArrayBuffer;
 
-  async setData(buffer: any) {
+  async write(buffer: ArrayBuffer) {
     this._data = buffer;
     this.lastModified = Date.now();
   }
 
-  constructor(public filePath: string) {
-    this.name = path.basename(filePath);
-    this.setData(new ArrayBuffer(0));
+  writeSync(buffer: ArrayBuffer) {
+    this._data = buffer;
+    this.lastModified = Date.now();
   }
 
+  created: number = Date.now();
   lastModified: number;
-
-  // A valid file name is a string that is not an empty string, is not equal to "." or "..", and does not contain '/' or any other character used as path separator on the underlying platform.
-  name: string;
 
   get size() {
     return this._data.byteLength;
   }
 }
 
-export class DirectoryEntry {
+export class DirectoryEntry extends BaseEntry {
   children: { [name: string]: FileEntry | DirectoryEntry };
+  constructor(public url: URL, public name: string) {
+    super(url, name, EntryKind.directory);
+    this.children = {};
+  }
 }
 
 export interface DirectoryHandle extends EventTarget {}
@@ -123,10 +167,10 @@ function createWritableStream(handle: FileHandle, existingBuffer?: ArrayBuffer) 
     },
     async close() {
       if ((await handle.queryPermission({ mode: 'readwrite' })) !== 'granted') {
-        throw ApiError.EPERM('File is not writable');
+        throw ApiError.EACCES('File is not writable');
       }
 
-      await entry.setData(buffer);
+      await entry.write(buffer);
     },
   });
 
@@ -158,14 +202,20 @@ function createWritableStream(handle: FileHandle, existingBuffer?: ArrayBuffer) 
 }
 
 export class FileHandle implements FileSystemFileHandle {
-  kind = FileSystemHandleKind.file as const;
+  kind = 'file' as const;
+  contentType: string = 'text/plain';
+  lastModified: Date;
+
+  constructor(public entry: FileEntry, public options: Deno.OpenOptions) {}
+
   async getData(): Promise<[ArrayBuffer]> {
-    return [await this.entry.getData()];
+    return [await this.entry.read()];
   }
 
+  // Web API
   async getFile(): Promise<File> {
-    let file = new File(await this.getData(), 'file.txt', {
-      type: 'text/plain',
+    let file = new File(await this.getData(), this.entry.name, {
+      type: this.contentType,
       lastModified: this.entry.lastModified,
     });
     return Object.assign(file, {
@@ -173,20 +223,19 @@ export class FileHandle implements FileSystemFileHandle {
     });
   }
 
-  constructor(public entry: FileEntry, private flag: number) {}
-
+  // Web API
   async createWritable(
     options: FileSystemCreateWritableOptions = {
       keepExistingData: false,
     },
   ): Promise<FileSystemWritableFileStream> {
     if ((await this.queryPermission({ mode: 'readwrite' })) === 'denied') {
-      throw ApiError.EPERM('');
+      throw ApiError.EACCES('');
     }
 
     let existingBuffer;
     if (options.keepExistingData) {
-      existingBuffer = await this.entry.getData();
+      existingBuffer = await this.entry.read();
     }
 
     return createWritableStream(this, existingBuffer);
@@ -196,42 +245,51 @@ export class FileHandle implements FileSystemFileHandle {
     return this.entry.name;
   }
 
-  isSameEntry(other: FileSystemHandle): Promise<boolean> {
-    throw new Error('Method not implemented.');
+  async isSameEntry(other: FileSystemHandle): Promise<boolean> {
+    return other.kind === 'file' && (other as FileHandle).entry.url === this.entry.url;
   }
 
-  queryPermission(descriptor?: FileSystemHandlePermissionDescriptor): Promise<PermissionState> {
+  async queryPermission(
+    descriptor?: FileSystemHandlePermissionDescriptor,
+  ): Promise<PermissionState> {
     switch (descriptor.mode) {
       case 'read': {
-        return Promise.resolve(isReadable(this.flag) ? 'granted' : 'denied');
+        return this.options.read ? 'granted' : 'denied';
       }
       case 'readwrite': {
-        return Promise.resolve(isWriteable(this.flag) ? 'granted' : 'denied');
+        return this.options.write ? 'granted' : 'denied';
       }
     }
   }
 
-  requestPermission(descriptor?: FileSystemHandlePermissionDescriptor): Promise<PermissionState> {
+  async requestPermission(
+    descriptor?: FileSystemHandlePermissionDescriptor,
+  ): Promise<PermissionState> {
     switch (descriptor.mode) {
       case 'read': {
-        this.flag |= constants.fs.O_RDONLY;
-        return Promise.resolve(isReadable(this.flag) ? 'granted' : 'denied');
+        this.options.read = true;
+        return this.options.read ? 'granted' : 'denied';
       }
       case 'readwrite': {
-        this.flag |= constants.fs.O_RDWR;
-        return Promise.resolve(isWriteable(this.flag) ? 'granted' : 'denied');
+        this.options.write = true;
+        return this.options.write ? 'granted' : 'denied';
       }
     }
   }
 
-  lastModified: Date;
+  async close() {
+    // noop
+  }
 }
 
 export async function testFS() {
-  const fileEntry = new FileEntry('test.txt');
-  fileEntry.setData(new TextEncoder().encode('Hello World'));
+  const fileEntry = new FileEntry(new URL('test.txt', 'file://'), 'test.txt');
+  fileEntry.writeSync(new TextEncoder().encode('Hello World'));
 
-  let handle = new FileHandle(fileEntry, constants.fs.O_RDWR);
+  let handle = new FileHandle(fileEntry, {
+    read: true,
+    write: true,
+  });
 
   let file = await handle.getFile();
   console.log('FILEEEE', await file.text());
@@ -250,7 +308,7 @@ export async function testFS() {
   await stream.write('hello nikhil again');
   await stream.close();
 
-  for await (let chunk of streamAsyncIterable((await handle.getFile()).stream())) {
+  for await (let chunk of iterate((await handle.getFile()).stream())) {
     console.log(chunk);
   }
 
@@ -283,11 +341,11 @@ export async function testFS() {
 
   await fetchStream.pipeTo(stream, {});
 
-  // file = await handle.getFile();
-  // console.log('FILEEEE', await file.text(), await file.arrayBuffer());
+  file = await handle.getFile();
+  console.log('FILEEEE', await file.text(), await file.arrayBuffer());
 }
 
-async function* streamAsyncIterable(stream: ReadableStream) {
+async function* iterate(stream: ReadableStream) {
   const reader = stream.getReader();
   try {
     while (true) {

@@ -1,0 +1,12 @@
+diff --git a/node_modules/@types/node/stream/consumers.d.ts b/node_modules/@types/node/stream/consumers.d.ts
+index ce6c9bb..91bfe1e 100755
+--- a/node_modules/@types/node/stream/consumers.d.ts
++++ b/node_modules/@types/node/stream/consumers.d.ts
+@@ -8,7 +8,6 @@ interface Blob {
+     readonly type: string;
+     arrayBuffer(): Promise<ArrayBuffer>;
+     slice(start?: number, end?: number, contentType?: string): Blob;
+-    stream(): NodeJS.ReadableStream;
+     text(): Promise<string>;
+ }
+ declare module 'stream/consumers' {
