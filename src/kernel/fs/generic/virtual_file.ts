@@ -290,7 +290,9 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
       currentBuffer = this.resizeBuffer(currentBuffer, endFp);
     }
 
-    return buffer.copy(currentBuffer, position, offset, offset + length);
+    currentBuffer.set(buffer.subarray(offset, offset + length), position);
+
+    return length;
   }
 
   protected resizeBuffer(buffer: Uint8Array, size: number): Uint8Array {
@@ -388,7 +390,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
       length = size - position;
     }
 
-    buffer.set(currentBuffer.subarray(position, position + length), offset);
+    buffer.set(currentBuffer.subarray(offset, offset + length), position);
     return length;
   }
 
@@ -409,7 +411,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
       length = size - position;
     }
 
-    buffer.set(currentBuffer.subarray(position, position + length), offset);
+    buffer.set(currentBuffer.subarray(offset, offset + length), position);
     return length;
   }
 

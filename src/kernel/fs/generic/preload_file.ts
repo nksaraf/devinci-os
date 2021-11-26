@@ -22,7 +22,7 @@ export default abstract class InMemoryFile<T extends IFileSystem>
   implements File
 {
   protected _fs: T;
-  private _buffer: Buffer;
+  private _buffer: Uint8Array;
   /**
    * Creates a file with the given path and, optionally, the given contents. Note
    * that, if contents is specified, it will be mutated by the file!
@@ -37,7 +37,7 @@ export default abstract class InMemoryFile<T extends IFileSystem>
    *   contents of the file. PreloadFile will mutate this buffer. If not
    *   specified, we assume it is a new file.
    */
-  constructor(_fs: T, _path: string, _flag: FileFlagString, _stat: Stats, contents?: Buffer) {
+  constructor(_fs: T, _path: string, _flag: FileFlagString, _stat: Stats, contents?: Uint8Array) {
     super(_path, _flag, _stat);
     this._fs = _fs;
     this._buffer = contents ? contents : emptyBuffer();
@@ -47,7 +47,7 @@ export default abstract class InMemoryFile<T extends IFileSystem>
     // truncate/append to file.
     if (this._stat.size !== this._buffer.length && isReadable(this._flag)) {
       throw new Error(
-        `Invalid buffer: Buffer is ${this._buffer.length} long, yet Stats object specifies that file is ${this._stat.size} long.`,
+        `Invalid buffer: Uint8Array is ${this._buffer.length} long, yet Stats object specifies that file is ${this._stat.size} long.`,
       );
     }
   }
@@ -55,18 +55,18 @@ export default abstract class InMemoryFile<T extends IFileSystem>
   /**
    * NONSTANDARD: Get the underlying buffer for this file. !!DO NOT MUTATE!! Will mess up dirty tracking.
    */
-  public async getBuffer(): Promise<Buffer> {
+  public async getBuffer(): Promise<Uint8Array> {
     return this._buffer;
   }
 
-  public getBufferSync(): Buffer {
+  public getBufferSync(): Uint8Array {
     return this._buffer;
   }
 
   /**
    * NONSTANDARD: Get the underlying buffer for this file. !!DO NOT MUTATE!! Will mess up dirty tracking.
    */
-  public setBuffer(buffer: Buffer): void {
+  public setBuffer(buffer: Uint8Array): void {
     this._buffer = buffer;
   }
 }
@@ -76,7 +76,7 @@ export default abstract class InMemoryFile<T extends IFileSystem>
  * Doesn't sync to anything, so it works nicely for memory-only files.
  */
 export class NoSyncFile<T extends IFileSystem> extends InMemoryFile<T> implements File {
-  constructor(_fs: T, _path: string, _flag: FileFlagString, _stat: Stats, contents?: Buffer) {
+  constructor(_fs: T, _path: string, _flag: FileFlagString, _stat: Stats, contents?: Uint8Array) {
     super(_fs, _path, _flag, _stat, contents);
   }
   /**

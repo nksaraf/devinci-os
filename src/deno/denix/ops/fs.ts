@@ -215,7 +215,7 @@ class FileResource extends Resource {
     if (this.position >= stat.size) {
       return null;
     }
-    let container = new Buffer(new SharedArrayBuffer(data.length));
+    let container = new Uint8Array(new SharedArrayBuffer(data.length));
     let nread = await this.file.read(
       container,
       this.position,

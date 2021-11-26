@@ -33,7 +33,7 @@ export interface SyncFile {
    *   data should be written. If position is null, the data will be written at
    *   the current position.
    */
-  writeSync(bufferUint8Array, offset: number, length: number, position: number | null): number;
+  writeSync(buffer: Uint8Array, offset: number, length: number, position: number | null): number;
 
   /**
    * **Core**: Read data from the file.
@@ -44,7 +44,7 @@ export interface SyncFile {
    *   in the file. If position is null, data will be read from the current file
    *   position.
    */
-  readSync(bufferUint8Array, offset: number, length: number, position: number): number;
+  readSync(buffer: Uint8Array, offset: number, length: number, position: number): number;
   /**
    * **Supplementary**: Synchronous `datasync`.
    *
@@ -115,7 +115,12 @@ export interface File {
    *   the current position.
    * @param cb The number specifies the number of bytes written into the file.
    */
-  write(bufferUint8Array, offset: number, length: number, position: number | null): Promise<number>;
+  write(
+    buffer: Uint8Array,
+    offset: number,
+    length: number,
+    position: number | null,
+  ): Promise<number>;
   /**
    * **Core**: Write buffer to the file.
    * Note that it is unsafe to use fs.writeSync multiple times on the same file
@@ -128,7 +133,7 @@ export interface File {
    *   data should be written. If position is null, the data will be written at
    *   the current position.
    */
-  writeSync(bufferUint8Array, offset: number, length: number, position: number | null): number;
+  writeSync(buffer: Uint8Array, offset: number, length: number, position: number | null): number;
   /**
    * **Core**: Read data from the file.
    * @param buffer The buffer that the data will be
@@ -141,7 +146,12 @@ export interface File {
    *   position.
    * @param cb The number is the number of bytes read
    */
-  read(bufferUint8Array, offset: number, length: number, position: number | null): Promise<number>;
+  read(
+    buffer: Uint8Array,
+    offset: number,
+    length: number,
+    position: number | null,
+  ): Promise<number>;
   /**
    * **Core**: Read data from the file.
    * @param buffer The buffer that the data will be written to.
@@ -249,11 +259,16 @@ export abstract class SynchronousBaseFile extends BaseFile {
     throw new Error('Method not implemented.');
   }
 
-  async write(bufferUint8Array, offset: number, length: number, position: number): Promise<number> {
+  async write(
+    buffer: Uint8Array,
+    offset: number,
+    length: number,
+    position: number,
+  ): Promise<number> {
     return this.writeSync(buffer, offset, length, position);
   }
 
-  writeSync(bufferUint8Array, offset: number, length: number, position: number): number {
+  writeSync(buffer: Uint8Array, offset: number, length: number, position: number): number {
     throw new Error('Method not implemented.');
   }
 
@@ -271,7 +286,7 @@ export abstract class SynchronousBaseFile extends BaseFile {
    *   number is the number of bytes read
    */
   public async read(
-    bufferUint8Array,
+    buffer: Uint8Array,
     offset: number,
     length: number,
     position: number,
@@ -279,7 +294,7 @@ export abstract class SynchronousBaseFile extends BaseFile {
     return this.readSync(buffer, offset, length, position);
   }
 
-  public readSync(bufferUint8Array, offset: number, length: number, position: number): number {
+  public readSync(buffer: Uint8Array, offset: number, length: number, position: number): number {
     throw new Error('Method not implemented.');
   }
 
