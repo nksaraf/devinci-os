@@ -1,7 +1,6 @@
-import type { FileSystemConstructor, FileSystemOptions } from './core/file_system';
+import type { FileSystemConstructor, FileSystemOptions, IFileSystem } from './core/file_system';
 import MountableFileSystem from './backend/MountableFileSystem';
 import mitt from 'mitt';
-import InMemoryFileSystem from './backend/InMemory';
 
 type Args<T extends FileSystemConstructor> = Parameters<T['Create']>;
 type CallbackType<T extends FileSystemConstructor> = Args<T>[1];
@@ -25,8 +24,8 @@ export function createFileSystemBackend<T extends FileSystemConstructor>(
 export let events = mitt();
 
 export class VirtualFileSystem extends MountableFileSystem {
-  constructor() {
-    super(new InMemoryFileSystem());
+  constructor(rootFS: IFileSystem) {
+    super(rootFS);
   }
 
   event: typeof events;

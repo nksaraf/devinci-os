@@ -269,7 +269,7 @@ export class Kernel extends EventTarget {
   static async create() {
     let kernel = new Kernel();
     kernel.init();
-    kernel.fs = new VirtualFileSystem();
+    // kernel.fs = new VirtualFileSystem();
     return kernel;
   }
 

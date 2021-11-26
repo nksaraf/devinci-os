@@ -24,7 +24,7 @@ const FileTypeCheck = constants.fs.S_IFMT;
  * @see http://nodejs.org/api/fs.html#fs_class_fs_stats
  * @see http://man7.org/linux/man-pages/man2/stat.2.html
  */
-export default class Stats implements fs.Stats {
+export default class Stats {
   public static fromBuffer(buffer: Buffer): Stats {
     const size = buffer.readUInt32LE(0),
       mode = buffer.readUInt32LE(4),
@@ -94,6 +94,28 @@ export default class Stats implements fs.Stats {
 
   public get birthtime(): Date {
     return new Date(this.birthtimeMs);
+  }
+
+  toJSON() {
+    return {
+      dev: this.dev,
+      ino: this.ino,
+      mode: this.mode,
+      nlink: this.nlink,
+      uid: this.uid,
+      gid: this.gid,
+      rdev: this.rdev,
+      size: this.size,
+      blksize: this.blksize,
+      blocks: this.blocks,
+      atime: this.atimeMs,
+      mtime: this.mtimeMs,
+      ctime: this.ctimeMs,
+      birthtime: this.birthtimeMs,
+      isFile: this.isFile,
+      isDirectory: this.isDirectory,
+      isSymbolicLink: this.isSymbolicLink,
+    };
   }
 
   /**
@@ -179,21 +201,21 @@ export default class Stats implements fs.Stats {
   /**
    * @return [Boolean] True if this item is a file.
    */
-  public isFile(): boolean {
+  get isFile(): boolean {
     return (this.mode & FileTypeCheck) === FileType.FILE;
   }
 
   /**
    * @return [Boolean] True if this item is a directory.
    */
-  public isDirectory(): boolean {
+  get isDirectory(): boolean {
     return (this.mode & FileTypeCheck) === FileType.DIRECTORY;
   }
 
   /**
    * @return [Boolean] True if this item is a symbolic link (only valid through lstat)
    */
-  public isSymbolicLink(): boolean {
+  get isSymbolicLink(): boolean {
     return (this.mode & FileTypeCheck) === FileType.SYMLINK;
   }
 

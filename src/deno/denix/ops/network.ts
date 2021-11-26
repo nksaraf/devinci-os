@@ -1,7 +1,7 @@
 import { Resource } from '../interfaces';
 import type { Kernel } from '../denix';
 import { op_sync, op_async } from '../interfaces';
-import { pull } from 'isomorphic-git';
+import { newPromise } from 'os/deno/util';
 
 export const network = [
   op_sync('op_net_listen', function (this: Kernel, args): OpConn {
@@ -127,6 +127,42 @@ export const network = [
 
   op_async('op_fetch_send', async function (this: Kernel, rid: number) {
     let httpRequest = this.resourceTable.get(rid) as FetchRequestResource;
+
+    let url = new URL(httpRequest.url);
+    let promise = newPromise<string>();
+    if (url.protocol === 'file:') {
+      await this.fs.readFile(url.pathname, 'utf-8', 0, (e, v) => {
+        if (e) {
+          promise.reject(e);
+        }
+        promise.resolve(v as string);
+      });
+
+      let val = await promise.promise;
+
+      console.log(JSON.parse(val));
+
+      const response = new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(val));
+            controller.close();
+          },
+        }),
+        {
+          status: 200,
+          statusText: 'OK',
+        },
+      );
+      return {
+        status: response.status,
+        statusText: response.statusText,
+        // headers: headers,
+        url: response.url,
+        responseRid: this.addResource(new FetchResponseResource(response)),
+      };
+    }
+
     let response = await fetch(httpRequest.url, {
       headers: httpRequest.headers,
       method: httpRequest.method,
@@ -158,22 +194,6 @@ export class LocalNetwork extends EventTarget {
         console.log(this.listeners, props);
 
         if (this.listeners[port] && this.listeners[port].isListening) {
-          // let writableStream = new WritableStream({
-          //   write: (chunk) => {
-          //     this.channel.postMessage({
-          //       type: 'RESPONSE',
-          //       requestId,
-          //       data: chunk,
-          //     });
-          //   },
-          // });
-
-          // let readableStream = new ReadableStream({
-          //   start: (controller) => {
-
-          //   }
-          // });
-
           let tcpStream = this.listeners[port].doAccept({
             hostname: new URL(props.referrer).hostname,
             port: 9000,
@@ -194,21 +214,6 @@ export class LocalNetwork extends EventTarget {
               response: event.detail,
             });
           });
-          // new Request(url, {
-          //   method: props.method,
-          //   headers: props.headers,
-          //   referrer: referrer,
-          // }),
-          //   console.log('posting message');
-          // try {
-          //   this.channel.postMessage({
-          //     type: 'RESPONSE',
-          //     data: 'HELLO FROM THE OTHER SIDE',
-          //     requestId,
-          //   });
-          // } catch (e) {
-          //   console.error('error in response', e);
-          // }
           console.log('posted message');
         }
       }
@@ -238,14 +243,6 @@ class TcpStreamResource extends Resource {
 
     this.readable = this.socket.getReadable();
     this.writable = this.socket.getWritable();
-
-    // this.readable = new ReadableStream({
-    //   async pull(con) {
-    //     let data = await this.socket.read();
-    //     con.enqueue()
-
-    //   }
-    // });
   }
 }
 
@@ -403,16 +400,34 @@ class Reader extends Resource {
     this.reader = reader;
   }
 
+  currentChunkOffset = 0;
+  currentChunk: Uint8Array;
+
   async read(data: Uint8Array) {
-    let { done, value } = await this.reader.read();
+    if (!this.currentChunk || this.currentChunkOffset >= this.currentChunk.length) {
+      let { done, value } = await this.reader.read();
+      if (done) {
+        return 0;
+      }
 
-    if (done) {
-      return 0;
+      this.currentChunk = value;
+      this.currentChunkOffset = 0;
+    }
+
+    let remainingData = this.currentChunk.length - this.currentChunkOffset;
+    console.log({ remainingData, chunk: this.currentChunk, offset: this.currentChunkOffset });
+    if (remainingData > data.length) {
+      data.set(
+        this.currentChunk.slice(this.currentChunkOffset, this.currentChunkOffset + data.length),
+      );
+      this.currentChunkOffset += data.length;
+      return data.length;
     } else {
-      data.set(value);
-      console.log('READ', done, value, data);
+      data.set(this.currentChunk.slice(this.currentChunkOffset));
+      let dataWritten = this.currentChunk.length - this.currentChunkOffset;
 
-      return value.byteLength;
+      this.currentChunkOffset += this.currentChunk.length - this.currentChunkOffset;
+      return dataWritten;
     }
   }
 }

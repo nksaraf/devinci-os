@@ -1,6 +1,7 @@
 export * from './comlink';
 
 import type { MockedRequest, MockedResponse } from 'msw';
+import Stats from 'os/kernel/fs/core/stats';
 import { transferHandlers } from './comlink';
 
 export class Channel {
@@ -53,6 +54,53 @@ transferHandlers.set('EVENT', {
     ];
   },
   deserialize: (obj: any) => new CustomEvent(obj.type, { detail: obj.detail }),
+});
+
+transferHandlers.set('STAT', {
+  canHandle: (value: any): value is Stats => value instanceof Stats,
+  serialize: (value: Stats): [any, Transferable[]] => [
+    {
+      dev: value.dev,
+      ino: value.ino,
+      mode: value.mode,
+      size: value.size,
+      mtime: value.mtime,
+      atime: value.atime,
+      isFile: value.isFile,
+      isDirectory: value.isDirectory,
+    },
+    [],
+  ],
+  deserialize: (value: any): Stats =>
+    new Stats(value.mode & constants.fs.S_IFMT, value.size, value.mode, value.atime, value.mtime),
+});
+
+transferHandlers.set('STATS', {
+  canHandle: (value: any): value is Stats => Array.isArray(value) && value[0] instanceof Stats,
+  serialize: (v: Stats[]): [any, Transferable[]] => [
+    v.map((value) => ({
+      dev: value.dev,
+      ino: value.ino,
+      mode: value.mode,
+      size: value.size,
+      mtime: value.mtime,
+      atime: value.atime,
+      isFile: value.isFile,
+      isDirectory: value.isDirectory,
+    })),
+    [],
+  ],
+  deserialize: (v: any): Stats[] =>
+    v.map(
+      (value) =>
+        new Stats(
+          value.mode & constants.fs.S_IFMT,
+          value.size,
+          value.mode,
+          value.atime,
+          value.mtime,
+        ),
+    ),
 });
 
 function serializeHeaders(headers) {

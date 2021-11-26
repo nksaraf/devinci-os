@@ -361,7 +361,6 @@ function createProxy<T>(
   target: object = function () {},
 ): Remote<T> {
   let isProxyReleased = false;
-  console.log('creting proxy', ep, path, target);
   const proxy = new Proxy(target, {
     get(_target, prop) {
       throwIfProxyReleased(isProxyReleased);

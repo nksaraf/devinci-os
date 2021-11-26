@@ -1,5 +1,5 @@
 import type { SetupWorkerApi } from 'msw';
-import { setupWorker } from 'msw';
+// import { setupWorker } from 'msw';
 
 declare global {
   interface Navigator {
@@ -12,18 +12,7 @@ export class Network {
 
   static async ensureConnected() {
     if (!Network.worker) {
-      await Network.connect();
+      // await Network.connect();
     }
-  }
-
-  static async connect() {
-    Network.worker = setupWorker();
-
-    return await Network.worker.start({
-      onUnhandledRequest: 'bypass',
-      serviceWorker: {
-        url: '/deno-sw.js',
-      },
-    });
   }
 }

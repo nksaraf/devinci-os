@@ -3,7 +3,7 @@ import { createFileSystemBackend, VirtualFileSystem } from '../kernel/fs/create-
 import * as path from 'path';
 import { constants } from '../kernel/kernel/constants';
 import type { Kernel } from './denix/denix';
-import { Linker } from './linker/Linker';
+import type { Linker } from './linker/Linker';
 
 export type Context = typeof globalThis;
 
@@ -31,6 +31,7 @@ export class DenoIsolate extends EventTarget {
   core: IDenoCore;
 
   wasmStreamingCallback;
+  Deno: typeof Deno;
 
   constructor() {
     super();
@@ -99,7 +100,7 @@ export class DenoIsolate extends EventTarget {
     this.core.syncOpsCache();
 
     // this.host.setOpsResolve(this.id);
-    context.bootstrap.mainRuntime({
+    await context.bootstrap.mainRuntime({
       target: 'arm64-devinci-darwin-dev',
       debugFlag: true,
       noColor: false,
@@ -108,8 +109,7 @@ export class DenoIsolate extends EventTarget {
       // ...options,
     });
 
-    this.linker = new Linker();
-    this.linker.fs = kernel.fs;
+    this.Deno = this.context.Deno;
 
     Object.assign(this.context, {
       WebAssembly: {
@@ -136,13 +136,15 @@ export class DenoIsolate extends EventTarget {
       },
     });
 
-    Object.assign(this.context, {
-      require: (src) => {
-        this.linker.require(src, this.context);
-      },
-    });
+    // Object.assign(this.context, {
+    //   require: (src) => {
+    //     this.linker.require(src, this.context);
+    //   },
+    // });
 
-    await this.linker.init();
+    // this.linker = new Linker();
+    // this.linker.fs = kernel.fs;
+    // await this.linker.init();
   }
 
   async eval(source: string, options: {} = {}) {
@@ -150,6 +152,30 @@ export class DenoIsolate extends EventTarget {
   }
 
   async run(path: string, options: {} = {}) {
+    if (path.endsWith('.wasm')) {
+      const { default: Context } = await import(
+        'https://deno.land/std@0.115.1/wasi/snapshot_preview1.ts'
+      );
+
+      const context = new Context({
+        args: ['exa', '-al', 'lib/deno'],
+        env: Deno.env.toObject(),
+        preopens: {
+          '/lib': '/lib',
+          '/lib/deno': '/lib/deno',
+        },
+      });
+
+      const wasm = await WebAssembly.compileStreaming(fetch(path));
+
+      let instance = await WebAssembly.instantiate(wasm, {
+        wasi_snapshot_preview1: context.exports,
+      });
+
+      await context.start(instance);
+      return;
+    }
+
     return await this.linker.evalScript(path, this.context);
   }
 }
@@ -157,20 +183,34 @@ export class DenoIsolate extends EventTarget {
 type DenoBootstrapCore = any;
 
 async function loadDenoBootstrapper(core: DenoBootstrapCore, fs: VirtualFileSystem) {
-  await mountDenoLib(fs);
+  async function evalBootstrapModule(src: string, context) {
+    return await new Promise((res, rej) => {
+      fs.readdir(src, (err, files) => {
+        if (err) rej(err);
 
-  function evalBootstrapModule(src: string, context) {
-    fs.readdirSync(src).forEach((path) => {
-      if (path.endsWith('.js') && !Number.isNaN(Number(path[0]))) {
-        evalScript(`${src}/${path}`, context);
-      }
+        (async function () {
+          for (let path of files) {
+            if (path.endsWith('.js') && !Number.isNaN(Number(path[0]))) {
+              await evalScript(`${src}/${path}`, context);
+            }
+          }
+        })()
+          .then(res)
+          .catch(rej);
+      });
     });
   }
 
-  function evalScript(src, context) {
+  async function evalScript(src, context) {
     console.time('evaluating ' + src);
-    evalWithContext(fs.readFileSync(src, 'utf-8', constants.fs.O_RDONLY), context);
-    console.timeEnd('evaluating ' + src);
+    return await new Promise((res, rej) => {
+      fs.readFile(src, 'utf-8', constants.fs.O_RDONLY, (err, rv) => {
+        if (err) rej(err);
+        evalWithContext(rv, context);
+        console.timeEnd('evaluating ' + src);
+        res(undefined);
+      });
+    });
   }
 
   let denoGlobal = getGlobalThis(core);
@@ -192,27 +232,27 @@ async function loadDenoBootstrapper(core: DenoBootstrapCore, fs: VirtualFileSyst
   denoGlobal.global = denoGlobal;
 
   // core
-  evalBootstrapModule('/lib/deno/core', globalContext);
+  await evalBootstrapModule('/lib/deno/core', globalContext);
 
   // extensions
-  evalBootstrapModule('/lib/deno/ext/console', globalContext);
-  evalBootstrapModule('/lib/deno/ext/webidl', globalContext);
-  evalBootstrapModule('/lib/deno/ext/url', globalContext);
-  evalBootstrapModule('/lib/deno/ext/web', globalContext);
-  evalBootstrapModule('/lib/deno/ext/fetch', globalContext);
-  evalBootstrapModule('/lib/deno/ext/websocket', globalContext);
-  evalBootstrapModule('/lib/deno/ext/webstorage', globalContext);
-  evalBootstrapModule('/lib/deno/ext/net', globalContext);
-  evalBootstrapModule('/lib/deno/ext/timers', globalContext);
-  evalBootstrapModule('/lib/deno/ext/crypto', globalContext);
-  evalBootstrapModule('/lib/deno/ext/broadcast_channel', globalContext);
-  evalBootstrapModule('/lib/deno/ext/ffi', globalContext);
-  evalBootstrapModule('/lib/deno/ext/http', globalContext);
-  evalBootstrapModule('/lib/deno/ext/tls', globalContext);
-  evalBootstrapModule('/lib/deno/ext/webgpu', globalContext);
+  await evalBootstrapModule('/lib/deno/ext/console', globalContext);
+  await evalBootstrapModule('/lib/deno/ext/webidl', globalContext);
+  await evalBootstrapModule('/lib/deno/ext/url', globalContext);
+  await evalBootstrapModule('/lib/deno/ext/web', globalContext);
+  await evalBootstrapModule('/lib/deno/ext/fetch', globalContext);
+  await evalBootstrapModule('/lib/deno/ext/websocket', globalContext);
+  await evalBootstrapModule('/lib/deno/ext/webstorage', globalContext);
+  await evalBootstrapModule('/lib/deno/ext/net', globalContext);
+  await evalBootstrapModule('/lib/deno/ext/timers', globalContext);
+  await evalBootstrapModule('/lib/deno/ext/crypto', globalContext);
+  await evalBootstrapModule('/lib/deno/ext/broadcast_channel', globalContext);
+  await evalBootstrapModule('/lib/deno/ext/ffi', globalContext);
+  await evalBootstrapModule('/lib/deno/ext/http', globalContext);
+  await evalBootstrapModule('/lib/deno/ext/tls', globalContext);
+  await evalBootstrapModule('/lib/deno/ext/webgpu', globalContext);
 
   // Deno runtime + Web globals (lot of them are coming from utilities)
-  evalBootstrapModule('/lib/deno/runtime/js', globalContext);
+  await evalBootstrapModule('/lib/deno/runtime/js', globalContext);
 
   return globalContext as Context;
 }
@@ -287,7 +327,7 @@ function getGlobalThis(core: any) {
   };
 }
 
-async function mountDenoLib(fs: VirtualFileSystem) {
+export async function mountDenoLib(fs: VirtualFileSystem) {
   let testFS = await createFileSystemBackend(HTTPRequest, {
     baseUrl: 'http://localhost:8999/',
     index: 'http://localhost:8999/index.json',

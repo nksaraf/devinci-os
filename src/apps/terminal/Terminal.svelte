@@ -7,22 +7,20 @@
   import { TTY, Xterm } from 'os/kernel/kernel/tty';
   import { proxy } from 'comlink';
   import { DenoWorker } from 'os/deno/DenoWorker';
-  import { DenoREPL, Desh } from './desh';
-  import SQLiteWorker from './sqlite.worker?worker';
-  import { initBackend } from 'absurd-sql/dist/indexeddb-main-thread';
+  import { Desh } from './desh';
   let divEl: HTMLDivElement = null;
 
-  import scriptURL from './execute.ts?raw';
   import { getWAPMUrlForCommandName } from './wapm';
 
   onMount(() => {
     const worker = new DenoWorker();
+
     const terminal = new Xterm();
     const tty = new TTY(terminal);
     const shell = new Desh(tty, worker.isolate);
 
     (async () => {
-      await worker.isolate.attach();
+      await worker.ready();
       await worker.isolate.kernel.addEventListener(
         'stdout',
         proxy((ev) => {
@@ -31,16 +29,6 @@
       );
 
       await worker.isolate.run(await getWAPMUrlForCommandName('exa'));
-
-      // function init() {
-      //   let worker = new SQLiteWorker();
-      //   // This is only required because Safari doesn't support nested
-      //   // workers. This installs a handler that will proxy creating web
-      //   // workers through the main thread
-      //   initBackend(worker);
-      // }
-
-      // init();
 
       // await worker.Deno.writeTextFile('/script.ts', scriptURL);
       // await worker.isolate.run('/script.ts');

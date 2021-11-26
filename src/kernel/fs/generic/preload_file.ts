@@ -55,8 +55,8 @@ export default abstract class InMemoryFile<T extends IFileSystem>
   /**
    * NONSTANDARD: Get the underlying buffer for this file. !!DO NOT MUTATE!! Will mess up dirty tracking.
    */
-  public getBuffer(): Buffer {
-    return this._buffer;
+  public getBuffer(cb): Buffer {
+    return cb(null, this._buffer);
   }
 
   public getBufferSync(): Buffer {

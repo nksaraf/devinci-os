@@ -1,4 +1,4 @@
-import { expose } from './deno/comlink';
+import { expose } from './comlink';
 import * as suc from 'sucrase';
 
 expose({

@@ -5,6 +5,8 @@ import type { File } from 'os/kernel/fs/core/file';
 import { constants } from 'os/kernel/kernel/constants';
 import { Buffer } from 'buffer';
 import path from 'path-browserify';
+import { newPromise } from 'os/deno/util';
+import { remoteFS } from 'os/deno/fs';
 
 export interface DirEntry {
   name: string;
@@ -80,37 +82,17 @@ export const fsOps = [
 
   op_async('op_fstat_async', async function (this: Kernel, rid) {
     let file = this.getResource(rid) as FileResource;
-    let stat = file.file.statSync();
-    return {
-      size: stat.size,
-      mode: stat.mode,
-      isFile: stat.isFile(),
-      isDirectory: stat.isDirectory(),
-      isSymbolicLink: stat.isSymbolicLink(),
-    };
+    return file.file.statSync();
   }),
 
   op_sync('op_fstat_sync', function (this: Kernel, rid) {
     let file = this.getResource(rid) as FileResource;
-    let stat = file.file.statSync();
-    return {
-      size: stat.size,
-      mode: stat.mode,
-      isFile: stat.isFile(),
-      isDirectory: stat.isDirectory(),
-      isSymbolicLink: stat.isSymbolicLink(),
-    };
+    return file.file.statSync();
   }),
 
   op_async('op_stat_async', async function (this: Kernel, { path, lstat }) {
     let stat = this.fs.statSync(getAbsolutePath(path, this), lstat);
-    return {
-      size: stat.size,
-      mode: stat.mode,
-      isFile: stat.isFile(),
-      isDirectory: stat.isDirectory(),
-      isSymbolicLink: stat.isSymbolicLink(),
-    };
+    return stat;
   }),
 
   op_sync('op_seek_sync', function (this: Kernel, { rid, offset, whence }) {
@@ -121,13 +103,7 @@ export const fsOps = [
   op_sync('op_stat_sync', function (this: Kernel, { path, lstat }) {
     let stat = this.fs.statSync(getAbsolutePath(path, this), lstat);
     console.log(stat);
-    return {
-      size: stat.size,
-      mode: stat.mode,
-      isFile: stat.isFile(),
-      isDirectory: stat.isDirectory(),
-      isSymbolicLink: stat.isSymbolicLink(),
-    };
+    return stat;
   }),
   op_sync('op_remove_sync', function (this: Kernel, { path }) {
     this.fs.unlinkSync(getAbsolutePath(path, this));
@@ -137,15 +113,39 @@ export const fsOps = [
   }),
 
   op_async('op_read_dir_async', async function (this: Kernel, dirPath: string) {
-    return this.fs.readdirSync(dirPath).map((p) => {
-      let stat = this.fs.statSync(path.join(dirPath, p), false);
-      return {
-        name: p,
-        isFile: stat.isFile(),
-        isDirectory: stat.isDirectory(),
-        isSymbolicLink: stat.isSymbolicLink(),
-      };
-    });
+    return await remoteFS.proxy.readDir(dirPath);
+    // return new Promise((res, rej) => {
+    //   // this.fs.readdir(dirPath, (e, d) => {
+    //   //   if (e) {
+    //   //     throw e;
+    //   //   }
+
+    //   //   (async () => {
+    //   //     res(
+    //   //       await Promise.all(
+    //   //         d.map((p) => {
+    //   //           const prom = newPromise();
+    //   //           debugger;
+    //   //           this.fs.stat(path.join(dirPath, p), false, (e, stat) => {
+    //   //             if (e) {
+    //   //               prom.reject(e);
+    //   //             }
+
+    //   //             console.log(stat);
+
+    //   //             prom.resolve({
+    //   //               name: p,
+    //   //               isFile: stat.isFile,
+    //   //               isDirectory: stat.isDirectory,
+    //   //             });
+    //   //           });
+    //   //           return prom.promise;
+    //   //         }),
+    //   //       ),
+    //   //     );
+    //   //   })();
+    //   // });
+    // });
   }),
 
   op_sync('op_read_dir_sync', function (this: Kernel, dirPath: string) {
@@ -153,9 +153,9 @@ export const fsOps = [
       let stat = this.fs.statSync(path.join(dirPath, p), false);
       return {
         name: p,
-        isFile: stat.isFile(),
-        isDirectory: stat.isDirectory(),
-        isSymbolicLink: stat.isSymbolicLink(),
+        isFile: stat.isFile,
+        isDirectory: stat.isDirectory,
+        isSymbolicLink: stat.isSymbolicLink,
       };
     });
   }),

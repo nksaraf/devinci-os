@@ -347,7 +347,7 @@ export class SyncKeyValueFile extends InMemoryFile<SyncKeyValueFileSystem> imple
 
   public syncSync(): void {
     if (this.isDirty()) {
-      this._fs._syncSync(this.getPath(), this.getBuffer(), this.getStats());
+      this._fs._syncSync(this.getPath(), this.getBufferSync(), this.getStats());
       this.resetDirty();
     }
   }

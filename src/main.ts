@@ -1,5 +1,7 @@
+import { deno, Deno } from './deno';
 import 'uno.css';
 import '@ui/css/global.scss';
+
 import MacOS from 'os/ui/OS/OS.svelte';
 import calculator from 'os/apps/calculator/calculator';
 import calendar from 'os/apps/calendar/calendar';
@@ -9,13 +11,8 @@ import terminal from 'os/apps/terminal/terminal';
 import vscode from 'os/apps/vscode/vscode';
 import wallpaper from 'os/apps/wallpaper/wallpaper';
 import { createAppConfig, installApp } from './stores/apps.store';
-import { Kernel, ServiceWorker } from './deno/denix/denix';
-import { constants } from 'os/kernel/kernel/constants';
-import Global from './kernel/global';
-import { Network } from './deno/denix/network';
-import { rest } from 'msw';
-import TranspileWorker from './transpiler?worker';
-import { wrap } from './deno/comlink';
+import { getWAPMUrlForCommandName } from './apps/terminal/wapm';
+import { DenoWorker } from './deno/DenoWorker';
 
 installApp(finder());
 installApp(calculator());
@@ -38,61 +35,14 @@ installApp(
   }),
 );
 
-export const initKernel = async () => {
-  console.log(new ReadableStream());
-  console.log('booting Kernel');
+console.log('🦕 Deno is ready!', Deno.version);
 
-  const denix = await Kernel.create();
-  await Network.connect();
-  createLocalNetwork();
+console.log(JSON.parse(await (await deno.context.fetch('file:///lib/deno/index.json')).text()));
 
-  // Network.handle('http://localhost/src/*', async (request) => {});
-
-  Global.fs = denix.fs;
-  denix.fs.writeFileSync('/hello.txt', 'Hello World', 'utf-8', constants.fs.O_RDWR, 0x644);
-
-  // await w1.run('https://deno.land/std@0.115.1/http/file_server.ts');
-
-  // let w2 = wrap<DenoWorker>(new DenoWebWorker());
-  // await w1.init();
-  // await w1.run('https://deno.land/std@0.115.1/http/file_server.ts');
-  // let { connect } = wrap<{ connect: () => Channel }>(w);
-
-  // ui thread
-  // let channel = await connect();
-  // let channelApi = wrap(channel.portToWrap);
-  // expose(denix, channel.portToWrap);
-  // console.log(await (await fetch('http://localhost:4507')).text());
-  //
-
-  return denix;
-};
-
-initKernel()
-  .then(() => {})
-  .finally(() => {
-    new MacOS({
-      target: document.getElementById('root'),
-    });
-    // createVSCode(document.getElementById('root'), {});
+function render(target: HTMLElement) {
+  new MacOS({
+    target: target,
   });
-
-function createLocalNetwork() {
-  const transpiler = wrap<{ transpile(data: ArrayBuffer | ReadableStream): string }>(
-    new TranspileWorker(),
-  );
-
-  Network.worker.use(
-    rest.get('https://deno.land/std*', async (req, res, ctx) => {
-      const orig = await ctx.fetch(req);
-      let data = await transpiler.transpile(orig.body);
-      return res(ctx.body(data), ctx.set('Content-Type', 'application/javascript'));
-    }),
-  );
 }
-// initKernel().then((kernel) => {
-// console.log(kernel);
-// const desktop = new MacOS({
-//   target: document.getElementById('root'),
-// });
-// // });
+
+render(document.getElementById('root'));

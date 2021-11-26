@@ -3,6 +3,7 @@
 
   import { onMount } from 'svelte';
   import FinderItem from './FinderItem.svelte';
+  import { Deno } from 'os/deno';
 
   export let cellWidth = 128,
     cellHeight = 140,
@@ -19,14 +20,17 @@
   let items = [];
 
   async function readFiles(directory) {
-    items = fs.readdirSync(directory).map((file) => {
-      let stats = fs.statSync(`${directory}/${file}`, false);
-      return {
-        name: file,
-        path: path.join(directory, file),
-        stats: stats,
-      };
-    });
+    for await (var entry of Deno.readDir(directory)) {
+      if (entry.isFile) {
+        items.push(entry, await Deno.stat(path.join(directory, entry.name)));
+      }
+      // let stats = await Deno.stat(`${directory}/${file}`, false);
+      // return {
+      //   name: file,
+      //   path: path.join(directory, file),
+      //   stats: stats,
+      // };
+    }
   }
 
   // onMount(() => {

@@ -4,7 +4,7 @@
 
 import { ApiError, ErrorCode } from '../core/api_error';
 import type { CallbackTwoArgs } from '../core/file_system';
-
+import { Buffer } from 'buffer';
 export const fetchIsAvailable = typeof fetch !== 'undefined' && fetch !== null;
 
 /**
