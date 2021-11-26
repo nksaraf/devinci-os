@@ -1,10 +1,5 @@
 import { BaseFileSystem } from '../core/file_system';
-import type {
-  IFileSystem,
-  CallbackOneArg,
-  CallbackTwoArgs,
-  FileSystemOptions,
-} from '../core/file_system';
+import type { IFileSystem, FileSystemOptions } from '../core/file_system';
 import InMemoryFileSystem from './InMemory';
 import { ApiError, ErrorCode } from '../core/api_error';
 import * as path from 'path';
@@ -68,26 +63,6 @@ export default class MountableFileSystem extends BaseFileSystem implements IFile
   /**
    * Creates a MountableFileSystem instance with the given options.
    */
-  public static Create(
-    opts: MountableFileSystemOptions,
-    cb: CallbackTwoArgs<MountableFileSystem>,
-  ): void {
-    InMemoryFileSystem.Create({}, (e, imfs?) => {
-      if (imfs) {
-        const fs = new MountableFileSystem(imfs);
-        try {
-          Object.keys(opts).forEach((mountPoint: string) => {
-            fs.mount(mountPoint, opts[mountPoint]);
-          });
-        } catch (e) {
-          return cb(e);
-        }
-        cb(null, fs);
-      } else {
-        cb(e);
-      }
-    });
-  }
   public static isAvailable(): boolean {
     return true;
   }
@@ -170,7 +145,7 @@ export default class MountableFileSystem extends BaseFileSystem implements IFile
   // Global information methods
 
   public getName(): string {
-    return MountableFileSystem.Name;
+    return 'MountableFileSystem';
   }
 
   public diskSpace(path: string, cb: (total: number, free: number) => void): void {
@@ -214,30 +189,26 @@ export default class MountableFileSystem extends BaseFileSystem implements IFile
   // Note that we go through the Node API to use its robust default argument
   // processing.
 
-  public rename(oldPath: string, newPath: string, cb: CallbackOneArg): void {
+  public async rename(oldPath: string, newPath: string): Promise<void> {
     // Scenario 1: old and new are on same FS.
     const fs1rv = this._getFs(oldPath);
     const fs2rv = this._getFs(newPath);
-    if (fs1rv.fs === fs2rv.fs) {
-      return fs1rv.fs.rename(fs1rv.path, fs2rv.path, (e?: ApiError) => {
-        if (e) {
-          this.standardizeError(this.standardizeError(e, fs1rv.path, oldPath), fs2rv.path, newPath);
-        }
-        cb(e);
-      });
-    }
 
-    fs1rv.fs.readFile(oldPath, 'utf8', 'r', (err: ApiError, data?: any) => {
-      if (err) {
-        return cb(err);
+    try {
+      if (fs1rv.fs === fs2rv.fs) {
+        await fs1rv.fs.rename(fs1rv.path, fs2rv.path);
+      } else {
+        let data = await fs1rv.fs.readFile(oldPath, 'utf8', constants.fs.O_RDWR);
+        await fs2rv.fs.writeFile(newPath, data, 'utf8', constants.fs.O_RDWR, undefined);
+        await fs1rv.fs.unlink(oldPath);
       }
-      fs2rv.fs.writeFile(newPath, data, 'utf8', 'w', undefined, function (err: ApiError) {
-        if (err) {
-          return cb(err);
-        }
-        fs1rv.fs.unlink(oldPath, cb);
-      });
-    });
+    } catch (e) {
+      throw this.standardizeError(
+        this.standardizeError(e, fs1rv.path, oldPath),
+        fs2rv.path,
+        newPath,
+      );
+    }
   }
 
   public renameSync(oldPath: string, newPath: string): void {
@@ -293,12 +264,14 @@ export default class MountableFileSystem extends BaseFileSystem implements IFile
     }
   }
 
-  public readdir(p: string, cb: CallbackTwoArgs<string[]>): void {
+  public async readdir(p: string): Promise<string[]> {
     const fsInfo = this._getFs(p);
-    fsInfo.fs.readdir(fsInfo.path, (err, files) => {
+    try {
+      let files = await fsInfo.fs.readdir(fsInfo.path);
+
       if (fsInfo.fs !== this.rootFs) {
         try {
-          const rv = this.rootFs.readdirSync(p);
+          const rv = await this.rootFs.readdir(p);
           if (files) {
             // Filter out duplicates.
             files = files.concat(rv.filter((val) => files!.indexOf(val) === -1));
@@ -306,18 +279,13 @@ export default class MountableFileSystem extends BaseFileSystem implements IFile
             files = rv;
           }
         } catch (e) {
-          // Root FS and target FS did not have directory.
-          if (err) {
-            return cb(this.standardizeError(err, fsInfo.path, p));
-          }
+          // Ignore.
         }
-      } else if (err) {
-        // Root FS and target FS are the same, and did not have directory.
-        return cb(this.standardizeError(err, fsInfo.path, p));
       }
-
-      cb(null, files);
-    });
+      return files;
+    } catch (err) {
+      throw this.standardizeError(err, fsInfo.path, p);
+    }
   }
 
   public realpathSync(p: string, cache: { [path: string]: string }): string {
@@ -332,7 +300,7 @@ export default class MountableFileSystem extends BaseFileSystem implements IFile
     }
   }
 
-  public realpath(p: string, cache: { [path: string]: string }, cb: CallbackTwoArgs<string>): void {
+  public realpath(p: string, cache: { [path: string]: string }): Promise<string> {
     const fsInfo = this._getFs(p);
 
     fsInfo.fs.realpath(fsInfo.path, {}, (err, rv) => {
@@ -358,14 +326,16 @@ export default class MountableFileSystem extends BaseFileSystem implements IFile
     }
   }
 
-  public rmdir(p: string, cb: CallbackOneArg): void {
+  public async rmdir(p: string): Promise<void> {
     const fsInfo = this._getFs(p);
     if (this._containsMountPt(p)) {
-      cb(ApiError.ENOTEMPTY(p));
-    } else {
-      fsInfo.fs.rmdir(fsInfo.path, (err?) => {
-        cb(err ? this.standardizeError(err, fsInfo.path, p) : null);
-      });
+      throw ApiError.ENOTEMPTY(p);
+    }
+
+    try {
+      await fsInfo.fs.rmdir(fsInfo.path);
+    } catch (e) {
+      throw this.standardizeError(e, fsInfo.path, p);
     }
   }
 

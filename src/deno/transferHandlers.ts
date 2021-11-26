@@ -2,7 +2,6 @@ import type { TransferHandler } from './comlink';
 import type { WireValue } from './comlink/protocol';
 import { WireValueType } from './comlink/protocol';
 import Stats from 'os/kernel/fs/core/stats';
-import { constants } from 'os/kernel/kernel/constants';
 
 const transferHandlers = new Map<string, TransferHandler<unknown, unknown>>();
 transferHandlers.set('STATS', {
@@ -13,15 +12,16 @@ transferHandlers.set('STATS', {
       ino: value.ino,
       mode: value.mode,
       size: value.size,
-      mtime: value.mtime,
-      atime: value.atime,
+      mtime: value.mtimeMs,
+      atime: value.atimeMs,
       isFile: value.isFile,
       isDirectory: value.isDirectory,
+      itemType: value.itemType,
     },
     [],
   ],
   deserialize: (value: any): Stats =>
-    new Stats(value.mode & constants.fs.S_IFMT, value.size, value.mode, value.atime, value.mtime),
+    new Stats(value.itemType, value.size, undefined, value.atime, value.mtime),
 });
 
 export function fromWireValue(val: WireValue) {
@@ -30,7 +30,8 @@ export function fromWireValue(val: WireValue) {
   }
 
   if (val.type === WireValueType.HANDLER) {
-    return transferHandlers[val.name].deserialize(val);
+    console.log(transferHandlers);
+    return transferHandlers.get(val.name).deserialize(val.value);
   }
 }
 

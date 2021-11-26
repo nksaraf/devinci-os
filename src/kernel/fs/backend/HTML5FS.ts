@@ -137,7 +137,7 @@ export class HTML5FSFile extends InMemoryFile<HTML5FS> implements IFile {
     this._entry = entry;
   }
 
-  public sync(cb: CallbackOneArg): void {
+  public async sync(): Promise<void> {
     if (!this.isDirty()) {
       return cb();
     }
@@ -160,7 +160,7 @@ export class HTML5FSFile extends InMemoryFile<HTML5FS> implements IFile {
     });
   }
 
-  public close(cb: CallbackOneArg): void {
+  public async close(): Promise<void> {
     this.sync(cb);
   }
 }
@@ -281,7 +281,7 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
     });
   }
 
-  public rename(oldPath: string, newPath: string, cb: CallbackOneArg): void {
+  public async rename(oldPath: string, newPath: string): Promise<void> {
     let semaphore: number = 2;
     let successCount: number = 0;
     const root: DirectoryEntry = this.fs.root;
@@ -351,7 +351,7 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
     root.getDirectory(oldPath, {}, success, error);
   }
 
-  public stat(path: string, isLstat: boolean, cb: CallbackTwoArgs<Stats>): void {
+  public stat(path: string, isLstat: boolean): Promise<Stats> {
     // Throw an error if the entry doesn't exist, because then there's nothing
     // to stat.
     const opts = {
@@ -388,7 +388,7 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
     this.fs.root.getFile(path, opts, loadAsFile, failedToLoadAsFile);
   }
 
-  public open(p: string, flags: FileFlagString, mode: number, cb: CallbackTwoArgs<IFile>): void {
+  public open(p: string, flags: FileFlagString, mode: number): Promise<IFile> {
     // XXX: err is a DOMError
     const error = (err: any): void => {
       if (err.name === 'InvalidModificationError' && isExclusive(flags)) {
@@ -422,11 +422,11 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
     );
   }
 
-  public unlink(path: string, cb: CallbackOneArg): void {
+  public async unlink(path: string): Promise<void> {
     this._remove(path, cb, true);
   }
 
-  public rmdir(path: string, cb: CallbackOneArg): void {
+  public async rmdir(path: string): Promise<void> {
     // Check if directory is non-empty, first.
     this.readdir(path, (e, files?) => {
       if (e) {
@@ -439,7 +439,7 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
     });
   }
 
-  public mkdir(path: string, mode: number, cb: CallbackOneArg): void {
+  public async mkdir(path: string, mode: number): Promise<void> {
     // Create the directory, but throw an error if it already exists, as per
     // mkdir(1)
     const opts = {
@@ -458,7 +458,7 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
   /**
    * Map _readdir's list of `FileEntry`s to their names and return that.
    */
-  public readdir(path: string, cb: CallbackTwoArgs<string[]>): void {
+  public readdir(path: string): Promise<string[]> {
     this._readdir(path, (e: ApiError, entries?: Entry[]): void => {
       if (entries) {
         const rv: string[] = [];
@@ -522,7 +522,7 @@ export default class HTML5FS extends BaseFileSystem implements IFileSystem {
   /**
    * Requests a storage quota from the browser to back this FS.
    */
-  private _allocate(cb: CallbackOneArg): void {
+  private _async allocate(): Promise<void> {
     const success = (fs: FileSystem): void => {
       this.fs = fs;
       cb();

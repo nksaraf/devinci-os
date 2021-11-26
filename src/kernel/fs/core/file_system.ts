@@ -8,17 +8,13 @@ import {
   ActionType,
 } from './file_flag';
 import * as path from 'path';
-import { fail } from './util';
+import { mkdirpSync } from './util';
 import { Buffer } from 'buffer';
 // import wasmUrl from 'asc:./fs.asm';
 
 // WebAssembly.instantiateStreaming(fetch(wasmUrl), {}).then(({ instance }) =>
 //   console.log(instance.exports.add(40, 2)),
 // );
-
-export type CallbackOneArg = (e?: ApiError | null) => any;
-export type CallbackTwoArgs<T> = (e: ApiError | null | undefined, rv?: T) => any;
-export type CallbackThreeArgs<T, U> = (e: ApiError | null | undefined, arg1?: T, arg2?: U) => any;
 
 /**
  * Interface for a filesystem. **All** BrowserFS FileSystems should implement
@@ -114,7 +110,7 @@ export interface IFileSystem {
    * **Core**: Asynchronous rename. No arguments other than a possible exception
    * are given to the completion callback.
    */
-  rename(oldPath: string, newPath: string, cb: CallbackOneArg): void;
+  rename(oldPath: string, newPath: string): Promise<void>;
   /**
    * **Core**: Synchronous rename.
    */
@@ -124,7 +120,7 @@ export interface IFileSystem {
    * @param isLstat True if this is `lstat`, false if this is regular
    *   `stat`.
    */
-  stat(p: string, isLstat: boolean | null, cb: CallbackTwoArgs<Stats>): void;
+  stat(p: string, isLstat: boolean | null): Promise<Stats>;
   /**
    * **Core**: Synchronous `stat` or `lstat`.
    * @param isLstat True if this is `lstat`, false if this is regular
@@ -140,7 +136,7 @@ export interface IFileSystem {
    * @param mode Mode to use to open the file. Can be ignored if the
    *   filesystem doesn't support permissions.
    */
-  open(p: string, flag: FileFlagString, mode: number, cb: CallbackTwoArgs<File>): void;
+  open(p: string, flag: FileFlagString, mode: number): Promise<File>;
   /**
    * **Core**: Synchronous file open.
    * @see http://www.manpagez.com/man/2/open/
@@ -153,7 +149,7 @@ export interface IFileSystem {
   /**
    * **Core**: Asynchronous `unlink`.
    */
-  unlink(p: string, cb: CallbackOneArg): void;
+  unlink(p: string): Promise<void>;
   /**
    * **Core**: Synchronous `unlink`.
    */
@@ -162,7 +158,7 @@ export interface IFileSystem {
   /**
    * **Core**: Asynchronous `rmdir`.
    */
-  rmdir(p: string, cb: CallbackOneArg): void;
+  rmdir(p: string): Promise<void>;
   /**
    * **Core**: Synchronous `rmdir`.
    */
@@ -172,20 +168,20 @@ export interface IFileSystem {
    * @param mode Mode to make the directory using. Can be ignored if
    *   the filesystem doesn't support permissions.
    */
-  mkdir(p: string, mode: number, options: { recursive: boolean }, cb: CallbackOneArg): void;
+  mkdir(p: string, mode: number): Promise<void>;
   /**
    * **Core**: Synchronous `mkdir`.
    * @param mode Mode to make the directory using. Can be ignored if
    *   the filesystem doesn't support permissions.
    */
-  mkdirSync(p: string, mode: number, options: { recursive: boolean }): void;
+  mkdirSync(p: string, mode: number): void;
   /**
    * **Core**: Asynchronous `readdir`. Reads the contents of a directory.
    *
    * The callback gets two arguments `(err, files)` where `files` is an array of
    * the names of the files in the directory excluding `'.'` and `'..'`.
    */
-  readdir(p: string, cb: CallbackTwoArgs<string[]>): void;
+  readdir(p: string): Promise<string[]>;
   /**
    * **Core**: Synchronous `readdir`. Reads the contents of a directory.
    */
@@ -196,7 +192,7 @@ export interface IFileSystem {
    * **Supplemental**: Test whether or not the given path exists by checking with
    * the file system. Then call the callback argument with either true or false.
    */
-  exists(p: string, cb: (exists: boolean) => void): void;
+  exists(p: string): Promise<boolean>;
   /**
    * **Supplemental**: Test whether or not the given path exists by checking with
    * the file system.
@@ -211,7 +207,7 @@ export interface IFileSystem {
    *   force a specific path resolution or avoid additional `fs.stat` calls for
    *   known real paths. If not supplied by the user, it'll be an empty object.
    */
-  realpath(p: string, cache: { [path: string]: string }, cb: CallbackTwoArgs<string>): void;
+  realpath(p: string, cache: { [path: string]: string }): Promise<string>;
   /**
    * **Supplemental**: Synchronous `realpath`.
    *
@@ -225,7 +221,7 @@ export interface IFileSystem {
   /**
    * **Supplemental**: Asynchronous `truncate`.
    */
-  truncate(p: string, len: number, cb: CallbackOneArg): void;
+  truncate(p: string, len: number): Promise<void>;
   /**
    * **Supplemental**: Synchronous `truncate`.
    */
@@ -237,12 +233,7 @@ export interface IFileSystem {
    *   the file's contents as a Buffer.
    * @param cb If no encoding is specified, then the raw buffer is returned.
    */
-  readFile(
-    fname: string,
-    encoding: string | null,
-    flag: FileFlagString,
-    cb: CallbackTwoArgs<string | Buffer>,
-  ): void;
+  readFile(fname: string, encoding: string | null, flag: FileFlagString): Promise<string | Buffer>;
   /**
    * **Supplemental**: Synchronously reads the entire contents of a file.
    * @param encoding If non-null, the file's contents should be decoded
@@ -262,8 +253,7 @@ export interface IFileSystem {
     encoding: string | null,
     flag: FileFlagString,
     mode: number,
-    cb: CallbackOneArg,
-  ): void;
+  ): Promise<void>;
   /**
    * **Supplemental**: Synchronously writes data to a file, replacing the file
    * if it already exists.
@@ -287,8 +277,7 @@ export interface IFileSystem {
     encoding: string | null,
     flag: FileFlagString,
     mode: number,
-    cb: CallbackOneArg,
-  ): void;
+  ): Promise<void>;
   /**
    * **Supplemental**: Synchronously append data to a file, creating the file if
    * it not yet exists.
@@ -308,7 +297,7 @@ export interface IFileSystem {
    * @param isLchmod `True` if `lchmod`, false if `chmod`. Has no
    *   bearing on result if links aren't supported.
    */
-  chmod(p: string, isLchmod: boolean, mode: number, cb: CallbackOneArg): void;
+  chmod(p: string, isLchmod: boolean, mode: number): Promise<void>;
   /**
    * **Optional**: Synchronous `chmod` or `lchmod`.
    * @param isLchmod `True` if `lchmod`, false if `chmod`. Has no
@@ -320,7 +309,7 @@ export interface IFileSystem {
    * @param isLchown `True` if `lchown`, false if `chown`. Has no
    *   bearing on result if links aren't supported.
    */
-  chown(p: string, isLchown: boolean, uid: number, gid: number, cb: CallbackOneArg): void;
+  chown(p: string, isLchown: boolean, uid: number, gid: number): Promise<void>;
   /**
    * **Optional**: Synchronous `chown` or `lchown`.
    * @param isLchown `True` if `lchown`, false if `chown`. Has no
@@ -331,7 +320,7 @@ export interface IFileSystem {
    * **Optional**: Change file timestamps of the file referenced by the supplied
    * path.
    */
-  utimes(p: string, atime: Date, mtime: Date, cb: CallbackOneArg): void;
+  utimes(p: string, atime: Date, mtime: Date): Promise<void>;
   /**
    * **Optional**: Change file timestamps of the file referenced by the supplied
    * path.
@@ -342,7 +331,7 @@ export interface IFileSystem {
   /**
    * **Optional**: Asynchronous `link`.
    */
-  link(srcpath: string, dstpath: string, cb: CallbackOneArg): void;
+  link(srcpath: string, dstpath: string): Promise<void>;
   /**
    * **Optional**: Synchronous `link`.
    */
@@ -351,7 +340,7 @@ export interface IFileSystem {
    * **Optional**: Asynchronous `symlink`.
    * @param type can be either `'dir'` or `'file'`
    */
-  symlink(srcpath: string, dstpath: string, type: string, cb: CallbackOneArg): void;
+  symlink(srcpath: string, dstpath: string, type: string): Promise<void>;
   /**
    * **Optional**: Synchronous `symlink`.
    * @param type can be either `'dir'` or `'file'`
@@ -360,7 +349,7 @@ export interface IFileSystem {
   /**
    * **Optional**: Asynchronous readlink.
    */
-  readlink(p: string, cb: CallbackTwoArgs<string>): void;
+  readlink(p: string): Promise<string>;
   /**
    * **Optional**: Synchronous readlink.
    */
@@ -382,7 +371,7 @@ export interface FileSystemOption<T> {
   // Calls the callback with an error object on an error.
   // (Can call callback synchronously.)
   // Defaults to `(opt, cb) => cb()`.
-  validator?(opt: T, cb: CallbackOneArg): void;
+  validator?(opt: T): Promise<void>;
 }
 
 /**
@@ -408,7 +397,7 @@ export interface FileSystemConstructor {
    * **Core**: Creates a file system of this given type with the given
    * options.
    */
-  Create(options: object, cb: CallbackTwoArgs<IFileSystem>): void;
+  Create(options: object): Promise<IFileSystem>;
   /**
    * **Core**: Returns 'true' if this filesystem is available in the current
    * environment. For example, a `localStorage`-backed filesystem will return
@@ -445,7 +434,7 @@ export class BaseFileSystem {
    * @param p The path to open.
    * @param flag The flag to use when opening the file.
    */
-  public openFile(p: string, flag: FileFlagString, cb: CallbackTwoArgs<File>): void {
+  public openFile(p: string, flag: FileFlagString): Promise<File> {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
   /**
@@ -454,80 +443,57 @@ export class BaseFileSystem {
    *
    * SHOULD BE IMPLEMENTED FOR ALL NEW FILESYSTEMS
    */
-  public createFile(
-    p: string,
-    flag: FileFlagString,
-    mode: number,
-    cb: CallbackTwoArgs<File>,
-  ): void {
+  public async createFile(p: string, flag: FileFlagString, mode: number): Promise<File> {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
 
-  public open(p: string, flag: FileFlagString, mode: number, cb: CallbackTwoArgs<File>): void {
-    const mustBeFile = (e: ApiError, stats?: Stats): void => {
-      if (e) {
-        // File does not exist.
-        switch (getActionTypeIfNotExists(flag)) {
-          case ActionType.CREATE_FILE:
-            // Ensure parent exists.
-            return this.stat(path.dirname(p), false, (e: ApiError, parentStats?: Stats) => {
-              if (e) {
-                cb(e);
-              } else if (parentStats && !parentStats.isDirectory()) {
-                cb(ApiError.ENOTDIR(path.dirname(p)));
-              } else {
-                this.createFile(p, flag, mode, cb);
-              }
-            });
-          case ActionType.THROW_EXCEPTION:
-            return cb(ApiError.ENOENT(p));
-          default:
-            return cb(new ApiError(ErrorCode.EINVAL, 'Invalid FileFlag object.'));
-        }
-      } else {
-        // File exists.
-        if (stats && stats.isDirectory()) {
-          return cb(ApiError.EISDIR(p));
-        }
-        switch (pathExistsAction(flag)) {
-          case ActionType.THROW_EXCEPTION:
-            return cb(ApiError.EEXIST(p));
-          case ActionType.TRUNCATE_FILE:
-            // NOTE: In a previous implementation, we deleted the file and
-            // re-created it. However, this created a race condition if another
-            // asynchronous request was trying to read the file, as the file
-            // would not exist for a small period of time.
-            return this.openFile(p, flag, (e: ApiError, fd?: File): void => {
-              if (e) {
-                cb(e);
-              } else if (fd) {
-                fd.truncate(0, () => {
-                  fd.sync(() => {
-                    cb(null, fd);
-                  });
-                });
-              } else {
-                fail();
-              }
-            });
-          case ActionType.NOP:
-            return this.openFile(p, flag, cb);
-          default:
-            return cb(new ApiError(ErrorCode.EINVAL, 'Invalid FileFlag object.'));
-        }
+  public async open(p: string, flag: FileFlagString, mode: number): Promise<File> {
+    try {
+      let stats = await this.stat(p, false);
+      if (stats && stats.isDirectory) {
+        throw ApiError.EISDIR(p);
       }
-    };
-    this.stat(p, false, mustBeFile);
+      switch (pathExistsAction(flag)) {
+        case ActionType.THROW_EXCEPTION:
+          throw ApiError.EEXIST(p);
+        case ActionType.TRUNCATE_FILE:
+          // NOTE: In a previous implementation, we deleted the file and
+          // re-created it. However, this created a race condition if another
+          // asynchronous request was trying to read the file, as the file
+          // would not exist for a small period of time.
+          let file = await this.openFile(p, flag);
+          await file.truncate(0);
+          await file.sync();
+          return file;
+
+        case ActionType.NOP:
+          return await this.openFile(p, flag);
+      }
+    } catch (e) {
+      switch (getActionTypeIfNotExists(flag)) {
+        case ActionType.CREATE_FILE:
+          // Ensure parent exists.
+          let parentStats = await this.stat(path.dirname(p), false);
+          if (parentStats && !parentStats.isDirectory) {
+            throw ApiError.ENOTDIR(path.dirname(p));
+          }
+
+          return await this.createFile(p, flag, mode);
+        case ActionType.THROW_EXCEPTION:
+        default:
+          throw e;
+      }
+    }
   }
 
-  public rename(oldPath: string, newPath: string, cb: CallbackOneArg): void {
-    cb(new ApiError(ErrorCode.ENOTSUP));
+  public async rename(oldPath: string, newPath: string): Promise<void> {
+    throw new ApiError(ErrorCode.ENOTSUP);
   }
   public renameSync(oldPath: string, newPath: string): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public stat(p: string, isLstat: boolean | null, cb: CallbackTwoArgs<Stats>): void {
-    cb(new ApiError(ErrorCode.ENOTSUP));
+  public async stat(p: string, isLstat: boolean | null): Promise<Stats> {
+    throw new ApiError(ErrorCode.ENOTSUP);
   }
   public statSync(p: string, isLstat: boolean | null): Stats {
     throw new ApiError(ErrorCode.ENOTSUP);
@@ -562,7 +528,7 @@ export class BaseFileSystem {
           try {
             parentStats = this.statSync(path.dirname(p), false);
           } catch (e) {
-            this.mkdirSync(path.dirname(p), 0x644, { recursive: true });
+            mkdirpSync(path.dirname(p), 0x644, this);
             parentStats = this.statSync(path.dirname(p), false);
           }
 
@@ -578,7 +544,7 @@ export class BaseFileSystem {
     }
 
     // File exists.
-    if (stats.isDirectory()) {
+    if (stats.isDirectory) {
       throw ApiError.EISDIR(p);
     }
     switch (pathExistsAction(flag)) {
@@ -599,42 +565,45 @@ export class BaseFileSystem {
     }
   }
 
-  public unlink(p: string, cb: CallbackOneArg): void {
-    cb(new ApiError(ErrorCode.ENOTSUP));
+  public async unlink(p: string): Promise<void> {
+    throw new ApiError(ErrorCode.ENOTSUP);
   }
 
   public unlinkSync(p: string): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
 
-  public rmdir(p: string, cb: CallbackOneArg): void {
-    cb(new ApiError(ErrorCode.ENOTSUP));
+  public async rmdir(p: string): Promise<void> {
+    throw new ApiError(ErrorCode.ENOTSUP);
   }
 
   public rmdirSync(p: string): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
 
-  public mkdir(p: string, mode: number, options: { recursive }, cb: CallbackOneArg): void {
-    cb(new ApiError(ErrorCode.ENOTSUP));
-  }
-
-  public mkdirSync(p: string, mode: number, options: { recursive }): void {
+  public async mkdir(p: string, mode: number): Promise<void> {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
 
-  public readdir(p: string, cb: CallbackTwoArgs<string[]>): void {
-    cb(new ApiError(ErrorCode.ENOTSUP));
+  public mkdirSync(p: string, mode: number): void {
+    throw new ApiError(ErrorCode.ENOTSUP);
+  }
+
+  public async readdir(p: string): Promise<string[]> {
+    throw new ApiError(ErrorCode.ENOTSUP);
   }
 
   public readdirSync(p: string): string[] {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
 
-  public exists(p: string, cb: (exists: boolean) => void): void {
-    this.stat(p, null, function (err) {
-      cb(!err);
-    });
+  public async exists(p: string): Promise<boolean> {
+    try {
+      await this.stat(p, true);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   public existsSync(p: string): boolean {
@@ -646,7 +615,7 @@ export class BaseFileSystem {
     }
   }
 
-  public realpath(p: string, cache: { [path: string]: string }, cb: CallbackTwoArgs<string>): void {
+  public async realpath(p: string, cache: { [path: string]: string }): Promise<string> {
     if (this.supportsLinks()) {
       // The path could contain symlinks. Split up the path,
       // resolve any symlinks, return the resolved string.
@@ -658,13 +627,11 @@ export class BaseFileSystem {
       }
     } else {
       // No symlinks. We just need to verify that it exists.
-      this.exists(p, function (doesExist) {
-        if (doesExist) {
-          cb(null, p);
-        } else {
-          cb(ApiError.ENOENT(p));
-        }
-      });
+      if (await this.exists(p)) {
+        return p;
+      } else {
+        throw new ApiError(ErrorCode.ENOENT, p);
+      }
     }
   }
 
@@ -689,17 +656,12 @@ export class BaseFileSystem {
     }
   }
 
-  public truncate(p: string, len: number, cb: CallbackOneArg): void {
-    this.open(p, constants.fs.O_RDWR, 0x1a4, function (er: ApiError, fd?: File) {
-      if (er) {
-        return cb(er);
-      }
-      fd!.truncate(len, function (er: any) {
-        fd!.close(function (er2: any) {
-          cb(er || er2);
-        });
-      });
-    });
+  public async truncate(p: string, len: number): Promise<void> {
+    let file = await this.open(p, constants.fs.O_RDWR, 0x1a4);
+    try {
+      await file.truncate(len);
+    } catch (e) {}
+    await file.close();
   }
 
   public truncateSync(p: string, len: number): void {
@@ -714,47 +676,24 @@ export class BaseFileSystem {
     }
   }
 
-  public readFile(
+  public async readFile(
     fname: string,
     encoding: BufferEncoding,
     flag: FileFlagString,
-    cb: CallbackTwoArgs<string | Buffer>,
-  ): void {
+  ): Promise<string | Buffer> {
     // Wrap cb in file closing code.
-    const oldCb = cb;
     // Get file.
-    this.open(fname, flag, 0x1a4, (err, fd) => {
-      if (err) {
-        return cb(err);
-      }
-      cb = function (err?: ApiError | null, arg?: string | Buffer) {
-        fd!.close(function (err2: any) {
-          if (!err) {
-            err = err2;
-          }
-          return oldCb(err, arg);
-        });
-      };
-      fd!.stat((err, stat?) => {
-        if (err) {
-          return cb(err);
-        }
-        // Allocate buffer.
-        const buf = Buffer.alloc(stat!.size);
-        fd!.read(buf, 0, stat!.size, 0, (err?: ApiError | null) => {
-          if (err) {
-            return cb(err);
-          } else if (encoding === null) {
-            return cb(err, buf);
-          }
-          try {
-            cb(null, buf.toString(encoding));
-          } catch (e) {
-            cb(e);
-          }
-        });
-      });
-    });
+    let file = await this.open(fname, flag, 0x1a4);
+
+    let stat = await file.stat();
+    const buf = Buffer.alloc(stat!.size);
+    let n = await file.read(buf, 0, stat!.size, 0);
+
+    if (encoding === null) {
+      return buf;
+    } else {
+      return buf.toString(encoding);
+    }
   }
 
   public readFileSync(fname: string, encoding: BufferEncoding, flag: FileFlagString): any {
@@ -774,37 +713,29 @@ export class BaseFileSystem {
       fd.closeSync();
     }
   }
-  public writeFile(
+  public async writeFile(
     fname: string,
     data: any,
     encoding: BufferEncoding,
     flag: FileFlagString,
     mode: number,
-    cb: CallbackOneArg,
-  ): void {
+  ): Promise<void> {
     // Wrap cb in file closing code.
-    const oldCb = cb;
     // Get file.
-    this.open(fname, flag, 0x1a4, function (err: ApiError, fd?: File) {
-      if (err) {
-        return cb(err);
-      }
-      cb = function (err: ApiError) {
-        fd!.close(function (err2: any) {
-          oldCb(err ? err : err2);
-        });
-      };
+    if (typeof data === 'string') {
+      data = Buffer.from(data, encoding!);
+    }
+    let file = await this.open(fname, flag, 0x1a4);
 
-      try {
-        if (typeof data === 'string') {
-          data = Buffer.from(data, encoding!);
-        }
-      } catch (e) {
-        return cb(e);
-      }
-      // Write into file.
-      fd!.write(data, 0, data.length, 0, cb);
-    });
+    try {
+      await file!.write(data, 0, data.length, null);
+    } catch (e) {
+      await file.close();
+      throw e;
+    } finally {
+      await file.close();
+    }
+    file!.write(data, 0, data.length, 0);
   }
   public writeFileSync(
     fname: string,
@@ -825,30 +756,26 @@ export class BaseFileSystem {
       fd.closeSync();
     }
   }
-  public appendFile(
+  public async appendFile(
     fname: string,
     data: any,
     encoding: BufferEncoding,
     flag: FileFlagString,
     mode: number,
-    cb: CallbackOneArg,
-  ): void {
-    // Wrap cb in file closing code.
-    const oldCb = cb;
-    this.open(fname, flag, mode, function (err: ApiError, fd?: File) {
-      if (err) {
-        return cb(err);
-      }
-      cb = function (err: ApiError) {
-        fd!.close(function (err2: any) {
-          oldCb(err ? err : err2);
-        });
-      };
-      if (typeof data === 'string') {
-        data = Buffer.from(data, encoding!);
-      }
-      fd!.write(data, 0, data.length, null, cb);
-    });
+  ): Promise<void> {
+    if (typeof data === 'string') {
+      data = Buffer.from(data, encoding!);
+    }
+    let file = await this.open(fname, flag, mode);
+
+    try {
+      await file!.write(data, 0, data.length, null);
+    } catch (e) {
+      await file.close();
+      throw e;
+    } finally {
+      await file.close();
+    }
   }
   public appendFileSync(
     fname: string,
@@ -867,38 +794,38 @@ export class BaseFileSystem {
       fd.closeSync();
     }
   }
-  public chmod(p: string, isLchmod: boolean, mode: number, cb: CallbackOneArg): void {
-    cb(new ApiError(ErrorCode.ENOTSUP));
+  public async chmod(p: string, isLchmod: boolean, mode: number): Promise<void> {
+    throw new ApiError(ErrorCode.ENOTSUP);
   }
   public chmodSync(p: string, isLchmod: boolean, mode: number) {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public chown(p: string, isLchown: boolean, uid: number, gid: number, cb: CallbackOneArg): void {
-    cb(new ApiError(ErrorCode.ENOTSUP));
+  public async chown(p: string, isLchown: boolean, uid: number, gid: number): Promise<void> {
+    throw new ApiError(ErrorCode.ENOTSUP);
   }
   public chownSync(p: string, isLchown: boolean, uid: number, gid: number): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public utimes(p: string, atime: Date, mtime: Date, cb: CallbackOneArg): void {
-    cb(new ApiError(ErrorCode.ENOTSUP));
+  public async utimes(p: string, atime: Date, mtime: Date): Promise<void> {
+    throw new ApiError(ErrorCode.ENOTSUP);
   }
   public utimesSync(p: string, atime: Date, mtime: Date): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public link(srcpath: string, dstpath: string, cb: CallbackOneArg): void {
-    cb(new ApiError(ErrorCode.ENOTSUP));
+  public async link(srcpath: string, dstpath: string): Promise<void> {
+    throw new ApiError(ErrorCode.ENOTSUP);
   }
   public linkSync(srcpath: string, dstpath: string): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public symlink(srcpath: string, dstpath: string, type: string, cb: CallbackOneArg): void {
-    cb(new ApiError(ErrorCode.ENOTSUP));
+  public async symlink(srcpath: string, dstpath: string, type: string): Promise<void> {
+    throw new ApiError(ErrorCode.ENOTSUP);
   }
   public symlinkSync(srcpath: string, dstpath: string, type: string): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public readlink(p: string, cb: CallbackOneArg): void {
-    cb(new ApiError(ErrorCode.ENOTSUP));
+  public async readlink(p: string): Promise<string> {
+    throw new ApiError(ErrorCode.ENOTSUP);
   }
   public readlinkSync(p: string): string {
     throw new ApiError(ErrorCode.ENOTSUP);
@@ -914,116 +841,55 @@ export class SynchronousFileSystem extends BaseFileSystem {
     return true;
   }
 
-  public rename(oldPath: string, newPath: string, cb: CallbackOneArg): void {
-    try {
-      this.renameSync(oldPath, newPath);
-      cb();
-    } catch (e) {
-      cb(e);
-    }
+  public async rename(oldPath: string, newPath: string): Promise<void> {
+    this.renameSync(oldPath, newPath);
   }
 
-  public stat(p: string, isLstat: boolean | null, cb: CallbackTwoArgs<Stats>): void {
-    try {
-      cb(null, this.statSync(p, isLstat));
-    } catch (e) {
-      cb(e);
-    }
+  public async stat(p: string, isLstat: boolean | null): Promise<Stats> {
+    return this.statSync(p, isLstat);
   }
 
-  public open(p: string, flags: FileFlagString, mode: number, cb: CallbackTwoArgs<File>): void {
-    try {
-      cb(null, this.openSync(p, flags, mode));
-    } catch (e) {
-      cb(e);
-    }
+  public async open(p: string, flags: FileFlagString, mode: number): Promise<File> {
+    return this.openSync(p, flags, mode);
   }
 
-  public unlink(p: string, cb: CallbackOneArg): void {
-    try {
-      this.unlinkSync(p);
-      cb();
-    } catch (e) {
-      cb(e);
-    }
+  public async unlink(p: string): Promise<void> {
+    this.unlinkSync(p);
   }
 
-  public rmdir(p: string, cb: CallbackOneArg): void {
-    try {
-      this.rmdirSync(p);
-      cb();
-    } catch (e) {
-      cb(e);
-    }
+  public async rmdir(p: string): Promise<void> {
+    this.rmdirSync(p);
   }
 
-  public mkdir(p: string, mode: number, options: { recursive: boolean }, cb: CallbackOneArg): void {
-    try {
-      this.mkdirSync(p, mode, options);
-      cb();
-    } catch (e) {
-      cb(e);
-    }
+  public async mkdir(p: string, mode: number): Promise<void> {
+    this.mkdirSync(p, mode);
   }
 
-  public readdir(p: string, cb: CallbackTwoArgs<string[]>): void {
-    try {
-      cb(null, this.readdirSync(p));
-    } catch (e) {
-      cb(e);
-    }
+  public async readdir(p: string): Promise<string[]> {
+    return this.readdirSync(p);
   }
 
-  public chmod(p: string, isLchmod: boolean, mode: number, cb: CallbackOneArg): void {
-    try {
-      this.chmodSync(p, isLchmod, mode);
-      cb();
-    } catch (e) {
-      cb(e);
-    }
+  public async chmod(p: string, isLchmod: boolean, mode: number): Promise<void> {
+    this.chmodSync(p, isLchmod, mode);
   }
 
-  public chown(p: string, isLchown: boolean, uid: number, gid: number, cb: CallbackOneArg): void {
-    try {
-      this.chownSync(p, isLchown, uid, gid);
-      cb();
-    } catch (e) {
-      cb(e);
-    }
+  public async chown(p: string, isLchown: boolean, uid: number, gid: number): Promise<void> {
+    this.chownSync(p, isLchown, uid, gid);
   }
 
-  public utimes(p: string, atime: Date, mtime: Date, cb: CallbackOneArg): void {
-    try {
-      this.utimesSync(p, atime, mtime);
-      cb();
-    } catch (e) {
-      cb(e);
-    }
+  public async utimes(p: string, atime: Date, mtime: Date): Promise<void> {
+    this.utimesSync(p, atime, mtime);
   }
 
-  public link(srcpath: string, dstpath: string, cb: CallbackOneArg): void {
-    try {
-      this.linkSync(srcpath, dstpath);
-      cb();
-    } catch (e) {
-      cb(e);
-    }
+  public async link(srcpath: string, dstpath: string): Promise<void> {
+    this.linkSync(srcpath, dstpath);
   }
 
-  public symlink(srcpath: string, dstpath: string, type: string, cb: CallbackOneArg): void {
-    try {
-      this.symlinkSync(srcpath, dstpath, type);
-      cb();
-    } catch (e) {
-      cb(e);
-    }
+  public async symlink(srcpath: string, dstpath: string, type: string): Promise<void> {
+    this.symlinkSync(srcpath, dstpath, type);
   }
 
-  public readlink(p: string, cb: CallbackTwoArgs<string>): void {
-    try {
-      cb(null, this.readlinkSync(p));
-    } catch (e) {
-      cb(e);
-    }
+  public async readlink(p: string): Promise<string> {
+    return this.readlinkSync(p);
   }
 }

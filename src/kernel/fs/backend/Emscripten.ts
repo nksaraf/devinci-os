@@ -49,7 +49,7 @@ export class EmscriptenFile extends BaseFile implements File {
   public getPos(): number | undefined {
     return undefined;
   }
-  public close(cb: CallbackOneArg): void {
+  public async close(): Promise<void> {
     let err: ApiError | null = null;
     try {
       this.closeSync();
@@ -66,7 +66,7 @@ export class EmscriptenFile extends BaseFile implements File {
       throw convertError(e, this._path);
     }
   }
-  public stat(cb: CallbackTwoArgs<Stats>): void {
+  public async stat(): Promise<Stats> {
     try {
       cb(null, this.statSync());
     } catch (e) {
@@ -80,7 +80,7 @@ export class EmscriptenFile extends BaseFile implements File {
       throw convertError(e, this._path);
     }
   }
-  public truncate(len: number, cb: CallbackOneArg): void {
+  public async truncate(len: number): Promise<void> {
     let err: ApiError | null = null;
     try {
       this.truncateSync(len);
@@ -148,14 +148,14 @@ export class EmscriptenFile extends BaseFile implements File {
       throw convertError(e, this._path);
     }
   }
-  public sync(cb: CallbackOneArg): void {
+  public async sync(): Promise<void> {
     // NOP.
     cb();
   }
   public syncSync(): void {
     // NOP.
   }
-  public chown(uid: number, gid: number, cb: CallbackOneArg): void {
+  public async chown(uid: number, gid: number): Promise<void> {
     let err: ApiError | null = null;
     try {
       this.chownSync(uid, gid);
@@ -172,7 +172,7 @@ export class EmscriptenFile extends BaseFile implements File {
       throw convertError(e, this._path);
     }
   }
-  public chmod(mode: number, cb: CallbackOneArg): void {
+  public async chmod(mode: number): Promise<void> {
     let err: ApiError | null = null;
     try {
       this.chmodSync(mode);
@@ -189,7 +189,7 @@ export class EmscriptenFile extends BaseFile implements File {
       throw convertError(e, this._path);
     }
   }
-  public utimes(atime: Date, mtime: Date, cb: CallbackOneArg): void {
+  public async utimes(atime: Date, mtime: Date): Promise<void> {
     let err: ApiError | null = null;
     try {
       this.utimesSync(atime, mtime);

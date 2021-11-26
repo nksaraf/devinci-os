@@ -497,7 +497,7 @@ export default class NodeFileSystem {
    * @option options [String] flag Defaults to `'r'`.
    * @param callback If no encoding is specified, then the raw buffer is returned.
    */
-  public readFile(filename: string, cb: CallbackTwoArgs<Buffer>): void;
+  public readFile(filename: string): Promise<Buffer>;
   public readFile(
     filename: string,
     options: { flag?: string },
@@ -508,7 +508,7 @@ export default class NodeFileSystem {
     options: { encoding: string; flag?: string },
     callback?: CallbackTwoArgs<string>,
   ): void;
-  public readFile(filename: string, encoding: string, cb: CallbackTwoArgs<string>): void;
+  public readFile(filename: string, encoding: string): Promise<string>;
   public readFile(filename: string, arg2: any = {}, cb: CallbackTwoArgs<any> = nopCb) {
     const options = normalizeOptions(arg2, null, 'r', null);
     cb = typeof arg2 === 'function' ? arg2 : cb;
@@ -1163,7 +1163,7 @@ export default class NodeFileSystem {
    * @param mode
    * @param callback
    */
-  public fchmod(fd: number, mode: string | number, cb: CallbackOneArg): void {
+  public fchmod(fd: number, mode: string | number): Promise<void> {
     const newCb = wrapCb(cb, 1);
     try {
       const numMode = typeof mode === 'string' ? parseInt(mode, 8) : mode;

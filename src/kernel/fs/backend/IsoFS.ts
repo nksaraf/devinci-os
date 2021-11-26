@@ -1196,7 +1196,7 @@ export default class IsoFS extends SynchronousFileSystem implements IFileSystem 
   /**
    * Creates an IsoFS instance with the given options.
    */
-  public static Create(opts: IsoFSOptions, cb: CallbackTwoArgs<IsoFS>): void {
+  public static Create(opts: IsoFSOptions): Promise<IsoFS> {
     try {
       cb(null, new IsoFS(opts.data, opts.name));
     } catch (e) {
@@ -1421,10 +1421,9 @@ export default class IsoFS extends SynchronousFileSystem implements IFileSystem 
   }
 }
 function isWriteable(flags: string) {
-  throw 
+  throw ;
 }
 
 function pathExistsAction(flags: string) {
   throw new Error('Function not implemented.');
 }
-

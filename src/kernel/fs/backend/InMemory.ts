@@ -1,4 +1,3 @@
-import type { CallbackTwoArgs as CallbackOneArg, FileSystemOptions } from '../core/file_system';
 import type {
   SyncKeyValueStore,
   SimpleSyncStore,
@@ -46,15 +45,6 @@ export class InMemoryStore implements SyncKeyValueStore, SimpleSyncStore {
  */
 export default class InMemoryFileSystem extends SyncKeyValueFileSystem {
   public static readonly Name = 'InMemory';
-
-  public static readonly Options: FileSystemOptions = {};
-
-  /**
-   * Creates an InMemoryFileSystem instance.
-   */
-  public static Create(options: any, cb: CallbackOneArg<InMemoryFileSystem>): void {
-    cb(null, new InMemoryFileSystem());
-  }
 
   constructor() {
     super({ store: new InMemoryStore() });

@@ -7,6 +7,7 @@ import { Buffer } from 'buffer';
 import path from 'path-browserify';
 import { newPromise } from 'os/deno/util';
 import { remoteFS } from 'os/deno/fs';
+import { mkdirp, mkdirpSync } from 'os/kernel/fs/core/util';
 
 export interface DirEntry {
   name: string;
@@ -51,7 +52,7 @@ export const fsOps = [
       this: Kernel,
       arg: { path: string; options: Deno.OpenOptions; mode: number },
     ) {
-      let file = this.fs.openSync(
+      let file = await this.fs.open(
         getAbsolutePath(arg.path, this),
         getFlagFromOptions(arg.options),
         arg.mode,
@@ -70,13 +71,21 @@ export const fsOps = [
   {
     name: 'op_mkdir_sync',
     sync: function (this: Kernel, { path, recursive }) {
-      this.fs.mkdirSync(path, 0x644, { recursive });
+      if (recursive) {
+        mkdirpSync(path, 0x644, this.fs);
+      } else {
+        this.fs.mkdirSync(path, 0x644);
+      }
     },
   },
   {
     name: 'op_mkdir_async',
     async: async function (this: Kernel, { path, recursive }) {
-      this.fs.mkdirSync(path, 0x644, { recursive });
+      if (recursive) {
+        await mkdirp(path, 0x644, this.fs);
+      } else {
+        await this.fs.mkdir(path, 0x644);
+      }
     },
   },
 
@@ -91,7 +100,7 @@ export const fsOps = [
   }),
 
   op_async('op_stat_async', async function (this: Kernel, { path, lstat }) {
-    let stat = this.fs.statSync(getAbsolutePath(path, this), lstat);
+    let stat = await this.fs.stat(getAbsolutePath(path, this), lstat);
     return stat;
   }),
 
@@ -202,16 +211,19 @@ class FileResource extends Resource {
   }
 
   async read(data: Uint8Array) {
-    if (this.position >= this.file.statSync().size) {
+    let stat = await this.file.stat();
+    if (this.position >= stat.size) {
       return null;
     }
-    let container = Buffer.from(data);
-    let nread = this.file.readSync(
+    let container = new Buffer(new SharedArrayBuffer(data.length));
+    let nread = await this.file.read(
       container,
       this.position,
-      Math.min(this.file.statSync().size, data.byteLength),
+      Math.min(stat.size, data.byteLength),
       0,
     );
+
+    console.log(container);
 
     data.set(container, 0);
 

@@ -66,7 +66,7 @@ function onErrorHandler(
 export class IndexedDBROTransaction implements AsyncKeyValueROTransaction {
   constructor(public tx: IDBTransaction, public store: IDBObjectStore) {}
 
-  public get(key: string, cb: CallbackTwoArgs<Buffer>): void {
+  public get(key: string): Promise<Buffer> {
     try {
       const r: IDBRequest = this.store.get(key);
       r.onerror = onErrorHandler(cb);
@@ -98,7 +98,7 @@ export class IndexedDBRWTransaction
     super(tx, store);
   }
 
-  public put(key: string, data: Buffer, overwrite: boolean, cb: CallbackTwoArgs<boolean>): void {
+  public put(key: string, data: Buffer, overwrite: boolean): Promise<boolean> {
     try {
       const arraybuffer = buffer2ArrayBuffer(data);
       let r: IDBRequest;
@@ -114,7 +114,7 @@ export class IndexedDBRWTransaction
     }
   }
 
-  public del(key: string, cb: CallbackOneArg): void {
+  public async del(key: string): Promise<void> {
     try {
       // NOTE: IE8 has a bug with identifiers named 'delete' unless used as a string
       // like this.
@@ -129,12 +129,12 @@ export class IndexedDBRWTransaction
     }
   }
 
-  public commit(cb: CallbackOneArg): void {
+  public async commit(): Promise<void> {
     // Return to the event loop to commit the transaction.
     setTimeout(cb, 0);
   }
 
-  public abort(cb: CallbackOneArg): void {
+  public async abort(): Promise<void> {
     let _e: ApiError | null = null;
     try {
       this.tx.abort();
@@ -147,7 +147,7 @@ export class IndexedDBRWTransaction
 }
 
 export class IndexedDBStore implements AsyncKeyValueStore {
-  public static Create(storeName: string, cb: CallbackTwoArgs<IndexedDBStore>): void {
+  public static Create(storeName: string): Promise<IndexedDBStore> {
     const openReq: IDBOpenDBRequest = indexedDB.open(storeName, 1);
 
     openReq.onupgradeneeded = (event) => {
@@ -173,7 +173,7 @@ export class IndexedDBStore implements AsyncKeyValueStore {
     return IndexedDBFileSystem.Name + ' - ' + this.storeName;
   }
 
-  public clear(cb: CallbackOneArg): void {
+  public async clear(): Promise<void> {
     try {
       const tx = this.db.transaction(this.storeName, 'readwrite'),
         objectStore = tx.objectStore(this.storeName),

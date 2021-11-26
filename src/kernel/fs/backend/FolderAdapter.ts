@@ -1,6 +1,11 @@
-import {BaseFileSystem, IFileSystem, CallbackTwoArgs, FileSystemOptions} from '../core/file_system';
+import {
+  BaseFileSystem,
+  IFileSystem,
+  CallbackTwoArgs,
+  FileSystemOptions,
+} from '../core/file_system';
 import * as path from 'path';
-import {ApiError} from '../core/api_error';
+import { ApiError } from '../core/api_error';
 
 /**
  * Configuration options for a FolderAdapter file system.
@@ -31,25 +36,25 @@ export interface FolderAdapterOptions {
  * ```
  */
 export default class FolderAdapter extends BaseFileSystem implements IFileSystem {
-  public static readonly Name = "FolderAdapter";
+  public static readonly Name = 'FolderAdapter';
 
   public static readonly Options: FileSystemOptions = {
     folder: {
-      type: "string",
-      description: "The folder to use as the root directory"
+      type: 'string',
+      description: 'The folder to use as the root directory',
     },
     wrapped: {
-      type: "object",
-      description: "The file system to wrap"
-    }
+      type: 'object',
+      description: 'The file system to wrap',
+    },
   };
 
   /**
    * Creates a FolderAdapter instance with the given options.
    */
-  public static Create(opts: FolderAdapterOptions, cb: CallbackTwoArgs<FolderAdapter>): void {
+  public static Create(opts: FolderAdapterOptions): Promise<FolderAdapter> {
     const fa = new FolderAdapter(opts.folder, opts.wrapped);
-    fa._initialize(function(e?) {
+    fa._initialize(function (e?) {
       if (e) {
         cb(e);
       } else {
@@ -70,11 +75,21 @@ export default class FolderAdapter extends BaseFileSystem implements IFileSystem
     this._wrapped = wrapped;
   }
 
-  public getName(): string { return this._wrapped.getName(); }
-  public isReadOnly(): boolean { return this._wrapped.isReadOnly(); }
-  public supportsProps(): boolean { return this._wrapped.supportsProps(); }
-  public supportsSynch(): boolean { return this._wrapped.supportsSynch(); }
-  public supportsLinks(): boolean { return false; }
+  public getName(): string {
+    return this._wrapped.getName();
+  }
+  public isReadOnly(): boolean {
+    return this._wrapped.isReadOnly();
+  }
+  public supportsProps(): boolean {
+    return this._wrapped.supportsProps();
+  }
+  public supportsSynch(): boolean {
+    return this._wrapped.supportsSynch();
+  }
+  public supportsLinks(): boolean {
+    return false;
+  }
 
   /**
    * Initialize the file system. Ensures that the wrapped file system
@@ -98,7 +113,7 @@ export default class FolderAdapter extends BaseFileSystem implements IFileSystem
  */
 function translateError(folder: string, e: any): any {
   if (e !== null && typeof e === 'object') {
-    const err = <ApiError> e;
+    const err = <ApiError>e;
     let p = err.path;
     if (p) {
       p = '/' + path.relative(folder, p);
@@ -114,11 +129,11 @@ function translateError(folder: string, e: any): any {
  */
 function wrapCallback(folder: string, cb: any): any {
   if (typeof cb === 'function') {
-    return function(err: ApiError) {
+    return function (err: ApiError) {
       if (arguments.length > 0) {
         arguments[0] = translateError(folder, err);
       }
-      (<Function> cb).apply(null, arguments);
+      (<Function>cb).apply(null, arguments);
     };
   } else {
     return cb;
@@ -131,7 +146,7 @@ function wrapCallback(folder: string, cb: any): any {
 function wrapFunction(name: string, wrapFirst: boolean, wrapSecond: boolean): Function {
   if (name.slice(name.length - 4) !== 'Sync') {
     // Async function. Translate error in callback.
-    return function(this: FolderAdapter) {
+    return function (this: FolderAdapter) {
       if (arguments.length > 0) {
         if (wrapFirst) {
           arguments[0] = path.join(this._folder, arguments[0]);
@@ -139,13 +154,16 @@ function wrapFunction(name: string, wrapFirst: boolean, wrapSecond: boolean): Fu
         if (wrapSecond) {
           arguments[1] = path.join(this._folder, arguments[1]);
         }
-        arguments[arguments.length - 1] = wrapCallback(this._folder, arguments[arguments.length - 1]);
+        arguments[arguments.length - 1] = wrapCallback(
+          this._folder,
+          arguments[arguments.length - 1],
+        );
       }
-      return (<any> this._wrapped)[name].apply(this._wrapped, arguments);
+      return (<any>this._wrapped)[name].apply(this._wrapped, arguments);
     };
   } else {
     // Sync function. Translate error in catch.
-    return function(this: FolderAdapter) {
+    return function (this: FolderAdapter) {
       try {
         if (wrapFirst) {
           arguments[0] = path.join(this._folder, arguments[0]);
@@ -153,7 +171,7 @@ function wrapFunction(name: string, wrapFirst: boolean, wrapSecond: boolean): Fu
         if (wrapSecond) {
           arguments[1] = path.join(this._folder, arguments[1]);
         }
-        return (<any> this._wrapped)[name].apply(this._wrapped, arguments);
+        return (<any>this._wrapped)[name].apply(this._wrapped, arguments);
       } catch (e) {
         throw translateError(this._folder, e);
       }
@@ -162,16 +180,45 @@ function wrapFunction(name: string, wrapFirst: boolean, wrapSecond: boolean): Fu
 }
 
 // First argument is a path.
-['diskSpace', 'stat', 'statSync', 'open', 'openSync', 'unlink', 'unlinkSync',
- 'rmdir', 'rmdirSync', 'mkdir', 'mkdirSync', 'readdir', 'readdirSync', 'exists',
- 'existsSync', 'realpath', 'realpathSync', 'truncate', 'truncateSync', 'readFile',
- 'readFileSync', 'writeFile', 'writeFileSync', 'appendFile', 'appendFileSync',
- 'chmod', 'chmodSync', 'chown', 'chownSync', 'utimes', 'utimesSync', 'readlink',
- 'readlinkSync'].forEach((name: string) => {
-  (<any> FolderAdapter.prototype)[name] = wrapFunction(name, true, false);
+[
+  'diskSpace',
+  'stat',
+  'statSync',
+  'open',
+  'openSync',
+  'unlink',
+  'unlinkSync',
+  'rmdir',
+  'rmdirSync',
+  'mkdir',
+  'mkdirSync',
+  'readdir',
+  'readdirSync',
+  'exists',
+  'existsSync',
+  'realpath',
+  'realpathSync',
+  'truncate',
+  'truncateSync',
+  'readFile',
+  'readFileSync',
+  'writeFile',
+  'writeFileSync',
+  'appendFile',
+  'appendFileSync',
+  'chmod',
+  'chmodSync',
+  'chown',
+  'chownSync',
+  'utimes',
+  'utimesSync',
+  'readlink',
+  'readlinkSync',
+].forEach((name: string) => {
+  (<any>FolderAdapter.prototype)[name] = wrapFunction(name, true, false);
 });
 
 // First and second arguments are paths.
 ['rename', 'renameSync', 'link', 'linkSync', 'symlink', 'symlinkSync'].forEach((name: string) => {
-  (<any> FolderAdapter.prototype)[name] = wrapFunction(name, true, true);
+  (<any>FolderAdapter.prototype)[name] = wrapFunction(name, true, true);
 });

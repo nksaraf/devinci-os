@@ -4,6 +4,7 @@ import InternalDenoWorker from './worker?worker';
 import type { DenoIsolate } from './deno';
 import { remoteFS } from './fs';
 import { newPromise } from './util';
+import { deno } from './index';
 
 export class DenoWorker {
   isolate: Remote<DenoIsolate>;
@@ -21,7 +22,7 @@ export class DenoWorker {
   }
   async init() {
     let port = await remoteFS.proxy.newConnection();
-    await this.isolate.acceptConnection(port);
+    await this.isolate.acceptConnection(port, {});
     this.readyPromise.resolve(true);
   }
 }

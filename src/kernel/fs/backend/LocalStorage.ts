@@ -89,8 +89,8 @@ export default class LocalStorageFileSystem extends SyncKeyValueFileSystem {
   /**
    * Creates a LocalStorageFileSystem instance.
    */
-  public static Create(options: any, cb: CallbackTwoArgs<LocalStorageFileSystem>): void {
-    cb(null, new LocalStorageFileSystem());
+  public static async Create(options: any): Promise<LocalStorageFileSystem> {
+    return new LocalStorageFileSystem();
   }
   public static isAvailable(): boolean {
     return typeof global.localStorage !== 'undefined';

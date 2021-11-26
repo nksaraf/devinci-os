@@ -9,7 +9,7 @@ import type { Op } from './interfaces';
 import { builtIns } from './ops/builtIns';
 import { fsOps } from './ops/fs';
 import { url } from './ops/url';
-import { VirtualFileSystem } from 'os/kernel/fs';
+import type { VirtualFileSystem } from 'os/kernel/fs';
 import EsbuildWorker from '../linker/esbuild-worker?worker';
 import { fromBase64 } from 'os/kernel/node/base64';
 
@@ -181,7 +181,7 @@ export class Kernel extends EventTarget {
     super();
   }
 
-  private init() {
+  async init() {
     this.resourceTable = new Map<number, Resource>();
 
     this.stdin = this.addResource(new StdioResource(this, 'stdin'));
@@ -264,13 +264,6 @@ export class Kernel extends EventTarget {
         },
       },
     );
-  }
-
-  static async create() {
-    let kernel = new Kernel();
-    kernel.init();
-    // kernel.fs = new VirtualFileSystem();
-    return kernel;
   }
 
   #_ops: Op[];
@@ -429,13 +422,6 @@ export class RemoteKernel extends Kernel {
     super();
   }
 
-  static connect(endpoint: any) {
-    let kernel = new RemoteKernel();
-    kernel.proxy = proxy(endpoint);
-    kernel.fs = new VirtualFileSystem();
-    return kernel;
-  }
-
   decode(data: Uint8Array) {
     return new TextDecoder().decode(new Uint8Array(data));
   }
@@ -455,11 +441,59 @@ export class WasmStreamingResource extends Resource {
   url: string;
 }
 
+const locked = 1;
+const unlocked = 0;
+
+class Mutex {
+  _sab: any;
+  _mu: Int32Array;
+  /**
+   * Instantiate Mutex.
+   * If opt_sab is provided, the mutex will use it as a backing array.
+   * @param {SharedArrayBuffer} opt_sab Optional SharedArrayBuffer.
+   */
+  constructor(opt_sab) {
+    this._sab = opt_sab || new SharedArrayBuffer(4);
+    this._mu = new Int32Array(this._sab);
+  }
+
+  /**
+   * Instantiate a Mutex connected to the given one.
+   * @param {Mutex} mu the other Mutex.
+   */
+  static connect(mu) {
+    return new Mutex(mu._sab);
+  }
+
+  lock() {
+    for (;;) {
+      if (Atomics.compareExchange(this._mu, 0, unlocked, locked) == unlocked) {
+        return;
+      }
+      Atomics.wait(this._mu, 0, locked);
+    }
+  }
+
+  unlock() {
+    if (Atomics.compareExchange(this._mu, 0, locked, unlocked) != locked) {
+      throw new Error('Mutex is in inconsistent state: unlock on unlocked Mutex.');
+    }
+    Atomics.notify(this._mu, 0, 1);
+  }
+}
+
 class StdioResource extends Resource {
   constructor(public kernel: Kernel, public std: string) {
     super();
   }
   async read(data: Uint8Array) {
+    console.log('reading');
+    return 0;
+  }
+
+  readSync(data: Uint8Array) {
+    console.log('.help');
+    data.set(new TextEncoder().encode('.help'));
     return 0;
   }
   async write(data: Uint8Array) {

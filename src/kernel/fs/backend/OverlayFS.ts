@@ -47,7 +47,7 @@ class OverlayFile extends InMemoryFile<UnlockedOverlayFS> implements File {
     super(fs, path, flag, stats, data);
   }
 
-  public sync(cb: CallbackOneArg): void {
+  public async sync(): Promise<void> {
     if (!this.isDirty()) {
       cb(null);
       return;
@@ -66,7 +66,7 @@ class OverlayFile extends InMemoryFile<UnlockedOverlayFS> implements File {
     }
   }
 
-  public close(cb: CallbackOneArg): void {
+  public async close(): Promise<void> {
     this.sync(cb);
   }
 
@@ -116,7 +116,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
     };
   }
 
-  public _syncAsync(file: InMemoryFile<UnlockedOverlayFS>, cb: CallbackOneArg): void {
+  public _async syncAsync(file: InMemoryFile<UnlockedOverlayFS>): Promise<void> {
     this.createParentDirectoriesAsync(file.getPath(), (err?: ApiError) => {
       if (err) {
         return cb(err);
@@ -152,7 +152,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
    *
    * Called once to load up metadata stored on the writable file system.
    */
-  public _initialize(cb: CallbackOneArg): void {
+  public _async initialize(): Promise<void> {
     const callbackArray = this._initializeCallbacks;
 
     const end = (e?: ApiError): void => {
@@ -215,7 +215,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
     this.updateLog('');
   }
 
-  public rename(oldPath: string, newPath: string, cb: CallbackOneArg): void {
+  public async rename(oldPath: string, newPath: string): Promise<void> {
     if (
       !this.checkInitAsync(cb) ||
       this.checkPathAsync(oldPath, cb) ||
@@ -403,7 +403,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
     }
   }
 
-  public stat(p: string, isLstat: boolean, cb: CallbackTwoArgs<Stats>): void {
+  public stat(p: string, isLstat: boolean): Promise<Stats> {
     if (!this.checkInitAsync(cb)) {
       return;
     }
@@ -444,7 +444,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
     }
   }
 
-  public open(p: string, flag: FileFlagString, mode: number, cb: CallbackTwoArgs<File>): void {
+  public open(p: string, flag: FileFlagString, mode: number): Promise<File> {
     if (!this.checkInitAsync(cb) || this.checkPathAsync(p, cb)) {
       return;
     }
@@ -538,7 +538,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
     }
   }
 
-  public unlink(p: string, cb: CallbackOneArg): void {
+  public async unlink(p: string): Promise<void> {
     if (!this.checkInitAsync(cb) || this.checkPathAsync(p, cb)) {
       return;
     }
@@ -588,7 +588,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
     }
   }
 
-  public rmdir(p: string, cb: CallbackOneArg): void {
+  public async rmdir(p: string): Promise<void> {
     if (!this.checkInitAsync(cb)) {
       return;
     }
@@ -654,7 +654,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
     }
   }
 
-  public mkdir(p: string, mode: number, cb: CallbackTwoArgs<Stats>): void {
+  public mkdir(p: string, mode: number): Promise<Stats> {
     if (!this.checkInitAsync(cb)) {
       return;
     }
@@ -686,7 +686,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
     }
   }
 
-  public readdir(p: string, cb: CallbackTwoArgs<string[]>): void {
+  public readdir(p: string): Promise<string[]> {
     if (!this.checkInitAsync(cb)) {
       return;
     }
@@ -783,7 +783,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
     );
   }
 
-  public chmod(p: string, isLchmod: boolean, mode: number, cb: CallbackOneArg): void {
+  public async chmod(p: string, isLchmod: boolean, mode: number): Promise<void> {
     if (!this.checkInitAsync(cb)) {
       return;
     }
@@ -803,7 +803,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
     });
   }
 
-  public chown(p: string, isLchmod: boolean, uid: number, gid: number, cb: CallbackOneArg): void {
+  public async chown(p: string, isLchmod: boolean, uid: number, gid: number): Promise<void> {
     if (!this.checkInitAsync(cb)) {
       return;
     }
@@ -823,7 +823,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
     });
   }
 
-  public utimes(p: string, atime: Date, mtime: Date, cb: CallbackOneArg): void {
+  public async utimes(p: string, atime: Date, mtime: Date): Promise<void> {
     if (!this.checkInitAsync(cb)) {
       return;
     }
@@ -919,7 +919,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
     return false;
   }
 
-  private createParentDirectoriesAsync(p: string, cb: CallbackOneArg): void {
+  private async createParentDirectoriesAsync(p: string): Promise<void> {
     let parent = path.dirname(p);
     const toCreate: string[] = [];
     const self = this;
@@ -997,7 +997,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
     }
   }
 
-  private operateOnWritableAsync(p: string, cb: CallbackOneArg): void {
+  private async operateOnWritableAsync(p: string): Promise<void> {
     this.exists(p, (exists: boolean) => {
       if (!exists) {
         return cb(ApiError.ENOENT(p));
@@ -1032,7 +1032,7 @@ export class UnlockedOverlayFS extends BaseFileSystem implements IFileSystem {
     }
   }
 
-  private copyToWritableAsync(p: string, cb: CallbackOneArg): void {
+  private async copyToWritableAsync(p: string): Promise<void> {
     this.stat(p, false, (err: ApiError, pStats?: Stats) => {
       if (err) {
         return cb(err);
@@ -1086,7 +1086,7 @@ export default class OverlayFS extends LockedFS<UnlockedOverlayFS> {
   /**
    * Constructs and initializes an OverlayFS instance with the given options.
    */
-  public static Create(opts: OverlayFSOptions, cb: CallbackTwoArgs<OverlayFS>): void {
+  public static Create(opts: OverlayFSOptions): Promise<OverlayFS> {
     try {
       const fs = new OverlayFS(opts.writable, opts.readable);
       fs._initialize((e?) => {
@@ -1116,7 +1116,7 @@ export default class OverlayFS extends LockedFS<UnlockedOverlayFS> {
     return super.getFSUnlocked();
   }
 
-  private _initialize(cb: CallbackOneArg): void {
+  private _async initialize(): Promise<void> {
     super.getFSUnlocked()._initialize(cb);
   }
 }

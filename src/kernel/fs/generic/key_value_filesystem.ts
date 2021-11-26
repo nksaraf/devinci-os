@@ -1,4 +1,3 @@
-import type { CallbackOneArg, CallbackTwoArgs, CallbackThreeArgs } from '../core/file_system';
 import { BaseFileSystem, SynchronousFileSystem } from '../core/file_system';
 import { ApiError, ErrorCode } from '../core/api_error';
 import { default as Stats, FileType } from '../core/stats';
@@ -59,19 +58,19 @@ function noError(e: ApiError | undefined | null, cb: (e: ApiError) => void): boo
  * triggers the callback with 'e', and returns false. Otherwise, returns true.
  * @hidden
  */
-function noErrorTx(
-  e: ApiError | undefined | null,
-  tx: AsyncKeyValueRWTransaction,
-  cb: (e: ApiError) => void,
-): boolean {
-  if (e) {
-    tx.abort(() => {
-      cb(e);
-    });
-    return false;
-  }
-  return true;
-}
+// function noErrorTx(
+//   e: ApiError | undefined | null,
+//   tx: AsyncKeyValueRWTransaction,
+//   cb: (e: ApiError) => void,
+// ): boolean {
+//   if (e) {
+//     tx.abort(() => {
+//       cb(e);
+//     });
+//     return false;
+//   }
+//   return true;
+// }
 
 /**
  * Represents a *synchronous* key-value store.
@@ -511,7 +510,7 @@ export class SyncKeyValueFileSystem extends SynchronousFileSystem {
     }
   }
 
-  public mkdirSync(p: string, mode: number, options: { recursive: boolean }): void {
+  public mkdirSync(p: string, mode: number): void {
     const tx = this.store.beginTransaction('readwrite'),
       data = Buffer.from('{}');
     this.commitNewFile(tx, p, FileType.DIRECTORY, mode, data);
@@ -764,815 +763,772 @@ export class SyncKeyValueFileSystem extends SynchronousFileSystem {
   }
 }
 
-/**
- * Represents an *asynchronous* key-value store.
- */
-export interface AsyncKeyValueStore {
-  /**
-   * The name of the key-value store.
-   */
-  name(): string;
-  /**
-   * Empties the key-value store completely.
-   */
-  clear(cb: CallbackOneArg): void;
-  /**
-   * Begins a read-write transaction.
-   */
-  beginTransaction(type: 'readwrite'): AsyncKeyValueRWTransaction;
-  /**
-   * Begins a read-only transaction.
-   */
-  beginTransaction(type: 'readonly'): AsyncKeyValueROTransaction;
-  beginTransaction(type: string): AsyncKeyValueROTransaction;
-}
+// /**
+//  * Represents an *asynchronous* key-value store.
+//  */
+// export interface AsyncKeyValueStore {
+//   /**
+//    * The name of the key-value store.
+//    */
+//   name(): string;
+//   /**
+//    * Empties the key-value store completely.
+//    */
+//   clear(): Promise<void>;
+//   /**
+//    * Begins a read-write transaction.
+//    */
+//   beginTransaction(type: 'readwrite'): AsyncKeyValueRWTransaction;
+//   /**
+//    * Begins a read-only transaction.
+//    */
+//   beginTransaction(type: 'readonly'): AsyncKeyValueROTransaction;
+//   beginTransaction(type: string): AsyncKeyValueROTransaction;
+// }
 
 /**
  * Represents an asynchronous read-only transaction.
  */
-export interface AsyncKeyValueROTransaction {
-  /**
-   * Retrieves the data at the given key.
-   * @param key The key to look under for data.
-   */
-  get(key: string, cb: CallbackTwoArgs<Buffer>): void;
-}
+// export interface AsyncKeyValueROTransaction {
+//   /**
+//    * Retrieves the data at the given key.
+//    * @param key The key to look under for data.
+//    */
+//   get(key: string): Promise<Buffer>;
+// }
 
-/**
- * Represents an asynchronous read-write transaction.
- */
-export interface AsyncKeyValueRWTransaction extends AsyncKeyValueROTransaction {
-  /**
-   * Adds the data to the store under the given key. Overwrites any existing
-   * data.
-   * @param key The key to add the data under.
-   * @param data The data to add to the store.
-   * @param overwrite If 'true', overwrite any existing data. If 'false',
-   *   avoids writing the data if the key exists.
-   * @param cb Triggered with an error and whether or not the value was
-   *   committed.
-   */
-  put(key: string, data: Buffer, overwrite: boolean, cb: CallbackTwoArgs<boolean>): void;
-  /**
-   * Deletes the data at the given key.
-   * @param key The key to delete from the store.
-   */
-  del(key: string, cb: CallbackOneArg): void;
-  /**
-   * Commits the transaction.
-   */
-  commit(cb: CallbackOneArg): void;
-  /**
-   * Aborts and rolls back the transaction.
-   */
-  abort(cb: CallbackOneArg): void;
-}
+// /**
+//  * Represents an asynchronous read-write transaction.
+//  */
+// export interface AsyncKeyValueRWTransaction extends AsyncKeyValueROTransaction {
+//   /**
+//    * Adds the data to the store under the given key. Overwrites any existing
+//    * data.
+//    * @param key The key to add the data under.
+//    * @param data The data to add to the store.
+//    * @param overwrite If 'true', overwrite any existing data. If 'false',
+//    *   avoids writing the data if the key exists.
+//    * @param cb Triggered with an error and whether or not the value was
+//    *   committed.
+//    */
+//   put(key: string, data: Buffer, overwrite: boolean): Promise<boolean>;
+//   /**
+//    * Deletes the data at the given key.
+//    * @param key The key to delete from the store.
+//    */
+//   del(key: string): Promise<void>;
+//   /**
+//    * Commits the transaction.
+//    */
+//   commit(): Promise<void>;
+//   /**
+//    * Aborts and rolls back the transaction.
+//    */
+//   abort(): Promise<void>;
+// }
 
-export class AsyncKeyValueFile extends InMemoryFile<AsyncKeyValueFileSystem> implements File {
-  constructor(
-    _fs: AsyncKeyValueFileSystem,
-    _path: string,
-    _flag: FileFlagString,
-    _stat: Stats,
-    contents?: Buffer,
-  ) {
-    super(_fs, _path, _flag, _stat, contents);
-  }
+// export class AsyncKeyValueFile extends InMemoryFile<AsyncKeyValueFileSystem> implements File {
+//   constructor(
+//     _fs: AsyncKeyValueFileSystem,
+//     _path: string,
+//     _flag: FileFlagString,
+//     _stat: Stats,
+//     contents?: Buffer,
+//   ) {
+//     super(_fs, _path, _flag, _stat, contents);
+//   }
 
-  public sync(cb: CallbackOneArg): void {
-    if (this.isDirty()) {
-      this._fs._sync(this.getPath(), this.getBuffer(), this.getStats(), (e?: ApiError) => {
-        if (!e) {
-          this.resetDirty();
-        }
-        cb(e);
-      });
-    } else {
-      cb();
-    }
-  }
+//   public async sync(): Promise<void> {
+//     if (this.isDirty()) {
+//       await this._fs._sync(this.getPath(),await this.getBuffer(), this.getStats());
+//           this.resetDirty();
+//     }
+//   }
 
-  public close(cb: CallbackOneArg): void {
-    this.sync(cb);
-  }
-}
+//   public async close(): Promise<void> {
+//     await this.sync();
+//   }
+// }
 
-/**
- * An "Asynchronous key-value file system". Stores data to/retrieves data from
- * an underlying asynchronous key-value store.
- */
-export class AsyncKeyValueFileSystem extends BaseFileSystem {
-  public static isAvailable(): boolean {
-    return true;
-  }
+// /**
+//  * An "Asynchronous key-value file system". Stores data to/retrieves data from
+//  * an underlying asynchronous key-value store.
+//  */
+// export class AsyncKeyValueFileSystem extends BaseFileSystem {
+//   public static isAvailable(): boolean {
+//     return true;
+//   }
 
-  protected store: AsyncKeyValueStore;
-  private _cache: LRUCache | null = null;
+//   protected store: AsyncKeyValueStore;
+//   private _cache: LRUCache | null = null;
 
-  constructor(cacheSize: number) {
-    super();
-    if (cacheSize > 0) {
-      this._cache = new LRUCache(cacheSize);
-    }
-  }
+//   constructor(cacheSize: number) {
+//     super();
+//     if (cacheSize > 0) {
+//       this._cache = new LRUCache(cacheSize);
+//     }
+//   }
 
-  /**
-   * Initializes the file system. Typically called by subclasses' async
-   * constructors.
-   */
-  public init(store: AsyncKeyValueStore, cb: CallbackOneArg) {
-    this.store = store;
-    // INVARIANT: Ensure that the root exists.
-    this.makeRootDirectory(cb);
-  }
-  public getName(): string {
-    return this.store.name();
-  }
-  public isReadOnly(): boolean {
-    return false;
-  }
-  public supportsSymlinks(): boolean {
-    return false;
-  }
-  public supportsProps(): boolean {
-    return false;
-  }
-  public supportsSynch(): boolean {
-    return false;
-  }
+//   /**
+//    * Initializes the file system. Typically called by subclasses' async
+//    * constructors.
+//    */
+//   public async init(store: AsyncKeyValueStore) {
+//     this.store = store;
+//     // INVARIANT: Ensure that the root exists.
+//     await this.makeRootDirectory();
+//   }
+//   public getName(): string {
+//     return this.store.name();
+//   }
+//   public isReadOnly(): boolean {
+//     return false;
+//   }
+//   public supportsSymlinks(): boolean {
+//     return false;
+//   }
+//   public supportsProps(): boolean {
+//     return false;
+//   }
+//   public supportsSynch(): boolean {
+//     return false;
+//   }
 
-  /**
-   * Delete all contents stored in the file system.
-   */
-  public empty(cb: CallbackOneArg): void {
-    if (this._cache) {
-      this._cache.removeAll();
-    }
-    this.store.clear((e?) => {
-      if (noError(e, cb)) {
-        // INVARIANT: Root always exists.
-        this.makeRootDirectory(cb);
-      }
-    });
-  }
+//   /**
+//    * Delete all contents stored in the file system.
+//    */
+//   public async empty(): Promise<void> {
+//     if (this._cache) {
+//       this._cache.removeAll();
+//     }
+//     await this.store.clear();
+//     await this.makeRootDirectory();
+//   }
 
-  public rename(oldPath: string, newPath: string, cb: CallbackOneArg): void {
-    // TODO: Make rename compatible with the cache.
-    if (this._cache) {
-      // Clear and disable cache during renaming process.
-      const c = this._cache;
-      this._cache = null;
-      c.removeAll();
-      const oldCb = cb;
-      cb = (e?: ApiError | null) => {
-        // Restore empty cache.
-        this._cache = c;
-        oldCb(e);
-      };
-    }
+//   public async rename(oldPath: string, newPath: string): Promise<void> {
+//     // TODO: Make rename compatible with the cache.
+//     if (this._cache) {
+//       // Clear and disable cache during renaming process.
+//       const c = this._cache;
+//       this._cache = null;
+//       c.removeAll();
+//       const oldCb = cb;
+//       cb = (e?: ApiError | null) => {
+//         // Restore empty cache.
+//         this._cache = c;
+//         oldCb(e);
+//       };
+//     }
 
-    const tx = this.store.beginTransaction('readwrite');
-    const oldParent = path.dirname(oldPath),
-      oldName = path.basename(oldPath);
-    const newParent = path.dirname(newPath),
-      newName = path.basename(newPath);
-    const inodes: { [path: string]: Inode } = {};
-    const lists: {
-      [path: string]: { [file: string]: string };
-    } = {};
-    let errorOccurred: boolean = false;
+//     const tx = this.store.beginTransaction('readwrite');
+//     const oldParent = path.dirname(oldPath),
+//       oldName = path.basename(oldPath);
+//     const newParent = path.dirname(newPath),
+//       newName = path.basename(newPath);
+//     const inodes: { [path: string]: Inode } = {};
+//     const lists: {
+//       [path: string]: { [file: string]: string };
+//     } = {};
+//     let errorOccurred: boolean = false;
 
-    // Invariant: Can't move a folder inside itself.
-    // This funny little hack ensures that the check passes only if oldPath
-    // is a subpath of newParent. We append '/' to avoid matching folders that
-    // are a substring of the bottom-most folder in the path.
-    if ((newParent + '/').indexOf(oldPath + '/') === 0) {
-      return cb(new ApiError(ErrorCode.EBUSY, oldParent));
-    }
+//     // Invariant: Can't move a folder inside itself.
+//     // This funny little hack ensures that the check passes only if oldPath
+//     // is a subpath of newParent. We append '/' to avoid matching folders that
+//     // are a substring of the bottom-most folder in the path.
+//     if ((newParent + '/').indexOf(oldPath + '/') === 0) {
+//       return cb(new ApiError(ErrorCode.EBUSY, oldParent));
+//     }
 
-    /**
-     * Responsible for Phase 2 of the rename operation: Modifying and
-     * committing the directory listings. Called once we have successfully
-     * retrieved both the old and new parent's inodes and listings.
-     */
-    const theOleSwitcharoo = (): void => {
-      // Sanity check: Ensure both paths are present, and no error has occurred.
-      if (errorOccurred || !lists.hasOwnProperty(oldParent) || !lists.hasOwnProperty(newParent)) {
-        return;
-      }
-      const oldParentList = lists[oldParent],
-        oldParentINode = inodes[oldParent],
-        newParentList = lists[newParent],
-        newParentINode = inodes[newParent];
+//     /**
+//      * Responsible for Phase 2 of the rename operation: Modifying and
+//      * committing the directory listings. Called once we have successfully
+//      * retrieved both the old and new parent's inodes and listings.
+//      */
+//     const theOleSwitcharoo = (): void => {
+//       // Sanity check: Ensure both paths are present, and no error has occurred.
+//       if (errorOccurred || !lists.hasOwnProperty(oldParent) || !lists.hasOwnProperty(newParent)) {
+//         return;
+//       }
+//       const oldParentList = lists[oldParent],
+//         oldParentINode = inodes[oldParent],
+//         newParentList = lists[newParent],
+//         newParentINode = inodes[newParent];
 
-      // Delete file from old parent.
-      if (!oldParentList[oldName]) {
-        cb(ApiError.ENOENT(oldPath));
-      } else {
-        const fileId = oldParentList[oldName];
-        delete oldParentList[oldName];
+//       // Delete file from old parent.
+//       if (!oldParentList[oldName]) {
+//         cb(ApiError.ENOENT(oldPath));
+//       } else {
+//         const fileId = oldParentList[oldName];
+//         delete oldParentList[oldName];
 
-        // Finishes off the renaming process by adding the file to the new
-        // parent.
-        const completeRename = () => {
-          newParentList[newName] = fileId;
-          // Commit old parent's list.
-          tx.put(
-            oldParentINode.id,
-            Buffer.from(JSON.stringify(oldParentList)),
-            true,
-            (e: ApiError) => {
-              if (noErrorTx(e, tx, cb)) {
-                if (oldParent === newParent) {
-                  // DONE!
-                  tx.commit(cb);
-                } else {
-                  // Commit new parent's list.
-                  tx.put(
-                    newParentINode.id,
-                    Buffer.from(JSON.stringify(newParentList)),
-                    true,
-                    (e: ApiError) => {
-                      if (noErrorTx(e, tx, cb)) {
-                        tx.commit(cb);
-                      }
-                    },
-                  );
-                }
-              }
-            },
-          );
-        };
+//         // Finishes off the renaming process by adding the file to the new
+//         // parent.
+//         const completeRename = () => {
+//           newParentList[newName] = fileId;
+//           // Commit old parent's list.
+//           tx.put(
+//             oldParentINode.id,
+//             Buffer.from(JSON.stringify(oldParentList)),
+//             true,
+//             (e: ApiError) => {
+//               if (noErrorTx(e, tx, cb)) {
+//                 if (oldParent === newParent) {
+//                   // DONE!
+//                   tx.commit(cb);
+//                 } else {
+//                   // Commit new parent's list.
+//                   tx.put(
+//                     newParentINode.id,
+//                     Buffer.from(JSON.stringify(newParentList)),
+//                     true,
+//                     (e: ApiError) => {
+//                       if (noErrorTx(e, tx, cb)) {
+//                         tx.commit(cb);
+//                       }
+//                     },
+//                   );
+//                 }
+//               }
+//             },
+//           );
+//         };
 
-        if (newParentList[newName]) {
-          // 'newPath' already exists. Check if it's a file or a directory, and
-          // act accordingly.
-          this.getINode(tx, newPath, newParentList[newName], (e: ApiError, inode?: Inode) => {
-            if (noErrorTx(e, tx, cb)) {
-              if (inode!.isFile()) {
-                // Delete the file and continue.
-                tx.del(inode!.id, (e?: ApiError) => {
-                  if (noErrorTx(e, tx, cb)) {
-                    tx.del(newParentList[newName], (e?: ApiError) => {
-                      if (noErrorTx(e, tx, cb)) {
-                        completeRename();
-                      }
-                    });
-                  }
-                });
-              } else {
-                // Can't overwrite a directory using rename.
-                tx.abort((e?) => {
-                  cb(ApiError.EACCES(newPath));
-                });
-              }
-            }
-          });
-        } else {
-          completeRename();
-        }
-      }
-    };
+//         if (newParentList[newName]) {
+//           // 'newPath' already exists. Check if it's a file or a directory, and
+//           // act accordingly.
+//           this.getINode(tx, newPath, newParentList[newName], (e: ApiError, inode?: Inode) => {
+//             if (noErrorTx(e, tx, cb)) {
+//               if (inode!.isFile()) {
+//                 // Delete the file and continue.
+//                 tx.del(inode!.id, (e?: ApiError) => {
+//                   if (noErrorTx(e, tx, cb)) {
+//                     tx.del(newParentList[newName], (e?: ApiError) => {
+//                       if (noErrorTx(e, tx, cb)) {
+//                         completeRename();
+//                       }
+//                     });
+//                   }
+//                 });
+//               } else {
+//                 // Can't overwrite a directory using rename.
+//                 tx.abort((e?) => {
+//                   cb(ApiError.EACCES(newPath));
+//                 });
+//               }
+//             }
+//           });
+//         } else {
+//           completeRename();
+//         }
+//       }
+//     };
 
-    /**
-     * Grabs a path's inode and directory listing, and shoves it into the
-     * inodes and lists hashes.
-     */
-    const processInodeAndListings = (p: string): void => {
-      this.findINodeAndDirListing(
-        tx,
-        p,
-        (e?: ApiError | null, node?: Inode, dirList?: { [name: string]: string }): void => {
-          if (e) {
-            if (!errorOccurred) {
-              errorOccurred = true;
-              tx.abort(() => {
-                cb(e);
-              });
-            }
-            // If error has occurred already, just stop here.
-          } else {
-            inodes[p] = node!;
-            lists[p] = dirList!;
-            theOleSwitcharoo();
-          }
-        },
-      );
-    };
+//     /**
+//      * Grabs a path's inode and directory listing, and shoves it into the
+//      * inodes and lists hashes.
+//      */
+//     const processInodeAndListings = (p: string): void => {
+//       this.findINodeAndDirListing(
+//         tx,
+//         p,
+//         (e?: ApiError | null, node?: Inode, dirList?: { [name: string]: string }): void => {
+//           if (e) {
+//             if (!errorOccurred) {
+//               errorOccurred = true;
+//               tx.abort(() => {
+//                 cb(e);
+//               });
+//             }
+//             // If error has occurred already, just stop here.
+//           } else {
+//             inodes[p] = node!;
+//             lists[p] = dirList!;
+//             theOleSwitcharoo();
+//           }
+//         },
+//       );
+//     };
 
-    processInodeAndListings(oldParent);
-    if (oldParent !== newParent) {
-      processInodeAndListings(newParent);
-    }
-  }
+//     processInodeAndListings(oldParent);
+//     if (oldParent !== newParent) {
+//       processInodeAndListings(newParent);
+//     }
+//   }
 
-  public stat(p: string, isLstat: boolean, cb: CallbackTwoArgs<Stats>): void {
-    const tx = this.store.beginTransaction('readonly');
-    this.findINode(tx, p, (e: ApiError, inode?: Inode): void => {
-      if (noError(e, cb)) {
-        cb(null, inode!.toStats());
-      }
-    });
-  }
+//   public stat(p: string, isLstat: boolean): Promise<Stats> {
+//     const tx = this.store.beginTransaction('readonly');
+//     this.findINode(tx, p, (e: ApiError, inode?: Inode): void => {
+//       if (noError(e, cb)) {
+//         cb(null, inode!.toStats());
+//       }
+//     });
+//   }
 
-  public createFile(
-    p: string,
-    flag: FileFlagString,
-    mode: number,
-    cb: CallbackTwoArgs<File>,
-  ): void {
-    const tx = this.store.beginTransaction('readwrite'),
-      data = emptyBuffer();
+//   public createFile(
+//     p: string,
+//     flag: FileFlagString,
+//     mode: number,
+//   ): Promise<File> {
+//     const tx = this.store.beginTransaction('readwrite'),
+//       data = emptyBuffer();
 
-    this.commitNewFile(tx, p, FileType.FILE, mode, data, (e: ApiError, newFile?: Inode): void => {
-      if (noError(e, cb)) {
-        cb(null, new AsyncKeyValueFile(this, p, flag, newFile!.toStats(), data));
-      }
-    });
-  }
+//     let newFile =await  this.commitNewFile(tx, p, FileType.FILE, mode, data);
 
-  public openFile(p: string, flag: FileFlagString, cb: CallbackTwoArgs<File>): void {
-    const tx = this.store.beginTransaction('readonly');
-    // Step 1: Grab the file's inode.
-    this.findINode(tx, p, (e: ApiError, inode?: Inode) => {
-      if (noError(e, cb)) {
-        // Step 2: Grab the file's data.
-        tx.get(inode!.id, (e: ApiError, data?: Buffer): void => {
-          if (noError(e, cb)) {
-            if (data === undefined) {
-              cb(ApiError.ENOENT(p));
-            } else {
-              cb(null, new AsyncKeyValueFile(this, p, flag, inode!.toStats(), data));
-            }
-          }
-        });
-      }
-    });
-  }
+//         return new AsyncKeyValueFile(this, p, flag, newFile!.toStats(), data);
+//   }
 
-  public unlink(p: string, cb: CallbackOneArg): void {
-    this.removeEntry(p, false, cb);
-  }
+//   public async openFile(p: string, flag: FileFlagString): Promise<File> {
+//     const tx = this.store.beginTransaction('readonly');
+//     // Step 1: Grab the file's inode.
+//     let inode = await this.findINode(tx, p);
+//     let data = tx.get(inode!.id);
+//     if (data === undefined) {
+//       throw ApiError.ENOENT(p));
 
-  public rmdir(p: string, cb: CallbackOneArg): void {
-    // Check first if directory is empty.
-    this.readdir(p, (err, files?) => {
-      if (err) {
-        cb(err);
-      } else if (files!.length > 0) {
-        cb(ApiError.ENOTEMPTY(p));
-      } else {
-        this.removeEntry(p, true, cb);
-      }
-    });
-  }
+//     }
+//     return new AsyncKeyValueFile(this, p, flag, inode!.toStats(), data);
+//   }
 
-  public mkdir(p: string, mode: number, options: { recursive: boolean }, cb: CallbackOneArg): void {
-    const tx = this.store.beginTransaction('readwrite'),
-      data = Buffer.from('{}');
-    this.commitNewFile(tx, p, FileType.DIRECTORY, mode, data, cb);
-  }
+//   public async unlink(p: string): Promise<void> {
+//     await this.removeEntry(p, false);
+//   }
 
-  public readdir(p: string, cb: CallbackTwoArgs<string[]>): void {
-    const tx = this.store.beginTransaction('readonly');
-    this.findINode(tx, p, (e: ApiError, inode?: Inode) => {
-      if (noError(e, cb)) {
-        this.getDirListing(
-          tx,
-          p,
-          inode!,
-          (e: ApiError, dirListing?: { [name: string]: string }) => {
-            if (noError(e, cb)) {
-              cb(null, Object.keys(dirListing!) as string[]);
-            }
-          },
-        );
-      }
-    });
-  }
+//   public async rmdir(p: string): Promise<void> {
+//     // Check first if directory is empty.
+//     let files = await this.readdir(p);
+//     if (files!.length > 0) {
+//       throw ApiError.ENOTEMPTY(p);
+//     } else {
+//       await this.removeEntry(p, true);
+//     }
+//   }
 
-  public _sync(p: string, data: Buffer, stats: Stats, cb: CallbackOneArg): void {
-    // @todo Ensure mtime updates properly, and use that to determine if a data
-    //       update is required.
-    const tx = this.store.beginTransaction('readwrite');
-    // Step 1: Get the file node's ID.
-    this._findINode(
-      tx,
-      path.dirname(p),
-      path.basename(p),
-      (e: ApiError, fileInodeId?: string): void => {
-        if (noErrorTx(e, tx, cb)) {
-          // Step 2: Get the file inode.
-          this.getINode(tx, p, fileInodeId!, (e: ApiError, fileInode?: Inode): void => {
-            if (noErrorTx(e, tx, cb)) {
-              const inodeChanged: boolean = fileInode!.update(stats);
-              // Step 3: Sync the data.
-              tx.put(fileInode!.id, data, true, (e: ApiError): void => {
-                if (noErrorTx(e, tx, cb)) {
-                  // Step 4: Sync the metadata (if it changed)!
-                  if (inodeChanged) {
-                    tx.put(fileInodeId!, fileInode!.toBuffer(), true, (e: ApiError): void => {
-                      if (noErrorTx(e, tx, cb)) {
-                        tx.commit(cb);
-                      }
-                    });
-                  } else {
-                    // No need to sync metadata; return.
-                    tx.commit(cb);
-                  }
-                }
-              });
-            }
-          });
-        }
-      },
-    );
-  }
+//   public async mkdir(p: string, mode: number, options: { recursive: boolean }): Promise<void> {
+//     const tx = this.store.beginTransaction('readwrite'),
+//       data = Buffer.from('{}');
+//     this.commitNewFile(tx, p, FileType.DIRECTORY, mode, data, cb);
+//   }
 
-  /**
-   * Checks if the root directory exists. Creates it if it doesn't.
-   */
-  private makeRootDirectory(cb: CallbackOneArg) {
-    const tx = this.store.beginTransaction('readwrite');
-    tx.get(ROOT_NODE_ID, (e: ApiError, data?: Buffer) => {
-      if (e || data === undefined) {
-        // Create new inode.
-        const currTime = new Date().getTime(),
-          // Mode 0666
-          dirInode = new Inode(
-            GenerateRandomID(),
-            4096,
-            511 | FileType.DIRECTORY,
-            currTime,
-            currTime,
-            currTime,
-          );
-        // If the root doesn't exist, the first random ID shouldn't exist,
-        // either.
-        tx.put(dirInode.id, getEmptyDirNode(), false, (e?: ApiError) => {
-          if (noErrorTx(e, tx, cb)) {
-            tx.put(ROOT_NODE_ID, dirInode.toBuffer(), false, (e?: ApiError) => {
-              if (e) {
-                tx.abort(() => {
-                  cb(e);
-                });
-              } else {
-                tx.commit(cb);
-              }
-            });
-          }
-        });
-      } else {
-        // We're good.
-        tx.commit(cb);
-      }
-    });
-  }
+//   public readdir(p: string): Promise<string[]> {
+//     const tx = this.store.beginTransaction('readonly');
+//     this.findINode(tx, p, (e: ApiError, inode?: Inode) => {
+//       if (noError(e, cb)) {
+//         this.getDirListing(
+//           tx,
+//           p,
+//           inode!,
+//           (e: ApiError, dirListing?: { [name: string]: string }) => {
+//             if (noError(e, cb)) {
+//               cb(null, Object.keys(dirListing!) as string[]);
+//             }
+//           },
+//         );
+//       }
+//     });
+//   }
 
-  /**
-   * Helper function for findINode.
-   * @param parent The parent directory of the file we are attempting to find.
-   * @param filename The filename of the inode we are attempting to find, minus
-   *   the parent.
-   * @param cb Passed an error or the ID of the file's inode in the file system.
-   */
-  private _findINode(
-    tx: AsyncKeyValueROTransaction,
-    parent: string,
-    filename: string,
-    cb: CallbackTwoArgs<string>,
-  ): void {
-    if (this._cache) {
-      const id = this._cache.get(path.join(parent, filename));
-      if (id) {
-        return cb(null, id);
-      }
-    }
-    const handleDirectoryListings = (
-      e?: ApiError | null,
-      inode?: Inode,
-      dirList?: { [name: string]: string },
-    ): void => {
-      if (e) {
-        cb(e);
-      } else if (dirList![filename]) {
-        const id = dirList![filename];
-        if (this._cache) {
-          this._cache.set(path.join(parent, filename), id);
-        }
-        cb(null, id);
-      } else {
-        cb(ApiError.ENOENT(path.resolve(parent, filename)));
-      }
-    };
+//   public async sync(p: string, data: Buffer, stats: Stats): Promise<void> {
+//     // @todo Ensure mtime updates properly, and use that to determine if a data
+//     //       update is required.
+//     const tx = this.store.beginTransaction('readwrite');
+//     // Step 1: Get the file node's ID.
+//     this._findINode(
+//       tx,
+//       path.dirname(p),
+//       path.basename(p),
+//       (e: ApiError, fileInodeId?: string): void => {
+//         if (noErrorTx(e, tx, cb)) {
+//           // Step 2: Get the file inode.
+//           this.getINode(tx, p, fileInodeId!, (e: ApiError, fileInode?: Inode): void => {
+//             if (noErrorTx(e, tx, cb)) {
+//               const inodeChanged: boolean = fileInode!.update(stats);
+//               // Step 3: Sync the data.
+//               tx.put(fileInode!.id, data, true, (e: ApiError): void => {
+//                 if (noErrorTx(e, tx, cb)) {
+//                   // Step 4: Sync the metadata (if it changed)!
+//                   if (inodeChanged) {
+//                     tx.put(fileInodeId!, fileInode!.toBuffer(), true, (e: ApiError): void => {
+//                       if (noErrorTx(e, tx, cb)) {
+//                         tx.commit(cb);
+//                       }
+//                     });
+//                   } else {
+//                     // No need to sync metadata; return.
+//                     tx.commit(cb);
+//                   }
+//                 }
+//               });
+//             }
+//           });
+//         }
+//       },
+//     );
+//   }
 
-    if (parent === '/') {
-      if (filename === '') {
-        // BASE CASE #1: Return the root's ID.
-        if (this._cache) {
-          this._cache.set(path.join(parent, filename), ROOT_NODE_ID);
-        }
-        cb(null, ROOT_NODE_ID);
-      } else {
-        // BASE CASE #2: Find the item in the root node.
-        this.getINode(tx, parent, ROOT_NODE_ID, (e: ApiError, inode?: Inode): void => {
-          if (noError(e, cb)) {
-            this.getDirListing(
-              tx,
-              parent,
-              inode!,
-              (e: ApiError, dirList?: { [name: string]: string }): void => {
-                // handle_directory_listings will handle e for us.
-                handleDirectoryListings(e, inode, dirList);
-              },
-            );
-          }
-        });
-      }
-    } else {
-      // Get the parent directory's INode, and find the file in its directory
-      // listing.
-      this.findINodeAndDirListing(tx, parent, handleDirectoryListings);
-    }
-  }
+//   /**
+//    * Checks if the root directory exists. Creates it if it doesn't.
+//    */
+//   private async makeRootDirectory(): Promise<void> {
+//     const tx = this.store.beginTransaction('readwrite');
+//     try {
+//       let data = await tx.get(ROOT_NODE_ID);
 
-  /**
-   * Finds the Inode of the given path.
-   * @param p The path to look up.
-   * @param cb Passed an error or the Inode of the path p.
-   * @todo memoize/cache
-   */
-  private findINode(tx: AsyncKeyValueROTransaction, p: string, cb: CallbackTwoArgs<Inode>): void {
-    this._findINode(tx, path.dirname(p), path.basename(p), (e: ApiError, id?: string): void => {
-      if (noError(e, cb)) {
-        this.getINode(tx, p, id!, cb);
-      }
-    });
-  }
+//       if (data === undefined) {
+//         throw new Error('No root directory found');
+//       }
+//       await tx.commit();
+//     } catch (e) {
+//       // Create new inode.
+//       const currTime = new Date().getTime(),
+//         // Mode 0666
+//         dirInode = new Inode(
+//           GenerateRandomID(),
+//           4096,
+//           511 | FileType.DIRECTORY,
+//           currTime,
+//           currTime,
+//           currTime,
+//         );
+//       // If the root doesn't exist, the first random ID shouldn't exist,
+//       // either.
+//       try {
+//         await tx.put(dirInode.id, getEmptyDirNode(), false);
+//         await tx.put(ROOT_NODE_ID, dirInode.toBuffer(), false);
+//         await tx.commit();
+//       } catch (e) {
+//         await tx.abort();
+//         throw e;
+//       }
+//     }
+//   }
 
-  /**
-   * Given the ID of a node, retrieves the corresponding Inode.
-   * @param tx The transaction to use.
-   * @param p The corresponding path to the file (used for error messages).
-   * @param id The ID to look up.
-   * @param cb Passed an error or the inode under the given id.
-   */
-  private getINode(
-    tx: AsyncKeyValueROTransaction,
-    p: string,
-    id: string,
-    cb: CallbackTwoArgs<Inode>,
-  ): void {
-    tx.get(id, (e: ApiError, data?: Buffer): void => {
-      if (noError(e, cb)) {
-        if (data === undefined) {
-          cb(ApiError.ENOENT(p));
-        } else {
-          cb(null, Inode.fromBuffer(data));
-        }
-      }
-    });
-  }
+//   /**
+//    * Helper function for findINode.
+//    * @param parent The parent directory of the file we are attempting to find.
+//    * @param filename The filename of the inode we are attempting to find, minus
+//    *   the parent.
+//    * @param cb Passed an error or the ID of the file's inode in the file system.
+//    */
+//   private _findINode(
+//     tx: AsyncKeyValueROTransaction,
+//     parent: string,
+//     filename: string,
+//     cb: CallbackTwoArgs<string>,
+//   ): void {
+//     if (this._cache) {
+//       const id = this._cache.get(path.join(parent, filename));
+//       if (id) {
+//         return cb(null, id);
+//       }
+//     }
+//     const handleDirectoryListings = (
+//       e?: ApiError | null,
+//       inode?: Inode,
+//       dirList?: { [name: string]: string },
+//     ): void => {
+//       if (e) {
+//         cb(e);
+//       } else if (dirList![filename]) {
+//         const id = dirList![filename];
+//         if (this._cache) {
+//           this._cache.set(path.join(parent, filename), id);
+//         }
+//         cb(null, id);
+//       } else {
+//         cb(ApiError.ENOENT(path.resolve(parent, filename)));
+//       }
+//     };
 
-  /**
-   * Given the Inode of a directory, retrieves the corresponding directory
-   * listing.
-   */
-  private getDirListing(
-    tx: AsyncKeyValueROTransaction,
-    p: string,
-    inode: Inode,
-    cb: CallbackTwoArgs<{ [fileName: string]: string }>,
-  ): void {
-    if (!inode.isDirectory()) {
-      cb(ApiError.ENOTDIR(p));
-    } else {
-      tx.get(inode.id, (e: ApiError, data?: Buffer): void => {
-        if (noError(e, cb)) {
-          try {
-            cb(null, JSON.parse(data!.toString()));
-          } catch (e) {
-            // Occurs when data is undefined, or corresponds to something other
-            // than a directory listing. The latter should never occur unless
-            // the file system is corrupted.
-            cb(ApiError.ENOENT(p));
-          }
-        }
-      });
-    }
-  }
+//     if (parent === '/') {
+//       if (filename === '') {
+//         // BASE CASE #1: Return the root's ID.
+//         if (this._cache) {
+//           this._cache.set(path.join(parent, filename), ROOT_NODE_ID);
+//         }
+//         cb(null, ROOT_NODE_ID);
+//       } else {
+//         // BASE CASE #2: Find the item in the root node.
+//         this.getINode(tx, parent, ROOT_NODE_ID, (e: ApiError, inode?: Inode): void => {
+//           if (noError(e, cb)) {
+//             this.getDirListing(
+//               tx,
+//               parent,
+//               inode!,
+//               (e: ApiError, dirList?: { [name: string]: string }): void => {
+//                 // handle_directory_listings will handle e for us.
+//                 handleDirectoryListings(e, inode, dirList);
+//               },
+//             );
+//           }
+//         });
+//       }
+//     } else {
+//       // Get the parent directory's INode, and find the file in its directory
+//       // listing.
+//       this.findINodeAndDirListing(tx, parent, handleDirectoryListings);
+//     }
+//   }
 
-  /**
-   * Given a path to a directory, retrieves the corresponding INode and
-   * directory listing.
-   */
-  private findINodeAndDirListing(
-    tx: AsyncKeyValueROTransaction,
-    p: string,
-    cb: CallbackThreeArgs<Inode, { [fileName: string]: string }>,
-  ): void {
-    this.findINode(tx, p, (e: ApiError, inode?: Inode): void => {
-      if (noError(e, cb)) {
-        this.getDirListing(tx, p, inode!, (e, listing?) => {
-          if (noError(e, cb)) {
-            cb(null, inode!, listing!);
-          }
-        });
-      }
-    });
-  }
+//   /**
+//    * Finds the Inode of the given path.
+//    * @param p The path to look up.
+//    * @param cb Passed an error or the Inode of the path p.
+//    * @todo memoize/cache
+//    */
+//   private findINode(tx: AsyncKeyValueROTransaction, p: string): Promise<Inode> {
+//     this._findINode(tx, path.dirname(p), path.basename(p), (e: ApiError, id?: string): void => {
+//       if (noError(e, cb)) {
+//         this.getINode(tx, p, id!, cb);
+//       }
+//     });
+//   }
 
-  /**
-   * Adds a new node under a random ID. Retries 5 times before giving up in
-   * the exceedingly unlikely chance that we try to reuse a random GUID.
-   * @param cb Passed an error or the GUID that the data was stored under.
-   */
-  private addNewNode(
-    tx: AsyncKeyValueRWTransaction,
-    data: Buffer,
-    cb: CallbackTwoArgs<string>,
-  ): void {
-    let retries = 0,
-      currId: string;
-    const reroll = () => {
-      if (++retries === 5) {
-        // Max retries hit. Return with an error.
-        cb(new ApiError(ErrorCode.EIO, 'Unable to commit data to key-value store.'));
-      } else {
-        // Try again.
-        currId = GenerateRandomID();
-        tx.put(currId, data, false, (e: ApiError, committed?: boolean) => {
-          if (e || !committed) {
-            reroll();
-          } else {
-            // Successfully stored under 'currId'.
-            cb(null, currId);
-          }
-        });
-      }
-    };
-    reroll();
-  }
+//   /**
+//    * Given the ID of a node, retrieves the corresponding Inode.
+//    * @param tx The transaction to use.
+//    * @param p The corresponding path to the file (used for error messages).
+//    * @param id The ID to look up.
+//    * @param cb Passed an error or the inode under the given id.
+//    */
+//   private async getINode(
+//     tx: AsyncKeyValueROTransaction,
+//     p: string,
+//     id: string,
+//   ): Promise<Inode> {
+//     let data = await tx.get(id);
 
-  /**
-   * Commits a new file (well, a FILE or a DIRECTORY) to the file system with
-   * the given mode.
-   * Note: This will commit the transaction.
-   * @param p The path to the new file.
-   * @param type The type of the new file.
-   * @param mode The mode to create the new file with.
-   * @param data The data to store at the file's data node.
-   * @param cb Passed an error or the Inode for the new file.
-   */
-  private commitNewFile(
-    tx: AsyncKeyValueRWTransaction,
-    p: string,
-    type: FileType,
-    mode: number,
-    data: Buffer,
-    cb: CallbackTwoArgs<Inode>,
-  ): void {
-    const parentDir = path.dirname(p),
-      fname = path.basename(p),
-      currTime = new Date().getTime();
+//         if (data === undefined) {
+//           throw ApiError.ENOENT(p);
+//         } else {
+//           return Inode.fromBuffer(data);
+//         }
+//   }
 
-    // Invariant: The root always exists.
-    // If we don't check this prior to taking steps below, we will create a
-    // file with name '' in root should p == '/'.
-    if (p === '/') {
-      return cb(ApiError.EEXIST(p));
-    }
+//   /**
+//    * Given the Inode of a directory, retrieves the corresponding directory
+//    * listing.
+//    */
+//   private async getDirListing(
+//     tx: AsyncKeyValueROTransaction,
+//     p: string,
+//     inode: Inode,
+//   ): Promise<{ [fileName: string]: string }>{
+//     if (!inode.isDirectory()) {
+//       throw ApiError.ENOTDIR(p);
+//     } else {
+//       let data =  await tx.get(inode.id)
+//       try {
+//             return JSON.parse(data!.toString());
+//           } catch (e) {
+//             // Occurs when data is undefined, or corresponds to something other
+//             // than a directory listing. The latter should never occur unless
+//             // the file system is corrupted.
+//             throw ApiError.ENOENT(p);
+//           }
+//     }
+//   }
 
-    // Let's build a pyramid of code!
+//   /**
+//    * Given a path to a directory, retrieves the corresponding INode and
+//    * directory listing.
+//    */
+//   private async findINodeAndDirListing(
+//     tx: AsyncKeyValueROTransaction,
+//     p: string,
+//   ): Promise<[Inode, { [fileName: string]: string }]> {
+//     let inode = await this.findINode(tx, p);
+//         let listing = await this.getDirListing(tx, p, inode!)
+//             return [inode!, listing!];
+//   }
 
-    // Step 1: Get the parent directory's inode and directory listing
-    this.findINodeAndDirListing(
-      tx,
-      parentDir,
-      (e?: ApiError | null, parentNode?: Inode, dirListing?: { [name: string]: string }): void => {
-        if (noErrorTx(e, tx, cb)) {
-          if (dirListing![fname]) {
-            // File already exists.
-            tx.abort(() => {
-              cb(ApiError.EEXIST(p));
-            });
-          } else {
-            // Step 2: Commit data to store.
-            this.addNewNode(tx, data, (e: ApiError, dataId?: string): void => {
-              if (noErrorTx(e, tx, cb)) {
-                // Step 3: Commit the file's inode to the store.
-                const fileInode = new Inode(
-                  dataId!,
-                  data.length,
-                  mode | type,
-                  currTime,
-                  currTime,
-                  currTime,
-                );
-                this.addNewNode(
-                  tx,
-                  fileInode.toBuffer(),
-                  (e: ApiError, fileInodeId?: string): void => {
-                    if (noErrorTx(e, tx, cb)) {
-                      // Step 4: Update parent directory's listing.
-                      dirListing![fname] = fileInodeId!;
-                      tx.put(
-                        parentNode!.id,
-                        Buffer.from(JSON.stringify(dirListing)),
-                        true,
-                        (e: ApiError): void => {
-                          if (noErrorTx(e, tx, cb)) {
-                            // Step 5: Commit and return the new inode.
-                            tx.commit((e?: ApiError): void => {
-                              if (noErrorTx(e, tx, cb)) {
-                                cb(null, fileInode);
-                              }
-                            });
-                          }
-                        },
-                      );
-                    }
-                  },
-                );
-              }
-            });
-          }
-        }
-      },
-    );
-  }
+//   /**
+//    * Adds a new node under a random ID. Retries 5 times before giving up in
+//    * the exceedingly unlikely chance that we try to reuse a random GUID.
+//    * @param cb Passed an error or the GUID that the data was stored under.
+//    */
+//   private addNewNode(
+//     tx: AsyncKeyValueRWTransaction,
+//     data: Buffer,
+//     cb: CallbackTwoArgs<string>,
+//   ): void {
+//     let retries = 0,
+//       currId: string;
+//     const reroll = () => {
+//       if (++retries === 5) {
+//         // Max retries hit. Return with an error.
+//         cb(new ApiError(ErrorCode.EIO, 'Unable to commit data to key-value store.'));
+//       } else {
+//         // Try again.
+//         currId = GenerateRandomID();
+//         tx.put(currId, data, false, (e: ApiError, committed?: boolean) => {
+//           if (e || !committed) {
+//             reroll();
+//           } else {
+//             // Successfully stored under 'currId'.
+//             cb(null, currId);
+//           }
+//         });
+//       }
+//     };
+//     reroll();
+//   }
 
-  /**
-   * Remove all traces of the given path from the file system.
-   * @param p The path to remove from the file system.
-   * @param isDir Does the path belong to a directory, or a file?
-   * @todo Update mtime.
-   */
-  private removeEntry(p: string, isDir: boolean, cb: CallbackOneArg): void {
-    // Eagerly delete from cache (harmless even if removal fails)
-    if (this._cache) {
-      this._cache.remove(p);
-    }
-    const tx = this.store.beginTransaction('readwrite'),
-      parent: string = path.dirname(p),
-      fileName: string = path.basename(p);
-    // Step 1: Get parent directory's node and directory listing.
-    this.findINodeAndDirListing(
-      tx,
-      parent,
-      (
-        e?: ApiError | null,
-        parentNode?: Inode,
-        parentListing?: { [name: string]: string },
-      ): void => {
-        if (noErrorTx(e, tx, cb)) {
-          if (!parentListing![fileName]) {
-            tx.abort(() => {
-              cb(ApiError.ENOENT(p));
-            });
-          } else {
-            // Remove from directory listing of parent.
-            const fileNodeId = parentListing![fileName];
-            delete parentListing![fileName];
-            // Step 2: Get file inode.
-            this.getINode(tx, p, fileNodeId, (e: ApiError, fileNode?: Inode): void => {
-              if (noErrorTx(e, tx, cb)) {
-                if (!isDir && fileNode!.isDirectory()) {
-                  tx.abort(() => {
-                    cb(ApiError.EISDIR(p));
-                  });
-                } else if (isDir && !fileNode!.isDirectory()) {
-                  tx.abort(() => {
-                    cb(ApiError.ENOTDIR(p));
-                  });
-                } else {
-                  // Step 3: Delete data.
-                  tx.del(fileNode!.id, (e?: ApiError): void => {
-                    if (noErrorTx(e, tx, cb)) {
-                      // Step 4: Delete node.
-                      tx.del(fileNodeId, (e?: ApiError): void => {
-                        if (noErrorTx(e, tx, cb)) {
-                          // Step 5: Update directory listing.
-                          tx.put(
-                            parentNode!.id,
-                            Buffer.from(JSON.stringify(parentListing)),
-                            true,
-                            (e: ApiError): void => {
-                              if (noErrorTx(e, tx, cb)) {
-                                tx.commit(cb);
-                              }
-                            },
-                          );
-                        }
-                      });
-                    }
-                  });
-                }
-              }
-            });
-          }
-        }
-      },
-    );
-  }
-}
+//   /**
+//    * Commits a new file (well, a FILE or a DIRECTORY) to the file system with
+//    * the given mode.
+//    * Note: This will commit the transaction.
+//    * @param p The path to the new file.
+//    * @param type The type of the new file.
+//    * @param mode The mode to create the new file with.
+//    * @param data The data to store at the file's data node.
+//    * @param cb Passed an error or the Inode for the new file.
+//    */
+//   private commitNewFile(
+//     tx: AsyncKeyValueRWTransaction,
+//     p: string,
+//     type: FileType,
+//     mode: number,
+//     data: Buffer,
+//   ): Promise<Inode> {
+//     const parentDir = path.dirname(p),
+//       fname = path.basename(p),
+//       currTime = new Date().getTime();
+
+//     // Invariant: The root always exists.
+//     // If we don't check this prior to taking steps below, we will create a
+//     // file with name '' in root should p == '/'.
+//     if (p === '/') {
+//        throw ApiError.EEXIST(p);
+//     }
+
+//     // Let's build a pyramid of code!
+
+//     // Step 1: Get the parent directory's inode and directory listing
+//     let [parentNode, dirListing] = await this.findINodeAndDirListing(
+//       tx,
+//       parentDir);
+
+//       if (dirListing![fname]) {
+//        await  tx.abort();
+//        throw ApiError.EEXIST(p);
+//       }
+
+//       let dataId = await this.addNewNode(tx, data)
+
+//               if (noErrorTx(e, tx, cb)) {
+//                 // Step 3: Commit the file's inode to the store.
+//                 const fileInode = new Inode(
+//                   dataId!,
+//                   data.length,
+//                   mode | type,
+//                   currTime,
+//                   currTime,
+//                   currTime,
+//                 );
+//                 this.addNewNode(
+//                   tx,
+//                   fileInode.toBuffer(),
+//                   (e: ApiError, fileInodeId?: string): void => {
+//                     if (noErrorTx(e, tx, cb)) {
+//                       // Step 4: Update parent directory's listing.
+//                       dirListing![fname] = fileInodeId!;
+//                       tx.put(
+//                         parentNode!.id,
+//                         Buffer.from(JSON.stringify(dirListing)),
+//                         true,
+//                         (e: ApiError): void => {
+//                           if (noErrorTx(e, tx, cb)) {
+//                             // Step 5: Commit and return the new inode.
+//                             tx.commit((e?: ApiError): void => {
+//                               if (noErrorTx(e, tx, cb)) {
+//                                 cb(null, fileInode);
+//                               }
+//                             });
+//                           }
+//                         },
+//                       );
+//                     }
+//                   },
+//                 );
+//               }
+//             });
+//           }
+//         }
+//       },
+//     );
+//   }
+
+//   /**
+//    * Remove all traces of the given path from the file system.
+//    * @param p The path to remove from the file system.
+//    * @param isDir Does the path belong to a directory, or a file?
+//    * @todo Update mtime.
+//    */
+//   private async removeEntry(p: string, isDir: boolean): Promise<void> {
+//     // Eagerly delete from cache (harmless even if removal fails)
+//     if (this._cache) {
+//       this._cache.remove(p);
+//     }
+//     const tx = this.store.beginTransaction('readwrite'),
+//       parent: string = path.dirname(p),
+//       fileName: string = path.basename(p);
+//     // Step 1: Get parent directory's node and directory listing.
+//     this.findINodeAndDirListing(
+//       tx,
+//       parent,
+//       (
+//         e?: ApiError | null,
+//         parentNode?: Inode,
+//         parentListing?: { [name: string]: string },
+//       ): void => {
+//         if (noErrorTx(e, tx, cb)) {
+//           if (!parentListing![fileName]) {
+//             tx.abort(() => {
+//               cb(ApiError.ENOENT(p));
+//             });
+//           } else {
+//             // Remove from directory listing of parent.
+//             const fileNodeId = parentListing![fileName];
+//             delete parentListing![fileName];
+//             // Step 2: Get file inode.
+//             this.getINode(tx, p, fileNodeId, (e: ApiError, fileNode?: Inode): void => {
+//               if (noErrorTx(e, tx, cb)) {
+//                 if (!isDir && fileNode!.isDirectory()) {
+//                   tx.abort(() => {
+//                     cb(ApiError.EISDIR(p));
+//                   });
+//                 } else if (isDir && !fileNode!.isDirectory()) {
+//                   tx.abort(() => {
+//                     cb(ApiError.ENOTDIR(p));
+//                   });
+//                 } else {
+//                   // Step 3: Delete data.
+//                   tx.del(fileNode!.id, (e?: ApiError): void => {
+//                     if (noErrorTx(e, tx, cb)) {
+//                       // Step 4: Delete node.
+//                       tx.del(fileNodeId, (e?: ApiError): void => {
+//                         if (noErrorTx(e, tx, cb)) {
+//                           // Step 5: Update directory listing.
+//                           tx.put(
+//                             parentNode!.id,
+//                             Buffer.from(JSON.stringify(parentListing)),
+//                             true,
+//                             (e: ApiError): void => {
+//                               if (noErrorTx(e, tx, cb)) {
+//                                 tx.commit(cb);
+//                               }
+//                             },
+//                           );
+//                         }
+//                       });
+//                     }
+//                   });
+//                 }
+//               }
+//             });
+//           }
+//         }
+//       },
+//     );
+//   }
+// }

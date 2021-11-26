@@ -8,12 +8,16 @@ export let deno = new DenoIsolate();
 
 export let Deno;
 
-deno.acceptConnection = async (port) => {
+deno.acceptConnection = async (port, options) => {
+  await kernel.init();
   remoteFS.proxy = wrap(port);
   await deno.attach(kernel);
   Deno = deno.context.Deno;
   Global.Deno = deno.context.Deno;
   Global.deno = deno;
+
+  Global.Response = deno.context.Response;
+  Global.Request = deno.context.Request;
 };
 
 expose(deno);

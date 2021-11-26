@@ -1,9 +1,10 @@
 import HTTPRequest from '../kernel/fs/backend/HTTPRequest';
-import { createFileSystemBackend, VirtualFileSystem } from '../kernel/fs/create-fs';
+import type { VirtualFileSystem } from '../kernel/fs/create-fs';
 import * as path from 'path';
 import { constants } from '../kernel/kernel/constants';
 import type { Kernel } from './denix/denix';
 import type { Linker } from './linker/Linker';
+import { mkdirp } from 'os/kernel/fs/core/util';
 
 export type Context = typeof globalThis;
 
@@ -62,7 +63,8 @@ export class DenoIsolate extends EventTarget {
         this.wasmStreamingCallback = cb;
       },
       decode: function (data: Uint8Array) {
-        return new TextDecoder().decode(data);
+        console.log(data);
+        return new TextDecoder().decode(new Uint8Array(data));
       },
       encode: function (data: string) {
         return new TextEncoder().encode(data);
@@ -114,18 +116,6 @@ export class DenoIsolate extends EventTarget {
     Object.assign(this.context, {
       WebAssembly: {
         compileStreaming: async (source) => {
-          // let resource = new WasmStreamingResource();
-          // let rid = this.kernel.addResource(resource);
-          // this.wasmStreamingCallback(source, rid);
-          // return WebAssembly.compileStreaming(
-          //   new Response(
-          //     new ReadableStream({
-          //       start: async (controller) => {
-          //         resource.
-          //       },
-          //     }),
-          //   ),
-          // );
           let res = await source;
           return await WebAssembly.compileStreaming(fetch(res.url));
         },
@@ -135,82 +125,77 @@ export class DenoIsolate extends EventTarget {
         compile: WebAssembly.compile,
       },
     });
-
-    // Object.assign(this.context, {
-    //   require: (src) => {
-    //     this.linker.require(src, this.context);
-    //   },
-    // });
-
-    // this.linker = new Linker();
-    // this.linker.fs = kernel.fs;
-    // await this.linker.init();
   }
 
   async eval(source: string, options: {} = {}) {
     return await this.linker.eval(source, this.context);
   }
 
-  async run(path: string, options: {} = {}) {
+  async run(
+    path: string,
+    options: {
+      args?: string[];
+    } = {},
+  ) {
     if (path.endsWith('.wasm')) {
-      const { default: Context } = await import(
-        'https://deno.land/std@0.115.1/wasi/snapshot_preview1.ts'
-      );
-
-      const context = new Context({
-        args: ['exa', '-al', 'lib/deno'],
-        env: Deno.env.toObject(),
-        preopens: {
-          '/lib': '/lib',
-          '/lib/deno': '/lib/deno',
-        },
-      });
-
-      const wasm = await WebAssembly.compileStreaming(fetch(path));
-
-      let instance = await WebAssembly.instantiate(wasm, {
-        wasi_snapshot_preview1: context.exports,
-      });
-
-      await context.start(instance);
-      return;
+      return await this.runWASM(path, options);
     }
 
-    return await this.linker.evalScript(path, this.context);
+    const script = await new Function(`return async () => {
+      return await import("${path}?script")
+    }`)()();
+
+    return;
+  }
+
+  public async runWASM(path: string, options: { args?: string[] }) {
+    const { default: Context } = await import(
+      'https://deno.land/std@0.115.1/wasi/snapshot_preview1.ts'
+    );
+
+    const context = new Context({
+      args: [path, ...(options.args ?? [])],
+      env: Deno.env.toObject(),
+      exitOnReturn: false,
+      preopens: {
+        '/lib': '/lib',
+        '/lib/deno': '/lib/deno',
+      },
+    });
+
+    const wasm = await WebAssembly.compileStreaming(fetch(path));
+
+    let instance = await WebAssembly.instantiate(wasm, {
+      wasi_snapshot_preview1: context.exports,
+      wasi_unstable: context.exports,
+    });
+
+    await context.start(instance);
+    return;
   }
 }
 
 type DenoBootstrapCore = any;
 
+import.meta.main = true;
+
+// this assums that mountDenoLib was run on the file system so that /lib/deno is available
 async function loadDenoBootstrapper(core: DenoBootstrapCore, fs: VirtualFileSystem) {
   async function evalBootstrapModule(src: string, context) {
-    return await new Promise((res, rej) => {
-      fs.readdir(src, (err, files) => {
-        if (err) rej(err);
+    let files = await fs.readdir(src);
 
-        (async function () {
-          for (let path of files) {
-            if (path.endsWith('.js') && !Number.isNaN(Number(path[0]))) {
-              await evalScript(`${src}/${path}`, context);
-            }
-          }
-        })()
-          .then(res)
-          .catch(rej);
-      });
-    });
+    for (let path of files) {
+      if (path.endsWith('.js') && !Number.isNaN(Number(path[0]))) {
+        await evalScript(`${src}/${path}`, context);
+      }
+    }
   }
 
   async function evalScript(src, context) {
     console.time('evaluating ' + src);
-    return await new Promise((res, rej) => {
-      fs.readFile(src, 'utf-8', constants.fs.O_RDONLY, (err, rv) => {
-        if (err) rej(err);
-        evalWithContext(rv, context);
-        console.timeEnd('evaluating ' + src);
-        res(undefined);
-      });
-    });
+    let rv = await fs.readFile(src, 'utf-8', constants.fs.O_RDONLY);
+    evalWithContext(rv, context);
+    console.timeEnd('evaluating ' + src);
   }
 
   let denoGlobal = getGlobalThis(core);
@@ -328,17 +313,22 @@ function getGlobalThis(core: any) {
 }
 
 export async function mountDenoLib(fs: VirtualFileSystem) {
-  let testFS = await createFileSystemBackend(HTTPRequest, {
+  console.log('heree');
+  let testFS = await HTTPRequest.Create({
     baseUrl: 'http://localhost:8999/',
     index: 'http://localhost:8999/index.json',
     preferXHR: true,
   });
+  console.log('heree');
 
-  if (!fs.existsSync('/lib')) {
-    fs.mkdirSync('/lib', 0x644, { recursive: true });
+  if (!(await fs.exists('/lib'))) {
+    await mkdirp('/lib', 0x644, fs);
   }
+  console.log('heree');
 
   fs.mount('/lib/deno', testFS);
+
+  console.log('heree done', await fs.readdir('/lib/deno'));
 }
 
 export function getModuleFn(

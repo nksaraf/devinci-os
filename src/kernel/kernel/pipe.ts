@@ -1,9 +1,10 @@
 import { ApiError, ErrorCode } from '../fs/core/api_error';
 import type { File } from '../fs/core/file';
-import type { CallbackOneArg, CallbackTwoArgs } from '../fs/core/file_system';
 import type stats from '../fs/core/stats';
 import InMemoryFileSystem from '../fs/backend/InMemory';
 import VirtualFile from '../fs/generic/virtual_file';
+import { newPromise } from 'os/deno/util';
+import type Stats from '../fs/core/stats';
 
 const CUTOFF = 8192;
 
@@ -27,36 +28,28 @@ export class InMemoryPipe {
     return len;
   }
 
-  writeBuffer(
-    b: Buffer,
-    offset: number,
-    length: number,
-    pos: number,
-    cb: CallbackTwoArgs<number>,
-  ): void {
+  async writeBuffer(b: Buffer, offset: number, length: number, pos: number): Promise<number> {
     this.bufs.push(b);
     // call backs readers who were blocked on this pipe
     this.releaseReader();
 
     if (this.bufferLength <= CUTOFF) {
-      cb(undefined, b.length);
+      return b.length;
     } else {
       if (this.writeWaiter) {
         console.log('ERROR: expected no other write waiter');
       }
+
+      let promise = newPromise<number>();
       this.writeWaiter = () => {
-        cb(undefined, b.length);
+        promise.resolve(b.length);
       };
+
+      return await promise.promise;
     }
   }
 
-  readBuffer(
-    buf: Buffer,
-    off: number,
-    len: number,
-    pos: number,
-    cb: CallbackTwoArgs<number>,
-  ): void {
+  async readBuffer(buf: Buffer, off: number, len: number, pos: number): Promise<number> {
     if (off !== 0) {
       console.log('ERROR: Pipe.read w/ non-zero offset');
     }
@@ -66,16 +59,19 @@ export class InMemoryPipe {
       let n = this.copy(buf, off, len, pos);
 
       this.releaseWriter();
-      return cb(undefined, n);
+      return n;
     }
 
+    let promise = newPromise<number>();
     // at this point, we're waiting on more data or an EOF.
     // we go into reader waiting mode
     this.readWaiter = () => {
       let n = this.copy(buf, 0, len, pos);
       this.releaseWriter();
-      cb(undefined, n);
+      promise.resolve(n);
     };
+
+    return await promise.promise;
   }
 
   readBufferSync(buf: Buffer, off: number, len: number, pos: number): number {
@@ -145,48 +141,42 @@ export class InMemoryPipe {
   }
 }
 
-export class MessageChannelPipe extends InMemoryPipe {
-  port: MessagePort;
-  constructor(port: MessagePort) {
-    super();
-    this.port.onmessage = (e: MessageEvent) => {
-      this.onBufferReceived();
-    };
-  }
+// export class MessageChannelPipe extends InMemoryPipe {
+//   port: MessagePort;
+//   constructor(port: MessagePort) {
+//     super();
+//     this.port.onmessage = (e: MessageEvent) => {
+//       this.onBufferReceived();
+//     };
+//   }
 
-  writeBuffer(
-    b: Buffer,
-    offset: number,
-    length: number,
-    pos: number,
-    cb: CallbackTwoArgs<number>,
-  ): void {
-    this.appendBuffer(b);
-    // call backs readers who were blocked on this pipe
-    this.releaseReader();
+//   async writeBuffer(b: Buffer, offset: number, length: number, pos: number): Promise<number> {
+//     this.appendBuffer(b);
+//     // call backs readers who were blocked on this pipe
+//     this.releaseReader();
 
-    if (this.bufferLength <= CUTOFF) {
-      cb(undefined, b.length);
-    } else {
-      if (this.writeWaiter) {
-        console.log('ERROR: expected no other write waiter');
-      }
-      this.writeWaiter = () => {
-        cb(undefined, b.length);
-      };
-    }
-  }
+//     if (this.bufferLength <= CUTOFF) {
+//       cb(undefined, b.length);
+//     } else {
+//       if (this.writeWaiter) {
+//         console.log('ERROR: expected no other write waiter');
+//       }
+//       this.writeWaiter = () => {
+//         cb(undefined, b.length);
+//       };
+//     }
+//   }
 
-  appendBuffer(buffer: Buffer) {
-    this.port.postMessage(buffer, [buffer]);
-  }
+//   appendBuffer(buffer: Buffer) {
+//     this.port.postMessage(buffer, [buffer]);
+//   }
 
-  onBufferReceived() {}
-}
+//   onBufferReceived() {}
+// }
 
-export function isPipe(f: File): f is PipeFile {
-  return f instanceof PipeFile;
-}
+// export function isPipe(f: File): f is PipeFile {
+//   return f instanceof PipeFile;
+// }
 
 enum PipeMode {
   Read = 1,
@@ -201,90 +191,83 @@ export class PipeFileSystem extends InMemoryFileSystem {}
  * Writes are directed to the pipe
  * Reads are read from the pipe as data becomes available.
  */
-export class PipeFile extends VirtualFile implements File {
-  writeListener: CallbackTwoArgs<string>;
+// export class PipeFile extends VirtualFile implements File {
+//   writeListener: CallbackTwoArgs<string>;
 
-  supportsSynch(): boolean {
-    return false;
-  }
+//   supportsSynch(): boolean {
+//     return false;
+//   }
 
-  constructor(public pipe: InMemoryPipe, public mode: PipeMode) {
-    super('/dev/pipe/' + 0, mode === PipeMode.Read ? 'r' : 'w');
-  }
+//   constructor(public pipe: InMemoryPipe, public mode: PipeMode) {
+//     super('/dev/pipe/' + 0, mode === PipeMode.Read ? );
+//   }
 
-  addEventListener(evName: string, cb: CallbackTwoArgs<string>): void {
-    if (evName !== 'write') {
-      console.log('eventListener only available on PipeFile for write');
-      return;
-    }
+//   addEventListener(evName: string): Promise<string> {
+//     if (evName !== 'write') {
+//       console.log('eventListener only available on PipeFile for write');
+//       return;
+//     }
 
-    this.writeListener = cb;
-  }
+//     this.writeListener = cb;
+//   }
 
-  readBuffer(buf: Buffer, off: number, len: number, pos: number, cb: CallbackOneArg): void {
-    if (this.mode !== PipeMode.Read) {
-      console.log('ERROR: PipeFile.read called on non-read pipe');
-    }
+//   readBuffer(buf: Buffer, off: number, len: number, pos: number): Promise<void> {
+//     if (this.mode !== PipeMode.Read) {
+//       console.log('ERROR: PipeFile.read called on non-read pipe');
+//     }
 
-    if (pos !== -1) {
-      return cb(new ApiError(ErrorCode.ESPIPE));
-    }
+//     if (pos !== -1) {
+//       return cb(new ApiError(ErrorCode.ESPIPE));
+//     }
 
-    this.pipe.readBuffer(buf, off, len, pos, cb);
-  }
+//     this.pipe.readBuffer(buf, off, len, pos, cb);
+//   }
 
-  writeBuffer(
-    buf: Buffer,
-    offset: number,
-    len: number,
-    pos: number,
-    cb: CallbackTwoArgs<number>,
-  ): void {
-    if (this.mode !== PipeMode.Write) {
-      console.log('ERROR: PipeFile.read called on non-read pipe');
-    }
+//   writeBuffer(buf: Buffer, offset: number, len: number, pos: number): void {
+//     if (this.mode !== PipeMode.Write) {
+//       console.log('ERROR: PipeFile.read called on non-read pipe');
+//     }
 
-    this.pipe.writeBuffer(buf, offset, len, pos, cb);
+//     await this.pipe.writeBuffer(buf, offset, len, pos);
 
-    if (this.writeListener) {
-      this.writeListener(undefined, buf.toString('utf-8'));
-    }
-  }
+//     if (this.writeListener) {
+//       this.writeListener(undefined, buf.toString('utf-8'));
+//     }
+//   }
 
-  stat(cb: (err: any, stats: any) => void): void {
-    throw new Error('TODO: PipeFile.stat not implemented');
-  }
+//   stat(): Promise<Stats> {
+//     throw new Error('TODO: PipeFile.stat not implemented');
+//   }
 
-  ref(): void {
-    this.pipe.ref();
-  }
+//   ref(): void {
+//     this.pipe.ref();
+//   }
 
-  unref(): void {
-    this.pipe.unref();
-  }
+//   unref(): void {
+//     this.pipe.unref();
+//   }
 
-  getPos(): number {
-    throw new Error('Method not implemented.');
-  }
+//   getPos(): number {
+//     throw new Error('Method not implemented.');
+//   }
 
-  statSync(): stats {
-    throw new Error('Method not implemented.');
-  }
+//   statSync(): stats {
+//     throw new Error('Method not implemented.');
+//   }
 
-  close(cb: CallbackOneArg): void {
-    this.pipe.close();
-    cb();
-  }
+//   async close(): Promise<void> {
+//     this.pipe.close();
+//   }
 
-  closeSync(): void {
-    this.pipe.close();
-  }
+//   closeSync(): void {
+//     this.pipe.close();
+//   }
 
-  truncate(len: number, cb: CallbackOneArg): void {
-    throw new Error('Method not implemented.');
-  }
+//   truncate(len: number): Promise<void> {
+//     throw new Error('Method not implemented.');
+//   }
 
-  truncateSync(len: number): void {
-    throw new Error('Method not implemented.');
-  }
-}
+//   truncateSync(len: number): void {
+//     throw new Error('Method not implemented.');
+//   }
+// }

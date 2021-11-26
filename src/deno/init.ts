@@ -3,7 +3,7 @@ import { fs } from './fs';
 
 export async function initKernel() {
   console.log('booting Kernel');
-  const denix = await Kernel.create();
+  const denix = new Kernel();
   denix.fs = fs;
   return denix;
 }

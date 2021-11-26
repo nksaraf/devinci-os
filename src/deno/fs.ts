@@ -2,7 +2,7 @@ import { VirtualFileSystem } from 'os/kernel/fs';
 import { proxy, wrap } from './comlink';
 import type { Remote } from './comlink';
 import type { ExposedFileSystem } from './fs.worker';
-import FSWorker from './fs.worker?sharedworker';
+import FSWorker from './fs.worker?worker';
 import { fromWireValue, toWireValue } from './transferHandlers';
 
 interface RemoteFileSystem extends VirtualFileSystem {}
@@ -28,7 +28,8 @@ function syncOpCallXhr(op_code: string, args) {
     throw result[0];
   }
 
-  return result.slice(1).map((v) => fromWireValue(v[0]));
+  const value = fromWireValue(result[1][0]);
+  return value;
 }
 
 /**
@@ -42,44 +43,11 @@ function syncOpCallXhr(op_code: string, args) {
 function defineFcn(name: string, isSync: boolean, numArgs: number): (...args: any[]) => any {
   if (isSync) {
     return function (this: RemoteFileSystem, ...args: any[]) {
-      // if (!this.allowSync) {
-      //   console.log(name, 'called in sync mode');
-      //   throw ApiError.EACCES('Sync operations are not allowed on this remote fs');
-      // }
-
-      // const buf = new Int32Array(new SharedArrayBuffer(4));
-      // args.push(buf);
-      // this.proxy[name](...args).then((r) => console.log(r, 'heree syncing done'));
-      // return;
-      const [res] = syncOpCallXhr(name, args);
-      return res;
+      return syncOpCallXhr(name, args);
     };
   } else {
-    return function (this: RemoteFileSystem, ...args: any[]) {
-      return new Promise((res, rej) => {
-        console.log('calling', name, args);
-        if (typeof args[args.length - 1] === 'function') {
-          let old = args[args.length - 1];
-          args[args.length - 1] = proxy((e, ...args) => {
-            console.log(e, ...args);
-            old(e, ...args);
-            res(undefined);
-          });
-        } else {
-          args.push(
-            proxy((e, ...args) => {
-              if (e) {
-                rej(e);
-              }
-              res([...args]);
-            }),
-          );
-        }
-
-        this.proxy[name](...args)
-          .then()
-          .catch(rej);
-      });
+    return async function (this: RemoteFileSystem, ...args: any[]) {
+      return await this.proxy[name](...args);
     };
   }
 }
@@ -114,9 +82,12 @@ try {
   console.log(SharedWorker);
 
   const sharedFilesWorker = new FSWorker();
-  sharedFilesWorker.port.start();
-  remoteFS.proxy = wrap(sharedFilesWorker.port);
+  remoteFS.proxy = wrap(sharedFilesWorker);
+  console.log('waiting for proxy to get ready');
   await remoteFS.proxy.ready();
-} catch (e) {}
+  console.log('waiting for proxy to get ready');
+} catch (e) {
+  console.log('waiting for proxy to get ready', e);
+}
 
 export const fs = new VirtualFileSystem(remoteFS);

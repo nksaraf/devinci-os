@@ -129,18 +129,8 @@ export const network = [
     let httpRequest = this.resourceTable.get(rid) as FetchRequestResource;
 
     let url = new URL(httpRequest.url);
-    let promise = newPromise<string>();
     if (url.protocol === 'file:') {
-      await this.fs.readFile(url.pathname, 'utf-8', 0, (e, v) => {
-        if (e) {
-          promise.reject(e);
-        }
-        promise.resolve(v as string);
-      });
-
-      let val = await promise.promise;
-
-      console.log(JSON.parse(val));
+      let val = (await this.fs.readFile(url.pathname, 'utf-8', 0)) as string;
 
       const response = new Response(
         new ReadableStream({
@@ -184,7 +174,7 @@ export const network = [
 ];
 
 export class LocalNetwork extends EventTarget {
-  channel = new BroadcastChannel('network');
+  channel = new BroadcastChannel('localhost');
   constructor() {
     super();
     this.channel.addEventListener('message', (event) => {
@@ -194,6 +184,7 @@ export class LocalNetwork extends EventTarget {
         console.log(this.listeners, props);
 
         if (this.listeners[port] && this.listeners[port].isListening) {
+          console.log('getting response');
           let tcpStream = this.listeners[port].doAccept({
             hostname: new URL(props.referrer).hostname,
             port: 9000,
@@ -205,9 +196,10 @@ export class LocalNetwork extends EventTarget {
 
           setTimeout(() => {
             tcpStream.dispatchEvent(new CustomEvent('packet', { detail: event.data }));
-          }, 1000);
+          }, 1);
 
           tcpStream.addEventListener('send', (event) => {
+            console.log(event);
             this.channel.postMessage({
               type: 'RESPONSE',
               requestId,
@@ -382,6 +374,10 @@ class HttpConnResource extends Resource {
       this.acceptReject = rej;
     });
     return await promise;
+  }
+
+  close() {
+    console.log('closing');
   }
 }
 

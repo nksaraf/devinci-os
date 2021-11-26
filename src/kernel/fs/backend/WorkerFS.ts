@@ -175,7 +175,7 @@ class FileDescriptorArgumentConverter {
     });
   }
 
-  public applyFdAPIRequest(request: IAPIRequest, cb: CallbackOneArg): void {
+  public async applyFdAPIRequest(request: IAPIRequest): Promise<void> {
     const fdArg = <IFileDescriptorArgument>request.args[0];
     this._applyFdChanges(fdArg, (err, fd?) => {
       if (err) {
@@ -192,7 +192,7 @@ class FileDescriptorArgumentConverter {
     });
   }
 
-  private _applyFdChanges(remoteFd: IFileDescriptorArgument, cb: CallbackTwoArgs<File>): void {
+  private _applyFdChanges(remoteFd: IFileDescriptorArgument): Promise<File> {
     const fd = this._fileDescriptors[remoteFd.id],
       data = transferrableObjectToBuffer(remoteFd.data),
       remoteStats = Stats.fromBuffer(transferrableObjectToBuffer(remoteFd.stat));
@@ -473,15 +473,15 @@ class WorkerFile extends InMemoryFile<WorkerFS> {
     };
   }
 
-  public sync(cb: CallbackOneArg): void {
+  public async sync(): Promise<void> {
     this._syncClose('sync', cb);
   }
 
-  public close(cb: CallbackOneArg): void {
+  public async close(): Promise<void> {
     this._syncClose('close', cb);
   }
 
-  private _syncClose(type: string, cb: CallbackOneArg): void {
+  private _async syncClose(type: string): Promise<void> {
     if (this.isDirty()) {
       (<WorkerFS>this._fs).syncClose(type, this, (e?: ApiError) => {
         if (!e) {
@@ -535,7 +535,7 @@ export default class WorkerFS extends BaseFileSystem implements IFileSystem {
       type: 'object',
       description:
         'The target worker that you want to connect to, or the current worker if in a worker context.',
-      validator: function (v: object, cb: CallbackOneArg): void {
+      validator: function (v: object): Promise<void> {
         // Check for a `postMessage` function.
         if ((<any>v)['postMessage']) {
           cb();
@@ -546,7 +546,7 @@ export default class WorkerFS extends BaseFileSystem implements IFileSystem {
     },
   };
 
-  public static Create(opts: WorkerFSOptions, cb: CallbackTwoArgs<WorkerFS>): void {
+  public static Create(opts: WorkerFSOptions): Promise<WorkerFS> {
     const fs = new WorkerFS(opts.worker);
     fs._initialize(() => {
       cb(null, fs);
@@ -562,7 +562,7 @@ export default class WorkerFS extends BaseFileSystem implements IFileSystem {
   public static attachRemoteListener(worker: Worker) {
     const fdConverter = new FileDescriptorArgumentConverter();
 
-    function argLocal2Remote(arg: any, requestArgs: any[], cb: CallbackTwoArgs<any>): void {
+    function argLocal2Remote(arg: any, requestArgs: any[]): Promise<any> {
       switch (typeof arg) {
         case 'object':
           if (arg instanceof Stats) {
@@ -769,13 +769,13 @@ export default class WorkerFS extends BaseFileSystem implements IFileSystem {
     return this._supportProps;
   }
 
-  public rename(oldPath: string, newPath: string, cb: CallbackOneArg): void {
+  public async rename(oldPath: string, newPath: string): Promise<void> {
     this._rpc('rename', arguments);
   }
-  public stat(p: string, isLstat: boolean, cb: CallbackTwoArgs<Stats>): void {
+  public stat(p: string, isLstat: boolean): Promise<Stats> {
     this._rpc('stat', arguments);
   }
-  public open(p: string, flag: FileFlagString, mode: number, cb: CallbackTwoArgs<File>): void {
+  public open(p: string, flag: FileFlagString, mode: number): Promise<File> {
     this._rpc('open', arguments);
   }
   public unlink(p: string, cb: Function): void {
@@ -787,13 +787,13 @@ export default class WorkerFS extends BaseFileSystem implements IFileSystem {
   public mkdir(p: string, mode: number, cb: Function): void {
     this._rpc('mkdir', arguments);
   }
-  public readdir(p: string, cb: CallbackTwoArgs<string[]>): void {
+  public readdir(p: string): Promise<string[]> {
     this._rpc('readdir', arguments);
   }
   public exists(p: string, cb: (exists: boolean) => void): void {
     this._rpc('exists', arguments);
   }
-  public realpath(p: string, cache: { [path: string]: string }, cb: CallbackTwoArgs<string>): void {
+  public realpath(p: string, cache: { [path: string]: string }): Promise<string> {
     this._rpc('realpath', arguments);
   }
   public truncate(p: string, len: number, cb: Function): void {
@@ -846,7 +846,7 @@ export default class WorkerFS extends BaseFileSystem implements IFileSystem {
     this._rpc('readlink', arguments);
   }
 
-  public syncClose(method: string, fd: File, cb: CallbackOneArg): void {
+  public async syncClose(method: string, fd: File): Promise<void> {
     this._worker.postMessage({
       browserfsMessage: true,
       method: method,

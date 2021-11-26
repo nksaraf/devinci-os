@@ -1,5 +1,5 @@
 import type { File } from '../core/file';
-import type { IFileSystem, CallbackOneArg } from '../core/file_system';
+import type { IFileSystem } from '../core/file_system';
 import type Stats from '../core/stats';
 import type { FileFlagString } from '../core/file_flag';
 import { isReadable } from '../core/file_flag';
@@ -55,8 +55,8 @@ export default abstract class InMemoryFile<T extends IFileSystem>
   /**
    * NONSTANDARD: Get the underlying buffer for this file. !!DO NOT MUTATE!! Will mess up dirty tracking.
    */
-  public getBuffer(cb): Buffer {
-    return cb(null, this._buffer);
+  public async getBuffer(): Promise<Buffer> {
+    return this._buffer;
   }
 
   public getBufferSync(): Buffer {
@@ -83,9 +83,7 @@ export class NoSyncFile<T extends IFileSystem> extends InMemoryFile<T> implement
    * Asynchronous sync. Doesn't do anything, simply calls the cb.
    * @param [Function(BrowserFS.ApiError)] cb
    */
-  public sync(cb: CallbackOneArg): void {
-    cb();
-  }
+  public async sync(): Promise<void> {}
   /**
    * Synchronous sync. Doesn't do anything.
    */
@@ -96,9 +94,7 @@ export class NoSyncFile<T extends IFileSystem> extends InMemoryFile<T> implement
    * Asynchronous close. Doesn't do anything, simply calls the cb.
    * @param [Function(BrowserFS.ApiError)] cb
    */
-  public close(cb: CallbackOneArg): void {
-    cb();
-  }
+  public async close(): Promise<void> {}
   /**
    * Synchronous close. Doesn't do anything.
    */

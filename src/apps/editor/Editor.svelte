@@ -14,7 +14,7 @@
   let divEl: HTMLDivElement = null;
   let editor: monaco.editor.IStandaloneCodeEditor;
   let Monaco: typeof monaco;
-
+  import { Deno } from 'os/deno';
   export let args;
 
   console.log(args);
@@ -45,18 +45,11 @@
 
     Monaco = await import('monaco-editor');
 
-    function writeFile(e) {
-      kernel.fs.writeFile(
-        args.path,
-        editor.getValue(),
-        'utf8',
-        constants.fs.O_RDWR,
-        0x777,
-        console.log,
-      );
+    async function writeFile(e) {
+      await Deno.writeTextFile(args.path, editor.getValue());
     }
 
-    let data = kernel.fs.readFileSync(args.path, 'utf8', constants.fs.O_RDWR);
+    let data = await Deno.readTextFile(args.path);
     editor = Monaco.editor.create(divEl, {
       value: data as string,
       fontSize: 14,

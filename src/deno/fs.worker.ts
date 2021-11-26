@@ -1,7 +1,7 @@
 import { VirtualFileSystem } from 'os/kernel/fs';
 import InMemoryFileSystem from 'os/kernel/fs/backend/InMemory';
 import path from 'path-browserify';
-import { expose } from './comlink';
+import { expose, proxy } from './comlink';
 import { mountDenoLib } from './deno';
 import { newPromise } from './util';
 
@@ -12,7 +12,10 @@ export class ExposedFileSystem extends VirtualFileSystem {
 
   readyPromise = newPromise();
   async ready() {
-    return await this.readyPromise.promise;
+    console.log('waitign for ready');
+    let res = await this.readyPromise.promise;
+    console.log('ready');
+    return res;
   }
 
   async newConnection() {
@@ -35,6 +38,10 @@ export class ExposedFileSystem extends VirtualFileSystem {
     });
     return items;
   }
+
+  async open(...args) {
+    return proxy(await super.open(...args));
+  }
 }
 
 declare global {
@@ -45,6 +52,11 @@ declare global {
 
 const fs = new ExposedFileSystem();
 
-mountDenoLib(fs).then(fs.readyPromise.resolve);
+mountDenoLib(fs).then((e) => {
+  console.log(e);
 
-self.onconnect = (e) => expose(fs, e.ports[0]);
+  fs.readdir('/lib/deno/core').then(console.log);
+  fs.readyPromise.resolve('');
+});
+
+expose(fs);

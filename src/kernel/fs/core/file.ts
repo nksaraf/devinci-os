@@ -1,10 +1,5 @@
 import { ApiError, ErrorCode } from './api_error';
 import type Stats from './stats';
-import type {
-  CallbackTwoArgs,
-  CallbackOneArg,
-  CallbackThreeArgs as CallbackThreeArgs,
-} from './file_system';
 
 export interface SyncFile {
   /**
@@ -38,7 +33,7 @@ export interface SyncFile {
    *   data should be written. If position is null, the data will be written at
    *   the current position.
    */
-  writeSync(buffer: Buffer, offset: number, length: number, position: number | null): number;
+  writeSync(bufferUint8Array, offset: number, length: number, position: number | null): number;
 
   /**
    * **Core**: Read data from the file.
@@ -49,7 +44,7 @@ export interface SyncFile {
    *   in the file. If position is null, data will be read from the current file
    *   position.
    */
-  readSync(buffer: Buffer, offset: number, length: number, position: number): number;
+  readSync(bufferUint8Array, offset: number, length: number, position: number): number;
   /**
    * **Supplementary**: Synchronous `datasync`.
    *
@@ -78,7 +73,7 @@ export interface File {
   /**
    * **Core**: Asynchronous `stat`.
    */
-  stat(cb: CallbackTwoArgs<Stats>): void;
+  stat(): Promise<Stats>;
   /**
    * **Core**: Synchronous `stat`.
    */
@@ -86,7 +81,7 @@ export interface File {
   /**
    * **Core**: Asynchronous close.
    */
-  close(cb: CallbackTwoArgs<Stats>): void;
+  close(): Promise<void>;
   /**
    * **Core**: Synchronous close.
    */
@@ -94,7 +89,7 @@ export interface File {
   /**
    * **Core**: Asynchronous truncate.
    */
-  truncate(len: number, cb: CallbackOneArg): void;
+  truncate(len: number): Promise<void>;
   /**
    * **Core**: Synchronous truncate.
    */
@@ -102,7 +97,7 @@ export interface File {
   /**
    * **Core**: Asynchronous sync.
    */
-  sync(cb: CallbackOneArg): void;
+  sync(): Promise<void>;
   /**
    * **Core**: Synchronous sync.
    */
@@ -120,13 +115,7 @@ export interface File {
    *   the current position.
    * @param cb The number specifies the number of bytes written into the file.
    */
-  write(
-    buffer: Buffer,
-    offset: number,
-    length: number,
-    position: number | null,
-    cb: CallbackThreeArgs<number, Buffer>,
-  ): void;
+  write(bufferUint8Array, offset: number, length: number, position: number | null): Promise<number>;
   /**
    * **Core**: Write buffer to the file.
    * Note that it is unsafe to use fs.writeSync multiple times on the same file
@@ -139,7 +128,7 @@ export interface File {
    *   data should be written. If position is null, the data will be written at
    *   the current position.
    */
-  writeSync(buffer: Buffer, offset: number, length: number, position: number | null): number;
+  writeSync(bufferUint8Array, offset: number, length: number, position: number | null): number;
   /**
    * **Core**: Read data from the file.
    * @param buffer The buffer that the data will be
@@ -152,13 +141,7 @@ export interface File {
    *   position.
    * @param cb The number is the number of bytes read
    */
-  read(
-    buffer: Buffer,
-    offset: number,
-    length: number,
-    position: number | null,
-    cb: CallbackThreeArgs<number, Buffer>,
-  ): void;
+  read(bufferUint8Array, offset: number, length: number, position: number | null): Promise<number>;
   /**
    * **Core**: Read data from the file.
    * @param buffer The buffer that the data will be written to.
@@ -168,13 +151,13 @@ export interface File {
    *   in the file. If position is null, data will be read from the current file
    *   position.
    */
-  readSync(buffer: Buffer, offset: number, length: number, position: number): number;
+  readSync(buffer: Uint8Array, offset: number, length: number, position: number): number;
   /**
    * **Supplementary**: Asynchronous `datasync`.
    *
    * Default implementation maps to `sync`.
    */
-  datasync(cb: CallbackOneArg): void;
+  datasync(): Promise<void>;
   /**
    * **Supplementary**: Synchronous `datasync`.
    *
@@ -184,7 +167,7 @@ export interface File {
   /**
    * **Optional**: Asynchronous `chown`.
    */
-  chown(uid: number, gid: number, cb: CallbackOneArg): void;
+  chown(uid: number, gid: number): Promise<void>;
   /**
    * **Optional**: Synchronous `chown`.
    */
@@ -192,7 +175,7 @@ export interface File {
   /**
    * **Optional**: Asynchronous `fchmod`.
    */
-  chmod(mode: number, cb: CallbackOneArg): void;
+  chmod(mode: number): Promise<void>;
   /**
    * **Optional**: Synchronous `fchmod`.
    */
@@ -200,7 +183,7 @@ export interface File {
   /**
    * **Optional**: Change the file timestamps of the file.
    */
-  utimes(atime: Date, mtime: Date, cb: CallbackOneArg): void;
+  utimes(atime: Date, mtime: Date): Promise<void>;
   /**
    * **Optional**: Change the file timestamps of the file.
    */
@@ -213,32 +196,32 @@ export interface File {
  */
 export abstract class BaseFile {
   constructor() {}
-  public sync(cb: CallbackOneArg): void {
-    cb(new ApiError(ErrorCode.ENOTSUP));
+  public async sync(): Promise<void> {
+    throw new ApiError(ErrorCode.ENOTSUP);
   }
   public syncSync(): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public datasync(cb: CallbackOneArg): void {
-    this.sync(cb);
+  public async datasync(): Promise<void> {
+    this.sync();
   }
   public datasyncSync(): void {
     return this.syncSync();
   }
-  public chown(uid: number, gid: number, cb: CallbackOneArg): void {
-    cb(new ApiError(ErrorCode.ENOTSUP));
+  public async chown(uid: number, gid: number): Promise<void> {
+    throw new ApiError(ErrorCode.ENOTSUP);
   }
   public chownSync(uid: number, gid: number): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public chmod(mode: number, cb: CallbackOneArg): void {
-    cb(new ApiError(ErrorCode.ENOTSUP));
+  public async chmod(mode: number): Promise<void> {
+    throw new ApiError(ErrorCode.ENOTSUP);
   }
   public chmodSync(mode: number): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
-  public utimes(atime: Date, mtime: Date, cb: CallbackOneArg): void {
-    cb(new ApiError(ErrorCode.ENOTSUP));
+  public async utimes(atime: Date, mtime: Date): Promise<void> {
+    throw new ApiError(ErrorCode.ENOTSUP);
   }
   public utimesSync(atime: Date, mtime: Date): void {
     throw new ApiError(ErrorCode.ENOTSUP);
@@ -250,46 +233,27 @@ export abstract class SynchronousBaseFile extends BaseFile {
     return true;
   }
 
-  stat(cb: CallbackTwoArgs<Stats>): void {
-    try {
-      cb(null, this.statSync());
-    } catch (e) {
-      cb(e);
-    }
+  async stat(): Promise<Stats> {
+    return this.statSync();
   }
 
   statSync(): Stats {
     throw new Error('Method not implemented.');
   }
 
-  truncate(len: number, cb: CallbackOneArg): void {
-    try {
-      this.truncateSync(len);
-      cb(null);
-    } catch (e) {
-      cb(e);
-    }
+  async truncate(len: number): Promise<void> {
+    this.truncateSync(len);
   }
 
   truncateSync(len: number): void {
     throw new Error('Method not implemented.');
   }
 
-  write(
-    buffer: Buffer,
-    offset: number,
-    length: number,
-    position: number,
-    cb: CallbackThreeArgs<number, Buffer>,
-  ): void {
-    try {
-      cb(null, this.writeSync(buffer, offset, length, position));
-    } catch (e) {
-      cb(e);
-    }
+  async write(bufferUint8Array, offset: number, length: number, position: number): Promise<number> {
+    return this.writeSync(buffer, offset, length, position);
   }
 
-  writeSync(buffer: Buffer, offset: number, length: number, position: number): number {
+  writeSync(bufferUint8Array, offset: number, length: number, position: number): number {
     throw new Error('Method not implemented.');
   }
 
@@ -306,66 +270,47 @@ export abstract class SynchronousBaseFile extends BaseFile {
    * @param [Function(BrowserFS.ApiError, Number, BrowserFS.node.Buffer)] cb The
    *   number is the number of bytes read
    */
-  public read(
-    buffer: Buffer,
+  public async read(
+    bufferUint8Array,
     offset: number,
     length: number,
     position: number,
-    cb: CallbackThreeArgs<number, Buffer>,
-  ): void {
-    try {
-      cb(null, this.readSync(buffer, offset, length, position), buffer);
-    } catch (e) {
-      cb(e);
-    }
+  ): Promise<number> {
+    return this.readSync(buffer, offset, length, position);
   }
 
-  public readSync(buffer: Buffer, offset: number, length: number, position: number): number {
+  public readSync(bufferUint8Array, offset: number, length: number, position: number): number {
     throw new Error('Method not implemented.');
   }
 
-  public datasync(cb: CallbackOneArg): void {
-    this.sync(cb);
+  public async datasync(): Promise<void> {
+    this.sync();
   }
 
   public datasyncSync(): void {
     return this.syncSync();
   }
 
-  public chown(uid: number, gid: number, cb: CallbackOneArg): void {
-    try {
-      this.chownSync(uid, gid);
-      cb(null);
-    } catch (e) {
-      cb(e);
-    }
+  public async chown(uid: number, gid: number): Promise<void> {
+    return this.chownSync(uid, gid);
   }
 
   public chownSync(uid: number, gid: number): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
 
-  public chmod(mode: number, cb: CallbackOneArg): void {
-    try {
-      this.chmodSync(mode);
-      cb(null);
-    } catch (e) {
-      cb(e);
-    }
+  public async chmod(mode: number): Promise<void> {
+    this.chmodSync(mode);
   }
 
   public chmodSync(mode: number): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
 
-  public utimes(atime: Date, mtime: Date, cb: CallbackOneArg): void {
-    try {
-      this.utimesSync(atime, mtime);
-      cb(null);
-    } catch (e) {
-      cb(e);
-    }
+  public async utimes(atime: Date, mtime: Date): Promise<void> {
+    this.utimesSync(atime, mtime);
   }
+
   public utimesSync(atime: Date, mtime: Date): void {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
@@ -375,13 +320,8 @@ export abstract class SynchronousBaseFile extends BaseFile {
    * class.
    * @param [Function(BrowserFS.ApiError)] cb
    */
-  public sync(cb: CallbackOneArg): void {
-    try {
-      this.syncSync();
-      cb();
-    } catch (e) {
-      cb(e);
-    }
+  public async sync(): Promise<void> {
+    this.syncSync();
   }
 
   /**
@@ -396,13 +336,8 @@ export abstract class SynchronousBaseFile extends BaseFile {
    * class.
    * @param [Function(BrowserFS.ApiError)] cb
    */
-  public close(cb: CallbackOneArg): void {
-    try {
-      this.closeSync();
-      cb();
-    } catch (e) {
-      cb(e);
-    }
+  public async close(): Promise<void> {
+    this.closeSync();
   }
 
   /**

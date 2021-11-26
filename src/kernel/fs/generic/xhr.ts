@@ -5,18 +5,18 @@
 
 import { isIE, emptyBuffer } from '../core/util';
 import { ApiError, ErrorCode } from '../core/api_error';
-import type { CallbackTwoArgs } from '../core/file_system';
 import { Buffer } from 'buffer';
+import { fakePromise, newPromise } from 'os/deno/util';
 
 export const xhrIsAvailable = typeof XMLHttpRequest !== 'undefined' && XMLHttpRequest !== null;
 
 /**
  * @hidden
  */
-function asyncDownloadFileModern(p: string, type: 'buffer', cb: CallbackTwoArgs<Buffer>): void;
-function asyncDownloadFileModern(p: string, type: 'json', cb: CallbackTwoArgs<any>): void;
-function asyncDownloadFileModern(p: string, type: string, cb: CallbackTwoArgs<any>): void;
-function asyncDownloadFileModern(p: string, type: string, cb: CallbackTwoArgs<any>): void {
+function asyncDownloadFileModern(p: string, type: 'buffer'): Promise<Buffer>;
+function asyncDownloadFileModern(p: string, type: 'json'): Promise<any>;
+function asyncDownloadFileModern(p: string, type: string): Promise<any>;
+async function asyncDownloadFileModern(p: string, type: string): Promise<any> {
   const req = new XMLHttpRequest();
   req.open('GET', p, true);
   let jsonSupported = true;
@@ -36,28 +36,35 @@ function asyncDownloadFileModern(p: string, type: string, cb: CallbackTwoArgs<an
       }
       break;
     default:
-      return cb(new ApiError(ErrorCode.EINVAL, 'Invalid download type: ' + type));
+      throw new ApiError(ErrorCode.EINVAL, 'Invalid download type: ' + type);
   }
+
+  const promise = newPromise();
+
   req.onreadystatechange = function (e) {
     if (req.readyState === 4) {
       if (req.status === 200) {
         switch (type) {
           case 'buffer':
             // XXX: WebKit-based browsers return *null* when XHRing an empty file.
-            return cb(null, req.response ? Buffer.from(req.response) : emptyBuffer());
+            promise.resolve(req.response ? Buffer.from(req.response) : emptyBuffer());
           case 'json':
             if (jsonSupported) {
-              return cb(null, req.response);
+              promise.resolve(req.response);
             } else {
-              return cb(null, JSON.parse(req.responseText));
+              promise.resolve(JSON.parse(req.responseText));
             }
         }
       } else {
-        return cb(new ApiError(ErrorCode.EIO, `XHR error: response returned code ${req.status}`));
+        promise.reject(
+          new ApiError(ErrorCode.EIO, `XHR error: response returned code ${req.status}`),
+        );
       }
     }
   };
   req.send();
+
+  return await promise.promise;
 }
 
 /**
@@ -157,26 +164,31 @@ function syncDownloadFileIE10(p: string, type: string): any {
 /**
  * @hidden
  */
-function getFileSize(async: boolean, p: string, cb: CallbackTwoArgs<number>): void {
+function getFileSize(async: boolean, p: string): number | Promise<number> {
   const req = new XMLHttpRequest();
   req.open('HEAD', p, async);
+  const promise = async ? newPromise<number>() : fakePromise();
   req.onreadystatechange = function (e) {
     if (req.readyState === 4) {
       if (req.status === 200) {
         try {
-          return cb(null, parseInt(req.getResponseHeader('Content-Length') || '-1', 10));
+          return promise.resolve(parseInt(req.getResponseHeader('Content-Length') || '-1', 10));
         } catch (e) {
           // In the event that the header isn't present or there is an error...
-          return cb(new ApiError(ErrorCode.EIO, 'XHR HEAD error: Could not read content-length.'));
+          return promise.reject(
+            new ApiError(ErrorCode.EIO, 'XHR HEAD error: Could not read content-length.'),
+          );
         }
       } else {
-        return cb(
+        return promise.reject(
           new ApiError(ErrorCode.EIO, `XHR HEAD error: response returned code ${req.status}`),
         );
       }
     }
   };
   req.send();
+
+  return promise.promise;
 }
 
 /**
@@ -187,9 +199,9 @@ function getFileSize(async: boolean, p: string, cb: CallbackTwoArgs<number>): vo
  * @hidden
  */
 export let asyncDownloadFile: {
-  (p: string, type: 'buffer', cb: CallbackTwoArgs<Buffer>): void;
-  (p: string, type: 'json', cb: CallbackTwoArgs<any>): void;
-  (p: string, type: string, cb: CallbackTwoArgs<any>): void;
+  (p: string, type: 'buffer'): Promise<Buffer>;
+  (p: string, type: 'json'): Promise<any>;
+  (p: string, type: string): Promise<any>;
 } = asyncDownloadFileModern;
 
 /**
@@ -210,20 +222,13 @@ export let syncDownloadFile: {
  * @hidden
  */
 export function getFileSizeSync(p: string): number {
-  let rv: number = -1;
-  getFileSize(false, p, function (err: ApiError, size?: number) {
-    if (err) {
-      throw err;
-    }
-    rv = size!;
-  });
-  return rv;
+  return (getFileSize(false, p) as number) ?? -1;
 }
 
 /**
  * Asynchronously retrieves the size of the given file in bytes.
  * @hidden
  */
-export function getFileSizeAsync(p: string, cb: (err: ApiError, size?: number) => void): void {
-  getFileSize(true, p, cb);
+export async function getFileSizeAsync(p: string): Promise<number> {
+  return await getFileSize(true, p);
 }

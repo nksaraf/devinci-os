@@ -52,7 +52,7 @@ export default class LockedFS<T extends IFileSystem> implements IFileSystem {
     return this._fs.supportsSynch();
   }
 
-  public rename(oldPath: string, newPath: string, cb: CallbackOneArg): void {
+  public async rename(oldPath: string, newPath: string): Promise<void> {
     this._mu.lock(() => {
       this._fs.rename(oldPath, newPath, (err?: ApiError) => {
         this._mu.unlock();
@@ -68,7 +68,7 @@ export default class LockedFS<T extends IFileSystem> implements IFileSystem {
     return this._fs.renameSync(oldPath, newPath);
   }
 
-  public stat(p: string, isLstat: boolean, cb: CallbackTwoArgs<Stats>): void {
+  public stat(p: string, isLstat: boolean): Promise<Stats> {
     this._mu.lock(() => {
       this._fs.stat(p, isLstat, (err?: ApiError, stat?: Stats) => {
         this._mu.unlock();
@@ -84,7 +84,7 @@ export default class LockedFS<T extends IFileSystem> implements IFileSystem {
     return this._fs.statSync(p, isLstat);
   }
 
-  public open(p: string, flag: FileFlagString, mode: number, cb: CallbackTwoArgs<File>): void {
+  public open(p: string, flag: FileFlagString, mode: number): Promise<File> {
     this._mu.lock(() => {
       this._fs.open(p, flag, mode, (err?: ApiError, fd?: File) => {
         this._mu.unlock();
@@ -100,7 +100,7 @@ export default class LockedFS<T extends IFileSystem> implements IFileSystem {
     return this._fs.openSync(p, flag, mode);
   }
 
-  public unlink(p: string, cb: CallbackOneArg): void {
+  public async unlink(p: string): Promise<void> {
     this._mu.lock(() => {
       this._fs.unlink(p, (err?: ApiError) => {
         this._mu.unlock();
@@ -116,7 +116,7 @@ export default class LockedFS<T extends IFileSystem> implements IFileSystem {
     return this._fs.unlinkSync(p);
   }
 
-  public rmdir(p: string, cb: CallbackOneArg): void {
+  public async rmdir(p: string): Promise<void> {
     this._mu.lock(() => {
       this._fs.rmdir(p, (err?: ApiError) => {
         this._mu.unlock();
@@ -132,7 +132,7 @@ export default class LockedFS<T extends IFileSystem> implements IFileSystem {
     return this._fs.rmdirSync(p);
   }
 
-  public mkdir(p: string, mode: number, cb: CallbackOneArg): void {
+  public async mkdir(p: string, mode: number): Promise<void> {
     this._mu.lock(() => {
       this._fs.mkdir(p, mode, (err?: ApiError) => {
         this._mu.unlock();
@@ -148,7 +148,7 @@ export default class LockedFS<T extends IFileSystem> implements IFileSystem {
     return this._fs.mkdirSync(p, mode);
   }
 
-  public readdir(p: string, cb: CallbackTwoArgs<string[]>): void {
+  public readdir(p: string): Promise<string[]> {
     this._mu.lock(() => {
       this._fs.readdir(p, (err?: ApiError, files?: string[]) => {
         this._mu.unlock();
@@ -180,7 +180,7 @@ export default class LockedFS<T extends IFileSystem> implements IFileSystem {
     return this._fs.existsSync(p);
   }
 
-  public realpath(p: string, cache: { [path: string]: string }, cb: CallbackTwoArgs<string>): void {
+  public realpath(p: string, cache: { [path: string]: string }): Promise<string> {
     this._mu.lock(() => {
       this._fs.realpath(p, cache, (err?: ApiError, resolvedPath?: string) => {
         this._mu.unlock();
@@ -196,7 +196,7 @@ export default class LockedFS<T extends IFileSystem> implements IFileSystem {
     return this._fs.realpathSync(p, cache);
   }
 
-  public truncate(p: string, len: number, cb: CallbackOneArg): void {
+  public async truncate(p: string, len: number): Promise<void> {
     this._mu.lock(() => {
       this._fs.truncate(p, len, (err?: ApiError) => {
         this._mu.unlock();
@@ -291,7 +291,7 @@ export default class LockedFS<T extends IFileSystem> implements IFileSystem {
     return this._fs.appendFileSync(fname, data, encoding, flag, mode);
   }
 
-  public chmod(p: string, isLchmod: boolean, mode: number, cb: CallbackOneArg): void {
+  public async chmod(p: string, isLchmod: boolean, mode: number): Promise<void> {
     this._mu.lock(() => {
       this._fs.chmod(p, isLchmod, mode, (err?: ApiError) => {
         this._mu.unlock();
@@ -307,7 +307,7 @@ export default class LockedFS<T extends IFileSystem> implements IFileSystem {
     return this._fs.chmodSync(p, isLchmod, mode);
   }
 
-  public chown(p: string, isLchown: boolean, uid: number, gid: number, cb: CallbackOneArg): void {
+  public async chown(p: string, isLchown: boolean, uid: number, gid: number): Promise<void> {
     this._mu.lock(() => {
       this._fs.chown(p, isLchown, uid, gid, (err?: ApiError) => {
         this._mu.unlock();
@@ -323,7 +323,7 @@ export default class LockedFS<T extends IFileSystem> implements IFileSystem {
     return this._fs.chownSync(p, isLchown, uid, gid);
   }
 
-  public utimes(p: string, atime: Date, mtime: Date, cb: CallbackOneArg): void {
+  public async utimes(p: string, atime: Date, mtime: Date): Promise<void> {
     this._mu.lock(() => {
       this._fs.utimes(p, atime, mtime, (err?: ApiError) => {
         this._mu.unlock();
@@ -339,7 +339,7 @@ export default class LockedFS<T extends IFileSystem> implements IFileSystem {
     return this._fs.utimesSync(p, atime, mtime);
   }
 
-  public link(srcpath: string, dstpath: string, cb: CallbackOneArg): void {
+  public async link(srcpath: string, dstpath: string): Promise<void> {
     this._mu.lock(() => {
       this._fs.link(srcpath, dstpath, (err?: ApiError) => {
         this._mu.unlock();
@@ -355,7 +355,7 @@ export default class LockedFS<T extends IFileSystem> implements IFileSystem {
     return this._fs.linkSync(srcpath, dstpath);
   }
 
-  public symlink(srcpath: string, dstpath: string, type: string, cb: CallbackOneArg): void {
+  public async symlink(srcpath: string, dstpath: string, type: string): Promise<void> {
     this._mu.lock(() => {
       this._fs.symlink(srcpath, dstpath, type, (err?: ApiError) => {
         this._mu.unlock();
@@ -371,7 +371,7 @@ export default class LockedFS<T extends IFileSystem> implements IFileSystem {
     return this._fs.symlinkSync(srcpath, dstpath, type);
   }
 
-  public readlink(p: string, cb: CallbackTwoArgs<string>): void {
+  public readlink(p: string): Promise<string> {
     this._mu.lock(() => {
       this._fs.readlink(p, (err?: ApiError, linkString?: string) => {
         this._mu.unlock();

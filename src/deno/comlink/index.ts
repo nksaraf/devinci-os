@@ -1,5 +1,5 @@
 export * from './comlink';
-
+import { Buffer } from 'buffer';
 import type { MockedRequest, MockedResponse } from 'msw';
 import Stats from 'os/kernel/fs/core/stats';
 import { transferHandlers } from './comlink';
@@ -13,9 +13,17 @@ transferHandlers.set('ARRAY_BUFFER', {
   canHandle: (obj): obj is Uint8Array =>
     obj instanceof Uint8Array && obj.buffer instanceof ArrayBuffer,
   serialize: (obj: Uint8Array) => {
-    return [obj, [obj.buffer]];
+    return [obj, obj.buffer instanceof ArrayBuffer ? [obj.buffer] : []];
   },
   deserialize: (obj) => obj,
+});
+
+transferHandlers.set('BUFFER', {
+  canHandle: (obj): obj is Buffer => obj instanceof Buffer,
+  serialize: (obj: Buffer) => {
+    return [obj, obj.buffer instanceof ArrayBuffer ? [obj.buffer] : []];
+  },
+  deserialize: (obj) => Buffer.from(obj),
 });
 
 transferHandlers.set('MESSAGE_PORT', {
@@ -68,39 +76,12 @@ transferHandlers.set('STAT', {
       atime: value.atime,
       isFile: value.isFile,
       isDirectory: value.isDirectory,
+      itemType: value.itemType,
     },
     [],
   ],
   deserialize: (value: any): Stats =>
-    new Stats(value.mode & constants.fs.S_IFMT, value.size, value.mode, value.atime, value.mtime),
-});
-
-transferHandlers.set('STATS', {
-  canHandle: (value: any): value is Stats => Array.isArray(value) && value[0] instanceof Stats,
-  serialize: (v: Stats[]): [any, Transferable[]] => [
-    v.map((value) => ({
-      dev: value.dev,
-      ino: value.ino,
-      mode: value.mode,
-      size: value.size,
-      mtime: value.mtime,
-      atime: value.atime,
-      isFile: value.isFile,
-      isDirectory: value.isDirectory,
-    })),
-    [],
-  ],
-  deserialize: (v: any): Stats[] =>
-    v.map(
-      (value) =>
-        new Stats(
-          value.mode & constants.fs.S_IFMT,
-          value.size,
-          value.mode,
-          value.atime,
-          value.mtime,
-        ),
-    ),
+    new Stats(value.itemType, value.size, value.mode, value.atime, value.mtime),
 });
 
 function serializeHeaders(headers) {

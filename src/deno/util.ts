@@ -11,3 +11,15 @@ export function newPromise<T>() {
     reject,
   };
 }
+
+export function fakePromise<T>() {
+  let v = { promise: undefined, error: undefined, resolve: undefined, reject: undefined };
+  v.resolve = (value) => {
+    v.promise = value;
+  };
+  v.reject = (error) => {
+    v.error = error;
+  };
+
+  return v;
+}

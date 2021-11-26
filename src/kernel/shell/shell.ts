@@ -314,12 +314,12 @@ export class Shell {
     }
     if (this.tty.getFirstInit() && this._activePrompt) {
       let line = this.tty
-        .getBuffer()
-        .getLine(this.tty.getBuffer().cursorY + this.tty.getBuffer().baseY);
+        .getBufferSync()
+        .getLine(this.tty.getBufferSync().cursorY + this.tty.getBufferSync().baseY);
       let promptRead = (line as IBufferLine).translateToString(
         false,
         0,
-        this.tty.getBuffer().cursorX,
+        this.tty.getBufferSync().cursorX,
       );
       this._activePrompt.promptPrefix = promptRead;
       this.tty.setPromptPrefix(promptRead);

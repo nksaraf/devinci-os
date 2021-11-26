@@ -120,7 +120,7 @@ export default class AsyncMirror extends SynchronousFileSystem implements IFileS
   /**
    * Constructs and initializes an AsyncMirror file system with the given options.
    */
-  public static Create(opts: AsyncMirrorOptions, cb: CallbackTwoArgs<AsyncMirror>): void {
+  public static Create(opts: AsyncMirrorOptions): Promise<AsyncMirror> {
     try {
       const fs = new AsyncMirror(opts.sync, opts.async);
       fs._initialize((e?) => {

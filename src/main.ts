@@ -11,8 +11,6 @@ import terminal from 'os/apps/terminal/terminal';
 import vscode from 'os/apps/vscode/vscode';
 import wallpaper from 'os/apps/wallpaper/wallpaper';
 import { createAppConfig, installApp } from './stores/apps.store';
-import { getWAPMUrlForCommandName } from './apps/terminal/wapm';
-import { DenoWorker } from './deno/DenoWorker';
 
 installApp(finder());
 installApp(calculator());
@@ -31,6 +29,21 @@ installApp(
         // @ts-ignore
         window.open('https://workflowy.com/', '_blank');
       },
+    },
+  }),
+);
+installApp(
+  createAppConfig({
+    id: 'file_server',
+    title: 'File Server',
+    window: {
+      loadComponent: async () => (await import('os/apps/Demo.svelte')).default,
+      frame: true,
+      trafficLights: true,
+      title: 'File Server',
+    },
+    dock: {
+      icon: '/assets/app-icons/workflowy/256.png',
     },
   }),
 );

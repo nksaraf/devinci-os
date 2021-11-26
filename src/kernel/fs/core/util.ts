@@ -1,7 +1,7 @@
 /**
  * Grab bag of utility functions used across the code.
  */
-import type { IFileSystem, CallbackOneArg, FileSystemConstructor } from './file_system';
+import type { FileSystemConstructor, IFileSystem } from './file_system';
 import { ErrorCode, ApiError } from './api_error';
 import levenshtein from './levenshtein';
 import * as path from 'path';
@@ -16,6 +16,12 @@ export function deprecationMessage(print: boolean, fsName: string, opts: any): v
       )}, callback)' method instead. See https://github.com/jvilk/BrowserFS/issues/176 for more details.`,
     );
     // tslint:enable-next-line:no-console
+  }
+}
+
+declare global {
+  interface Navigator {
+    userAgent: string;
   }
 }
 
@@ -61,6 +67,17 @@ export function mkdirpSync(p: string, mode: number, fs: IFileSystem): void {
   if (!fs.existsSync(p)) {
     mkdirpSync(path.dirname(p), mode, fs);
     fs.mkdirSync(p, mode);
+  }
+}
+
+/**
+ * Synchronous recursive makedir.
+ * @hidden
+ */
+export async function mkdirp(p: string, mode: number, fs: IFileSystem): Promise<void> {
+  if (!(await fs.exists(p))) {
+    await mkdirp(path.dirname(p), mode, fs);
+    await fs.mkdir(p, mode);
   }
 }
 
@@ -184,11 +201,11 @@ export function emptyBuffer(): Buffer {
  * Option validator for a Buffer file system option.
  * @hidden
  */
-export function bufferValidator(v: object, cb: CallbackOneArg): void {
+export async function bufferValidator(v: object): Promise<void> {
   if (Buffer.isBuffer(v)) {
-    cb();
+    return;
   } else {
-    cb(new ApiError(ErrorCode.EINVAL, `option must be a Buffer.`));
+    throw new ApiError(ErrorCode.EINVAL, `option must be a Buffer.`);
   }
 }
 
@@ -196,7 +213,7 @@ export function bufferValidator(v: object, cb: CallbackOneArg): void {
  * Checks that the given options object is valid for the file system options.
  * @hidden
  */
-export function checkOptions(fsType: FileSystemConstructor, opts: any, cb: CallbackOneArg): void {
+export async function checkOptions(fsType: FileSystemConstructor, opts: any): Promise<void> {
   const optsInfo = fsType.Options;
   const fsName = fsType.Name;
 
@@ -207,11 +224,10 @@ export function checkOptions(fsType: FileSystemConstructor, opts: any, cb: Callb
     if (!callbackCalled) {
       if (e) {
         callbackCalled = true;
-        cb(e);
+        throw e;
       }
       pendingValidators--;
       if (pendingValidators === 0 && loopEnded) {
-        cb();
       }
     }
   }
@@ -239,15 +255,13 @@ export function checkOptions(fsType: FileSystemConstructor, opts: any, cb: Callb
             return;
           }
           callbackCalled = true;
-          return cb(
-            new ApiError(
-              ErrorCode.EINVAL,
-              `[${fsName}] Required option '${optName}' not provided.${
-                incorrectOptions.length > 0
-                  ? ` You provided unrecognized option '${incorrectOptions[0].str}'; perhaps you meant to type '${optName}'.`
-                  : ''
-              }\nOption description: ${opt.description}`,
-            ),
+          throw new ApiError(
+            ErrorCode.EINVAL,
+            `[${fsName}] Required option '${optName}' not provided.${
+              incorrectOptions.length > 0
+                ? ` You provided unrecognized option '${incorrectOptions[0].str}'; perhaps you meant to type '${optName}'.`
+                : ''
+            }\nOption description: ${opt.description}`,
           );
         }
         // Else: Optional option, not provided. That is OK.
@@ -265,17 +279,16 @@ export function checkOptions(fsType: FileSystemConstructor, opts: any, cb: Callb
             return;
           }
           callbackCalled = true;
-          return cb(
-            new ApiError(
-              ErrorCode.EINVAL,
-              `[${fsName}] Value provided for option ${optName} is not the proper type. Expected ${
-                Array.isArray(opt.type) ? `one of {${opt.type.join(', ')}}` : opt.type
-              }, but received ${typeof providedValue}\nOption description: ${opt.description}`,
-            ),
+          throw new ApiError(
+            ErrorCode.EINVAL,
+            `[${fsName}] Value provided for option ${optName} is not the proper type. Expected ${
+              Array.isArray(opt.type) ? `one of {${opt.type.join(', ')}}` : opt.type
+            }, but received ${typeof providedValue}\nOption description: ${opt.description}`,
           );
         } else if (opt.validator) {
           pendingValidators++;
-          opt.validator(providedValue, validatorCallback);
+          await opt.validator(providedValue);
+          // validatorCallback(r);
         }
         // Otherwise: All good!
       }
@@ -283,6 +296,6 @@ export function checkOptions(fsType: FileSystemConstructor, opts: any, cb: Callb
   }
   loopEnded = true;
   if (pendingValidators === 0 && !callbackCalled) {
-    cb();
+    return;
   }
 }

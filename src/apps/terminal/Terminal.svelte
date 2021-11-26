@@ -10,7 +10,6 @@
   import { Desh } from './desh';
   let divEl: HTMLDivElement = null;
 
-  import { getWAPMUrlForCommandName } from './wapm';
 
   onMount(() => {
     const worker = new DenoWorker();
@@ -27,11 +26,6 @@
           terminal.tty.print(typeof ev.detail === 'string' ? ev.detail : ev.detail.join(' '));
         }),
       );
-
-      await worker.isolate.run(await getWAPMUrlForCommandName('exa'));
-
-      // await worker.Deno.writeTextFile('/script.ts', scriptURL);
-      // await worker.isolate.run('/script.ts');
 
       tty.device.addEventListener('data', (event) => {
         shell.handleTermData(event.detail);

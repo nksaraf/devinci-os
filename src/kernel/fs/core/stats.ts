@@ -1,4 +1,3 @@
-import type * as fs from 'fs';
 import { constants } from 'os/kernel/kernel/constants';
 import { Buffer } from 'buffer';
 /**
@@ -32,7 +31,7 @@ export default class Stats {
       mtime = buffer.readDoubleLE(16),
       ctime = buffer.readDoubleLE(24);
 
-    return new Stats(mode & 0xf000, size, mode & 0xfff, atime, mtime, ctime);
+    return new Stats(s.itemType, size, mode & 0xfff, atime, mtime, ctime);
   }
 
   /**
@@ -40,7 +39,7 @@ export default class Stats {
    */
   public static clone(s: Stats): Stats {
     return new Stats(
-      s.mode & 0xf000,
+      s.itemType,
       s.size,
       s.mode & 0xfff,
       s.atimeMs,
@@ -130,7 +129,7 @@ export default class Stats {
    * @param birthtimeMs time of file creation, in milliseconds since epoch
    */
   constructor(
-    itemType: FileType,
+    public itemType: FileType,
     size: number,
     mode?: number,
     atimeMs?: number,
@@ -170,11 +169,12 @@ export default class Stats {
     if (!mode) {
       switch (itemType) {
         case FileType.FILE:
-          this.mode = 0x1a4;
+          this.mode = FileType.FILE;
           break;
         case FileType.DIRECTORY:
+          this.mode = FileType.DIRECTORY;
         default:
-          this.mode = 0x1ff;
+          this.mode = FileType.DIRECTORY;
       }
     } else {
       this.mode = mode;
@@ -202,21 +202,21 @@ export default class Stats {
    * @return [Boolean] True if this item is a file.
    */
   get isFile(): boolean {
-    return (this.mode & FileTypeCheck) === FileType.FILE;
+    return this.itemType === FileType.FILE;
   }
 
   /**
    * @return [Boolean] True if this item is a directory.
    */
   get isDirectory(): boolean {
-    return (this.mode & FileTypeCheck) === FileType.DIRECTORY;
+    return this.itemType === FileType.DIRECTORY;
   }
 
   /**
    * @return [Boolean] True if this item is a symbolic link (only valid through lstat)
    */
   get isSymbolicLink(): boolean {
-    return (this.mode & FileTypeCheck) === FileType.SYMLINK;
+    return this.itemType === FileType.SYMLINK;
   }
 
   /**
@@ -224,7 +224,7 @@ export default class Stats {
    * up the type of the file, which is encoded in mode.
    */
   public chmod(mode: number): void {
-    this.mode = (this.mode & FileTypeCheck) | mode;
+    this.mode = this.mode | mode;
   }
 
   // We don't support the following types of files.

@@ -14,6 +14,8 @@
     stats: Stats;
   };
 
+  console.log(item);
+
   export let onDesktop: boolean = false;
 
   $: selected = $selection.includes(item.path);
@@ -39,7 +41,7 @@
   function handleOpen() {
     console.log(finderPath, item.path);
 
-    if (item.stats.isFile()) {
+    if (item.stats.isFile) {
       createWindow(editor(), {
         args: {
           path: item.path,
@@ -80,7 +82,7 @@
 >
   <div class="finder-icon-container {selected ? 'selected' : ''} {onDesktop ? 'desktop' : ''}">
     <div class="finder-item-icon">
-      {#if item.stats.isDirectory()}
+      {#if item.stats.isDirectory}
         <img
           src="/assets/app-icons/finder/folder256.png"
           alt={item.path}

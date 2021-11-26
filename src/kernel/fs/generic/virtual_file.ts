@@ -3,8 +3,6 @@ import { ApiError, ErrorCode } from '../core/api_error';
 import { SynchronousBaseFile } from '../core/file';
 import { isReadable, isAppendable, isSynchronous, isWriteable } from '../core/file_flag';
 import type { FileFlagString } from '../core/file_flag';
-import type { CallbackOneArg, CallbackTwoArgs } from '../core/file_system';
-import { Buffer } from 'buffer';
 import { constants } from '../../kernel/constants';
 /**
  * An implementation of the File interface that operates on a file that is
@@ -42,7 +40,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
     _path: string = '/dev/null',
     _flag: FileFlagString = constants.fs.O_RDONLY,
     _stat?: Stats,
-    fileType: FileType = FileType.VIRTUAL,
+    fileType: FileType = FileType.FILE,
     // contents?: Buffer,
   ) {
     super();
@@ -73,14 +71,14 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
   /**
    * NONSTANDARD: Get the underlying buffer for this file. !!DO NOT MUTATE!! Will mess up dirty tracking.
    */
-  public getBuffer(cb: CallbackTwoArgs<Buffer>): void {
+  public async getBuffer(): Promise<Uint8Array> {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
 
   /**
    * NONSTANDARD: Get the underlying buffer for this file. !!DO NOT MUTATE!! Will mess up dirty tracking.
    */
-  public getBufferSync(): Buffer {
+  public getBufferSync(): Uint8Array {
     throw new ApiError(ErrorCode.ENOTSUP);
   }
 
@@ -147,15 +145,10 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
    * @param [Number] len
    * @param [Function(BrowserFS.ApiError)] cb
    */
-  public truncate(len: number, cb: CallbackOneArg): void {
-    try {
-      this.truncateSync(len);
-      if (isSynchronous(this._flag)) {
-        this.sync(cb);
-      }
-      cb();
-    } catch (e) {
-      return cb(e);
+  public async truncate(len: number): Promise<void> {
+    this.truncateSync(len);
+    if (isSynchronous(this._flag)) {
+      await this.sync();
     }
   }
 
@@ -191,7 +184,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
     }
   }
 
-  setBufferSync(arg0: Buffer) {
+  setBufferSync(arg0: Uint8Array) {
     throw new Error('Method not implemented.');
   }
 
@@ -208,13 +201,12 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
    *   the current position.
    * @return [Number]
    */
-  public write(
+  public async write(
     buffer: Buffer,
     offset: number,
     length: number,
     position: number,
-    cb: CallbackTwoArgs<number>,
-  ): void {
+  ): Promise<number> {
     if (!isWriteable(this._flag)) {
       throw new ApiError(ErrorCode.EPERM, 'File not opened with a writeable mode.');
     }
@@ -224,18 +216,14 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
       position = this.getPos();
     }
 
-    this.writeBuffer(buffer, offset, length, position, (err, len) => {
-      if (err) {
-        return cb(err);
-      }
-      this._stat.mtimeMs = Date.now();
-      if (isSynchronous(this._flag)) {
-        this.syncSync();
-        return len;
-      }
-      this.setPos(position + len);
-      cb(null, len);
-    });
+    let len = await this.writeBuffer(buffer, offset, length, position);
+
+    this._stat.mtimeMs = Date.now();
+    if (isSynchronous(this._flag)) {
+      this.syncSync();
+    }
+    this.setPos(position + len);
+    return len;
   }
 
   /**
@@ -272,29 +260,25 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
     return len;
   }
 
-  protected writeBuffer(
-    buffer: Buffer,
+  protected async writeBuffer(
+    buffer: Uint8Array,
     offset: number,
     length: number,
     position: number,
-    cb: CallbackTwoArgs<number>,
-  ): void {
+  ): Promise<number> {
     const endFp = position + length;
-    this.getBuffer((err, currentBuffer) => {
-      if (err) {
-        cb(err);
-      }
+    let currentBuffer = await this.getBuffer();
 
-      if (endFp > currentBuffer.length) {
-        currentBuffer = this.resizeBuffer(currentBuffer, endFp);
-      }
+    if (endFp > currentBuffer.length) {
+      currentBuffer = this.resizeBuffer(currentBuffer, endFp);
+    }
 
-      cb(null, buffer.copy(currentBuffer, position, offset, offset + length));
-    });
+    currentBuffer.set(buffer.subarray(offset, offset + length), position);
+    return length;
   }
 
   protected writeBufferSync(
-    buffer: Buffer,
+    buffer: Uint8Array,
     offset: number,
     length: number,
     position: number,
@@ -309,16 +293,16 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
     return buffer.copy(currentBuffer, position, offset, offset + length);
   }
 
-  protected resizeBuffer(buffer: Buffer, size: number): Buffer {
+  protected resizeBuffer(buffer: Uint8Array, size: number): Uint8Array {
     this._stat.size = size;
     // Extend the buffer!
-    const newBuff = Buffer.alloc(size);
-    buffer.copy(newBuff);
+    const newBuff = new Uint8Array(size);
+    newBuff.set(buffer);
     this.setBuffer(newBuff);
     return newBuff;
   }
 
-  protected setBuffer(buffer: Buffer): void {
+  protected setBuffer(buffer: Uint8Array): void {
     throw new Error('setBuffer is not implemented');
   }
 
@@ -334,7 +318,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
    *   position.
    * @return [Number]
    */
-  public readSync(buffer: Buffer, offset: number, length: number, position: number): number {
+  public readSync(buffer: Uint8Array, offset: number, length: number, position: number): number {
     if (!isReadable(this._flag)) {
       throw new ApiError(ErrorCode.EPERM, 'File not opened with a readable mode.');
     }
@@ -367,13 +351,12 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
    *   position.
    * @return [Number]
    */
-  public read(
+  public async read(
     buffer: Buffer,
     offset: number,
     length: number,
     position: number,
-    cb: CallbackTwoArgs<number>,
-  ): void {
+  ): Promise<number> {
     if (!isReadable(this._flag)) {
       throw new ApiError(ErrorCode.EPERM, 'File not opened with a readable mode.');
     }
@@ -381,21 +364,22 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
       position = this.getPos();
     }
 
-    this.readBuffer(buffer, offset, length, position, (err, rv) => {
-      if (err) {
-        cb(err);
-      }
+    let rv = await this.readBuffer(buffer, offset, length, position);
 
-      this._stat.atimeMs = Date.now();
-      this.advancePos(rv);
-      cb(null, rv);
-    });
+    this._stat.atimeMs = Date.now();
+    this.advancePos(rv);
+    return rv;
   }
 
   // reads to the buffer, the given offset, length, and position
   // if position is undefined or null, we use the files current position
   // to read from
-  public readBufferSync(buffer: Buffer, offset: number, length: number, position: number): number {
+  public readBufferSync(
+    buffer: Uint8Array,
+    offset: number,
+    length: number,
+    position: number,
+  ): number {
     let currentBuffer = this.getBufferSync();
     let size = currentBuffer.length;
 
@@ -404,33 +388,29 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
       length = size - position;
     }
 
-    return currentBuffer.copy(buffer, offset, position, position + length);
+    buffer.set(currentBuffer.subarray(position, position + length), offset);
+    return length;
   }
 
   // reads to the buffer, the given offset, length, and position
   // if position is undefined or null, we use the files current position
   // to read from
-  public readBuffer(
-    buffer: Buffer,
+  public async readBuffer(
+    buffer: Uint8Array,
     offset: number,
     length: number,
     position: number,
-    cb: CallbackTwoArgs<number>,
-  ): void {
-    this.getBuffer((err, currentBuffer) => {
-      if (err) {
-        cb(err);
-      }
+  ): Promise<number> {
+    let currentBuffer = await this.getBuffer();
+    let size = currentBuffer.length;
 
-      let size = currentBuffer.length;
+    const endRead = position + length;
+    if (endRead > size) {
+      length = size - position;
+    }
 
-      const endRead = position + length;
-      if (endRead > size) {
-        length = size - position;
-      }
-
-      cb(null, currentBuffer.copy(buffer, offset, position, position + length));
-    });
+    buffer.set(currentBuffer.subarray(position, position + length), offset);
+    return length;
   }
 
   /**
@@ -455,28 +435,12 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
   }
 
   public async readString(): Promise<string> {
-    return new Promise((res, rej) => {
-      let buffer = Buffer.alloc(100);
-      this.readBuffer(buffer, 0, length, 0, (err, readLength) => {
-        if (err) {
-          rej(err);
-        }
-        res(buffer.toString('utf8', 0, readLength));
-      });
-    });
+    let buffer = Buffer.alloc(100);
+    let readLength = await this.readBuffer(buffer, 0, length, 0);
+    return buffer.toString('utf8', 0, readLength);
   }
 
   public async writeString(str: string): Promise<number> {
-    return new Promise((res, rej) => {
-      let string = Buffer.from(str, 'utf8');
-      this.writeBuffer(string, 0, length, null, (err, length) => {
-        console.log(length, err);
-        if (err) {
-          rej(err);
-        }
-
-        res(length);
-      });
-    });
+    return await this.writeBuffer(new TextEncoder().encode(str), 0, length, null);
   }
 }

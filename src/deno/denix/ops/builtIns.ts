@@ -4,6 +4,9 @@ import { op_sync, op_async } from '../interfaces';
 export const builtIns = [
   op_sync('op_close', function (this: Kernel, rid) {
     console.log('closing', rid);
+    if (!this.resourceTable.has(rid)) {
+      return;
+    }
     let resource = this.getResource(rid);
     resource.close();
     this.resourceTable.delete(rid);

@@ -690,7 +690,7 @@ export default class ZipFS extends SynchronousFileSystem implements IFileSystem 
   /**
    * Constructs a ZipFS instance with the given options.
    */
-  public static Create(opts: ZipFSOptions, cb: CallbackTwoArgs<ZipFS>): void {
+  public static Create(opts: ZipFSOptions): Promise<ZipFS> {
     try {
       ZipFS._computeIndex(opts.zipData, (e, zipTOC?) => {
         if (zipTOC) {

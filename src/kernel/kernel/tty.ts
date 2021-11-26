@@ -1,8 +1,6 @@
 import type { IBuffer } from 'xterm';
 import { Terminal } from 'xterm';
 import type { File } from '../fs/core/file';
-import type { CallbackThreeArgs, CallbackTwoArgs, IFileSystem } from '../fs/core/file_system';
-import { AsyncKeyValueFileSystem } from '../fs/generic/key_value_filesystem';
 import VirtualFile from '../fs/generic/virtual_file';
 import type { ActiveCharPrompt, ActivePrompt } from '../shell/shell-utils';
 import { InMemoryPipe } from './pipe';
@@ -52,10 +50,6 @@ export function countLines(input: string, maxCols: number) {
 }
 
 type AutoCompleteHandler = (index: number, tokens: string[]) => string[];
-
-class TTYFileSystem extends AsyncKeyValueFileSystem implements IFileSystem {
-  createFile() {}
-}
 
 let keyboard = {
   UP_ARROW: 1,
@@ -233,7 +227,7 @@ export class Xterm extends Terminal implements TerminalDevice {
     }
 
     // We don't need cursorX, since we want to start at the beginning of the terminal.
-    const cursorY = this.tty.getBuffer().cursorY;
+    const cursorY = this.tty.getBufferSync().cursorY;
     const size = this.tty.getSize();
 
     const containerBoundingClientRect = this.container.getBoundingClientRect();
@@ -348,8 +342,8 @@ export class TTY extends VirtualFile implements File {
   handleLineComplete = () => {
     this.print('\r\n');
     let buf = Buffer.from(this.getInput(), 'utf-8');
-    this.pipe.writeBuffer(buf, 0, buf.length, null, () => {
-      console.log('written line', buf, buf.toString());
+    this.pipe.writeBuffer(buf, 0, buf.length, null).then(() => {
+      console.log('wrritten line', this.getInput());
     });
 
     this.setInput('');
@@ -588,7 +582,14 @@ export class TTY extends VirtualFile implements File {
   /**
    * Function to return the terminal buffer
    */
-  getBuffer(): IBuffer {
+  async getBuffer(): Promise<IBuffer> {
+    return (this.device as Xterm).buffer.normal;
+  }
+
+  /**
+   * Function to return the terminal buffer
+   */
+  getBufferSync(): IBuffer {
     return (this.device as Xterm).buffer.normal;
   }
 
@@ -703,24 +704,13 @@ export class TTY extends VirtualFile implements File {
     this._continuationPromptPrefix = value;
   }
 
-  writeBuffer(
-    buffer: Buffer,
-    offset: number,
-    length: number,
-    position: number,
-    callback: CallbackThreeArgs<number, Buffer>,
-  ) {
-    this.device.write(buffer, callback);
+  async writeBuffer(buffer: Buffer, offset: number, length: number, position: number) {
+    this.device.write(buffer);
+    return length;
   }
 
-  readBuffer(
-    buffer: Buffer,
-    offset: number,
-    length: number,
-    position: number,
-    callback: CallbackTwoArgs<number>,
-  ) {
-    this.pipe.readBuffer(buffer, offset, length, position, callback);
+  async readBuffer(buffer: Buffer, offset: number, length: number, position: number) {
+    return await this.pipe.readBuffer(buffer, offset, length, position);
   }
 
   pipe = new InMemoryPipe();

@@ -1,6 +1,5 @@
-import setImmediate from './setImmediate* Non-recursive mutex
- * @hidden
- */
+import setImmediate from './setImmediate';
+
 export default class Mutex {
   private _locked: boolean = false;
   private _waiters: Function[] = [];

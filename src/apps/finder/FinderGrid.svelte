@@ -20,17 +20,31 @@
   let items = [];
 
   async function readFiles(directory) {
+    let newItems = [];
     for await (var entry of Deno.readDir(directory)) {
+      console.log(entry);
       if (entry.isFile) {
-        items.push(entry, await Deno.stat(path.join(directory, entry.name)));
+        newItems.push({
+          name: entry.name,
+          path: path.join(directory, entry.name),
+          stats: await Deno.stat(path.join(directory, entry.name)),
+        });
+      } else {
+        newItems.push({
+          name: entry.name,
+          path: path.join(directory, entry.name),
+          stats: await Deno.stat(path.join(directory, entry.name)),
+        });
+        // let stats = await Deno.stat(`${directory}/${file}`, false);
+        // return {
+        //   name: file,
+        //   path: path.join(directory, file),
+        //   stats: stats,
+        // };
       }
-      // let stats = await Deno.stat(`${directory}/${file}`, false);
-      // return {
-      //   name: file,
-      //   path: path.join(directory, file),
-      //   stats: stats,
-      // };
     }
+
+    items = newItems;
   }
 
   // onMount(() => {

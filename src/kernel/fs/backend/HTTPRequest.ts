@@ -1,5 +1,5 @@
 import { BaseFileSystem } from '../core/file_system';
-import type { IFileSystem, CallbackTwoArgs, FileSystemOptions } from '../core/file_system';
+import type { IFileSystem, FileSystemOptions } from '../core/file_system';
 import { ApiError, ErrorCode } from '../core/api_error';
 import type { FileFlagString } from '../core/file_flag';
 import { ActionType, isWriteable, pathExistsAction } from '../core/file_flag';
@@ -16,7 +16,7 @@ import {
 } from '../generic/xhr';
 import { fetchIsAvailable, fetchFileAsync, fetchFileSizeAsync } from '../generic/fetch';
 import { FileIndex, isFileInode, isDirInode } from '../generic/file_index';
-import { Buffer } from 'buffer';
+import type { Buffer } from 'buffer';
 
 /**
  * Try to convert the given buffer into a string, and pass it to the callback.
@@ -24,12 +24,8 @@ import { Buffer } from 'buffer';
  * this is an uncommon case.
  * @hidden
  */
-function tryToString(buff: Buffer, encoding: BufferEncoding, cb: CallbackTwoArgs<string>) {
-  try {
-    cb(null, buff.toString(encoding));
-  } catch (e) {
-    cb(e);
-  }
+function tryToString(buff: Buffer, encoding: BufferEncoding) {
+  return buff.toString(encoding);
 }
 
 /**
@@ -48,9 +44,9 @@ export interface HTTPRequestOptions {
 }
 
 interface AsyncDownloadFileMethod {
-  (p: string, type: 'buffer', cb: CallbackTwoArgs<Buffer>): void;
-  (p: string, type: 'json', cb: CallbackTwoArgs<any>): void;
-  (p: string, type: string, cb: CallbackTwoArgs<any>): void;
+  (p: string, type: 'buffer'): Promise<Buffer>;
+  (p: string, type: 'json'): Promise<any>;
+  (p: string, type: string): Promise<any>;
 }
 
 interface SyncDownloadFileMethod {
@@ -121,20 +117,15 @@ export default class HTTPRequest extends BaseFileSystem implements IFileSystem {
   /**
    * Construct an HTTPRequest file system backend with the given options.
    */
-  public static Create(opts: HTTPRequestOptions, cb: CallbackTwoArgs<HTTPRequest>): void {
+  public static async Create(opts: HTTPRequestOptions): Promise<HTTPRequest> {
     if (opts.index === undefined) {
       opts.index = `index.json`;
     }
     if (typeof opts.index === 'string') {
-      asyncDownloadFile(opts.index, 'json', (e, data?) => {
-        if (e) {
-          cb(e);
-        } else {
-          cb(null, new HTTPRequest(data, opts.baseUrl));
-        }
-      });
+      let data = await asyncDownloadFile(opts.index, 'json');
+      return new HTTPRequest(data, opts.baseUrl);
     } else {
-      cb(null, new HTTPRequest(opts.index, opts.baseUrl));
+      return new HTTPRequest(opts.index, opts.baseUrl);
     }
   }
 
@@ -145,7 +136,7 @@ export default class HTTPRequest extends BaseFileSystem implements IFileSystem {
   public readonly prefixUrl: string;
   private _index: FileIndex<{}>;
   private _requestFileAsyncInternal: AsyncDownloadFileMethod;
-  private _requestFileSizeAsyncInternal: (p: string, cb: CallbackTwoArgs<number>) => void;
+  private _requestFileSizeAsyncInternal: (p: string) => Promise<number>;
   private _requestFileSyncInternal: SyncDownloadFileMethod;
   private _requestFileSizeSyncInternal: (p: string) => number;
 
@@ -228,31 +219,28 @@ export default class HTTPRequest extends BaseFileSystem implements IFileSystem {
     }
   }
 
-  public stat(path: string, isLstat: boolean, cb: CallbackTwoArgs<Stats>): void {
+  public async stat(path: string, isLstat: boolean): Promise<Stats> {
     const inode = this._index.getInode(path);
     if (inode === null) {
-      return cb(ApiError.ENOENT(path));
+      throw ApiError.ENOENT(path);
     }
     let stats: Stats;
     if (isFileInode<Stats>(inode)) {
       stats = inode.getData();
       // At this point, a non-opened file will still have default stats from the listing.
       if (stats.size < 0) {
-        this._requestFileSizeAsync(path, function (e: ApiError, size?: number) {
-          if (e) {
-            return cb(e);
-          }
-          stats.size = size!;
-          cb(null, Stats.clone(stats));
-        });
+        let size = await this._requestFileSizeAsync(path);
+
+        stats.size = size!;
+        return Stats.clone(stats);
       } else {
-        cb(null, Stats.clone(stats));
+        return Stats.clone(stats);
       }
     } else if (isDirInode(inode)) {
       stats = inode.getStats();
-      cb(null, stats);
+      return stats;
     } else {
-      cb(ApiError.FileError(ErrorCode.EINVAL, path));
+      throw ApiError.FileError(ErrorCode.EINVAL, path);
     }
   }
 
@@ -276,45 +264,39 @@ export default class HTTPRequest extends BaseFileSystem implements IFileSystem {
     return stats;
   }
 
-  public open(path: string, flags: FileFlagString, mode: number, cb: CallbackTwoArgs<File>): void {
+  public async open(path: string, flags: FileFlagString, mode: number): Promise<File> {
     // INVARIANT: You can't write to files on this file system.
     if (isWriteable(flags)) {
-      return cb(new ApiError(ErrorCode.EPERM, path));
+      throw new ApiError(ErrorCode.EPERM, path);
     }
-    const self = this;
     // Check if the path exists, and is a file.
     const inode = this._index.getInode(path);
     if (inode === null) {
-      return cb(ApiError.ENOENT(path));
+      throw ApiError.ENOENT(path);
     }
-    if (isFileInode<Stats>(inode)) {
-      const stats = inode.getData();
-      switch (pathExistsAction(flags)) {
-        case ActionType.THROW_EXCEPTION:
-        case ActionType.TRUNCATE_FILE:
-          return cb(ApiError.EEXIST(path));
-        case ActionType.NOP:
-          // Use existing file contents.
-          // XXX: Uh, this maintains the previously-used flag.
-          if (stats.fileData) {
-            return cb(null, new NoSyncFile(self, path, flags, Stats.clone(stats), stats.fileData));
-          }
-          // @todo be lazier about actually requesting the file
-          this._requestFileAsync(path, 'buffer', function (err: ApiError, buffer?: Buffer) {
-            if (err) {
-              return cb(err);
-            }
-            // we don't initially have file sizes
-            stats.size = buffer!.length;
-            stats.fileData = buffer!;
-            return cb(null, new NoSyncFile(self, path, flags, Stats.clone(stats), buffer));
-          });
-          break;
-        default:
-          return cb(new ApiError(ErrorCode.EINVAL, 'Invalid FileMode object.'));
-      }
-    } else {
-      return cb(ApiError.EISDIR(path));
+    if (!isFileInode<Stats>(inode)) {
+      throw ApiError.EISDIR(path);
+    }
+    const stats = inode.getData();
+    switch (pathExistsAction(flags)) {
+      case ActionType.THROW_EXCEPTION:
+      case ActionType.TRUNCATE_FILE:
+        throw ApiError.EEXIST(path);
+      case ActionType.NOP:
+        // Use existing file contents.
+        // XXX: Uh, this maintains the previously-used flag.
+        if (stats.fileData) {
+          return new NoSyncFile(this, path, flags, Stats.clone(stats), stats.fileData);
+        }
+        // @todo be lazier about actually requesting the file
+        let buffer = await this._requestFileAsync(path, 'buffer');
+
+        // we don't initially have file sizes
+        stats.size = buffer!.length;
+        stats.fileData = buffer!;
+        return new NoSyncFile(this, path, flags, Stats.clone(stats), buffer);
+      default:
+        throw new ApiError(ErrorCode.EINVAL, 'Invalid FileMode object.');
     }
   }
 
@@ -354,12 +336,8 @@ export default class HTTPRequest extends BaseFileSystem implements IFileSystem {
     }
   }
 
-  public readdir(path: string, cb: CallbackTwoArgs<string[]>): void {
-    try {
-      cb(null, this.readdirSync(path));
-    } catch (e) {
-      cb(e);
-    }
+  public async readdir(path: string): Promise<string[]> {
+    return this.readdirSync(path);
   }
 
   public readdirSync(path: string): string[] {
@@ -377,35 +355,29 @@ export default class HTTPRequest extends BaseFileSystem implements IFileSystem {
   /**
    * We have the entire file as a buffer; optimize readFile.
    */
-  public readFile(
+  public async readFile(
     fname: string,
     encoding: BufferEncoding,
     flag: FileFlagString,
-    cb: CallbackTwoArgs<string | Buffer>,
-  ): void {
+  ): Promise<string | Buffer> {
     // Wrap cb in file closing code.
-    const oldCb = cb;
     // Get file.
-    this.open(fname, flag, 0x1a4, function (err: ApiError, fd?: File) {
-      if (err) {
-        return cb(err);
-      }
-      cb = function (err: ApiError, arg?: Buffer) {
-        fd!.close(function (err2: any) {
-          if (!err) {
-            err = err2;
-          }
-          return oldCb(err, arg);
-        });
-      };
+    let fd = await this.open(fname, flag, 0x1a4);
+
+    try {
       const fdCast = <NoSyncFile<HTTPRequest>>fd;
       const fdBuff = <Buffer>fdCast.getBufferSync();
       if (encoding === null) {
-        cb(err, copyingSlice(fdBuff));
+        return copyingSlice(fdBuff);
       } else {
-        tryToString(fdBuff, encoding, cb);
+        return tryToString(fdBuff, encoding);
       }
-    });
+    } catch (e) {
+      fd.close();
+      throw e;
+    } finally {
+      await fd.close();
+    }
   }
 
   /**
@@ -436,11 +408,11 @@ export default class HTTPRequest extends BaseFileSystem implements IFileSystem {
   /**
    * Asynchronously download the given file.
    */
-  private _requestFileAsync(p: string, type: 'buffer', cb: CallbackTwoArgs<Buffer>): void;
-  private _requestFileAsync(p: string, type: 'json', cb: CallbackTwoArgs<any>): void;
-  private _requestFileAsync(p: string, type: string, cb: CallbackTwoArgs<any>): void;
-  private _requestFileAsync(p: string, type: string, cb: CallbackTwoArgs<any>): void {
-    this._requestFileAsyncInternal(this._getHTTPPath(p), type, cb);
+  private _requestFileAsync(p: string, type: 'buffer'): Promise<Buffer>;
+  private _requestFileAsync(p: string, type: 'json'): Promise<any>;
+  private _requestFileAsync(p: string, type: string): Promise<any>;
+  private async _requestFileAsync(p: string, type: string): Promise<any> {
+    return await this._requestFileAsyncInternal(this._getHTTPPath(p), type);
   }
 
   /**
@@ -456,8 +428,8 @@ export default class HTTPRequest extends BaseFileSystem implements IFileSystem {
   /**
    * Only requests the HEAD content, for the file size.
    */
-  private _requestFileSizeAsync(path: string, cb: CallbackTwoArgs<number>): void {
-    this._requestFileSizeAsyncInternal(this._getHTTPPath(path), cb);
+  private async _requestFileSizeAsync(path: string): Promise<number> {
+    return await this._requestFileSizeAsyncInternal(this._getHTTPPath(path));
   }
 
   private _requestFileSizeSync(path: string): number {
