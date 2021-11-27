@@ -106,6 +106,7 @@ export class DenoIsolate extends EventTarget {
       target: 'arm64-devinci-darwin-dev',
       debugFlag: true,
       noColor: false,
+      unstableFlag: true,
       args: [],
       // location: window.location.href,
       // ...options,

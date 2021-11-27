@@ -1,12 +1,12 @@
 import { Resource } from 'os/deno/denix/interfaces';
-import type { Kernel } from '../denix';
-import { op_sync, op_async } from '../interfaces';
+import type { Kernel } from '../denix/denix';
+import { op_sync, op_async } from '../denix/interfaces';
 import type { File } from 'os/kernel/fs/core/file';
 import { constants } from 'os/kernel/kernel/constants';
 import { Buffer } from 'buffer';
 import path from 'path-browserify';
 import { newPromise } from 'os/deno/util';
-import { remoteFS } from 'os/deno/fs';
+import { remoteFS } from 'os/deno/fs/fs';
 import { mkdirp, mkdirpSync } from 'os/kernel/fs/core/util';
 
 export interface DirEntry {

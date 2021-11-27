@@ -3,7 +3,7 @@ import { rest, setupWorker } from 'msw';
 import TranspileWorker from './transpiler?worker';
 import { wrap } from './comlink';
 
-import { fs } from './fs';
+import { fs } from './fs/fs';
 import { newPromise } from './util';
 import { ApiError, ERROR_KIND_TO_CODE } from 'os/kernel/fs/core/api_error';
 import { fromWireValue, toWireValue } from './transferHandlers';
@@ -22,23 +22,29 @@ async function createLocalNetwork() {
     handleResponse(ev);
   });
 
-  Network.worker = setupWorker(
-    rest.get('https://deno.land/std*', async (req, res, ctx) => {
-      const orig = await ctx.fetch(req);
-      let data = await transpiler.transpile(orig.body);
+  const transpileHandler = async (req, res, ctx) => {
+    const orig = await ctx.fetch(req);
+    let data = await transpiler.transpile(orig.body);
 
-      if (req.url.search.includes('script')) {
-        data = 'import.meta.main = true\n' + data.substr(data.indexOf('\n'));
-      }
-      return res(ctx.body(data), ctx.set('Content-Type', 'application/javascript'));
-    }),
-    rest.get('file://*', async (req, res, ctx) => {
-      // const orig = await ctx.fetch(req);
-      console.log(req);
-      return res(ctx.body('data'));
+    if (req.url.search.includes('script')) {
+      data =
+        'import.meta.main = true\n' +
+        (data.startsWith('!') ? data.substr(data.indexOf('\n')) : data);
+    }
+    return res(ctx.body(data), ctx.set('Content-Type', 'application/javascript'));
+  };
+
+  Network.worker = setupWorker(
+    rest.get('https://deno.land/std*', transpileHandler),
+    rest.get('https://deno.land/x/*', transpileHandler),
+    rest.get('https://raw.githubusercontent.com/*', transpileHandler),
+    rest.get('https://gist.githubusercontent.com/*', transpileHandler),
+    rest.get('https://crux.land/router*', (req, res, ctx) => {
+      req.url = new URL('http://localhost:3000/src/deno/router.ts');
+      return transpileHandler(req, res, ctx);
     }),
     rest.post('/~fs*', async (req, res, ctx) => {
-      // const orig = await ctx.fetch(req);
+      // HANDING SYNCHRONOUS FILE SYSTEM OPERATIONS
       let [fnName, args] = JSON.parse(req.body as string) as [string, any[]];
 
       let argList = args.map((a) => fromWireValue(a[0]));

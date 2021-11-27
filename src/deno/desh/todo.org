@@ -1,0 +1,77 @@
+* Next bugs
+** Refactor run.js
+Think about reuse, how the stdout and stderr are stored.
+How about expansion and the utils?
+Stability needs to come next. Add some tests for "run.js". Show what is expanded and what isn't.
+** Fix git command with full name
+** Jobs
+** Tab completion show options underneath
+
+* TODO Installation, ignoring user files.
+- [ ] Create some kind of setup.
+Check if user files exist. If they don't, copy the templates into the user files.
+- [ ] Generate bin script based on user $HOME upon installation
+- [ ] Make importing of user files resilient
+Do this by making some kind of user file interface that self-heals by copying the default if no user file is available
+That interface should just import and re-export. Probably dynamically
+
+Should be easy, because the history file does something like this.
+* TODO Improve tab completion
+* TODO Make it possible to do "run('ls | grep thing')" inside anon functions.
+Current issue is that | is split by the parser too eagerly
+
+* TODO Make it possible to save functions quickly
+* TODO Fancier globs
+e.g.
+
+~/Documents/projects/deno_shell $ ls **/*.test.*
+tests/util/evalAndInterpolateJS.test.js   tests/util/mergeArgsBetweenQuotes.test.js tests/util/replaceEnvVars.test.js
+
+* TODO Source a file
+Define a JS/unix hybrid. Something like this:
+"Any statement that doesn't end in a semi colon should be executed as a unix command.
+Any other statement should be eval'd in Deno."
+
+* TODO Custom transformers
+Determine what transformers to execute by reading the previous output
+
+* TODO Friendly helpful errors
+1. Something for transformers: "Looks like you are trying to use the json parser, but the previous output doesn't look like valid json."
+1. Something for JS errors. Print it nicely to stderr with colors.
+1. Other/missing commands. Maybe "did you mean" type message?
+
+* TODO Simplify installation and execution (make work on webstorm etc too)
+* TODO Rethink basic JS commands (ending with ;)
+* TODO Fuzzyfinder
+* TODO Surface JS syntax errors while writing
+* TODO Shortcut to re-run current JS snippet with previous output and show result
+* TODO Async reader triggering of custom functions
+This would be extra good combined with reading files as input
+* TODO Improve builtin, function definitions
+* TODO Let the user write functions that span multiple lines
+
+* TODO Manage resources/resource IDs.
+
+Do this in a more Deno way than bash way. Think of resources over file descriptors.
+
+** Maybe a more readable way too.
+
+Always left to right?
+
+Cases: stdout, in, err, files
+
+* TODO Use typescript
+* TODO Refactor to pull out reuseable parts
+* TODO Add error log. Catch when there's an autocomplete exception (and other exceptions) and log them to a file.
+This is how I should tie into fixing all crashes. Should be graceful
+
+* Learnings
+
+** VT100 codes
+** Non-canonical input
+** Piping stdin + stdout
+** File descriptors. Abstractions make this a little difficult. Can feed these difficulties back into the Deno project?
+** OS Signals
+
+** resources
+https://catonmat.net/bash-one-liners-explained-part-three#:~:text=When%20bash%20starts%20it%20opens,them%20and%20read%20from%20them.

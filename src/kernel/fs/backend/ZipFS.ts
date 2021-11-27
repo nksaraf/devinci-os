@@ -29,7 +29,7 @@ import { FileIndex, DirInode, FileInode, isDirInode, isFileInode } from '../gene
  */
 const decompressionMethods: {
   [method: number]: (
-    data: Buffer,
+    data: Uint8Array,
     compressedSize: number,
     uncompressedSize: number,
     flags: number,
@@ -167,7 +167,7 @@ function safeToString(buff: Buffer, useUTF8: boolean, start: number, length: num
  *    extra field (variable size)
  */
 export class FileHeader {
-  constructor(private data: Buffer) {
+  constructor(private data: Uint8Array) {
     if (data.readUInt32LE(0) !== 0x04034b50) {
       throw new ApiError(
         ErrorCode.EINVAL,
@@ -216,7 +216,7 @@ export class FileHeader {
   public fileName(): string {
     return safeToString(this.data, this.useUTF8(), 30, this.fileNameLength());
   }
-  public extraField(): Buffer {
+  public extraField(): Uint8Array {
     const start = 30 + this.fileNameLength();
     return this.data.slice(start, start + this.extraFieldLength());
   }
@@ -243,8 +243,12 @@ export class FileHeader {
  *   contain no content MUST not include file data.
  */
 export class FileData {
-  constructor(private header: FileHeader, private record: CentralDirectory, private data: Buffer) {}
-  public decompress(): Buffer {
+  constructor(
+    private header: FileHeader,
+    private record: CentralDirectory,
+    private data: Uint8Array,
+  ) {}
+  public decompress(): Uint8Array {
     // Check the compression
     const compressionMethod: CompressionMethod = this.header.compressionMethod();
     const fcn = decompressionMethods[compressionMethod];
@@ -272,7 +276,7 @@ export class FileData {
   public getRecord(): CentralDirectory {
     return this.record;
   }
-  public getRawData(): Buffer {
+  public getRawData(): Uint8Array {
     return this.data;
   }
 }
@@ -285,7 +289,7 @@ export class FileData {
  *    uncompressed size               4 bytes
  */
 export class DataDescriptor {
-  constructor(private data: Buffer) {}
+  constructor(private data: Uint8Array) {}
   public crc32(): number {
     return this.data.readUInt32LE(0);
   }
@@ -322,7 +326,7 @@ export class DataDescriptor {
  *    directory data structure.
  */
 export class ArchiveExtraDataRecord {
-  constructor(private data: Buffer) {
+  constructor(private data: Uint8Array) {
     if (this.data.readUInt32LE(0) !== 0x08064b50) {
       throw new ApiError(
         ErrorCode.EINVAL,
@@ -333,7 +337,7 @@ export class ArchiveExtraDataRecord {
   public length(): number {
     return this.data.readUInt32LE(4);
   }
-  public extraFieldData(): Buffer {
+  public extraFieldData(): Uint8Array {
     return this.data.slice(8, 8 + this.length());
   }
 }
@@ -356,7 +360,7 @@ export class ArchiveExtraDataRecord {
  *    Signature record will be neither compressed nor encrypted.
  */
 export class DigitalSignature {
-  constructor(private data: Buffer) {
+  constructor(private data: Uint8Array) {
     if (this.data.readUInt32LE(0) !== 0x05054b50) {
       throw new ApiError(
         ErrorCode.EINVAL,
@@ -367,7 +371,7 @@ export class DigitalSignature {
   public size(): number {
     return this.data.readUInt16LE(4);
   }
-  public signatureData(): Buffer {
+  public signatureData(): Uint8Array {
     return this.data.slice(6, 6 + this.size());
   }
 }
@@ -400,7 +404,7 @@ export class DigitalSignature {
 export class CentralDirectory {
   // Optimization: The filename is frequently read, so stash it here.
   private _filename: string;
-  constructor(private zipData: Buffer, private data: Buffer) {
+  constructor(private zipdata: Uint8Array, private data: Uint8Array) {
     // Sanity check.
     if (this.data.readUInt32LE(0) !== 0x02014b50) {
       throw new ApiError(
@@ -481,10 +485,10 @@ export class CentralDirectory {
   public fileName(): string {
     return this._filename;
   }
-  public rawFileName(): Buffer {
+  public rawFileName(): Uint8Array {
     return this.data.slice(46, 46 + this.fileNameLength());
   }
-  public extraField(): Buffer {
+  public extraField(): Uint8Array {
     const start = 44 + this.fileNameLength();
     return this.data.slice(start, start + this.extraFieldLength());
   }
@@ -492,7 +496,7 @@ export class CentralDirectory {
     const start = 46 + this.fileNameLength() + this.extraFieldLength();
     return safeToString(this.data, this.useUTF8(), start, this.fileCommentLength());
   }
-  public rawFileComment(): Buffer {
+  public rawFileComment(): Uint8Array {
     const start = 46 + this.fileNameLength() + this.extraFieldLength();
     return this.data.slice(start, start + this.fileCommentLength());
   }
@@ -530,10 +534,10 @@ export class CentralDirectory {
     const header = new FileHeader(this.zipData.slice(start));
     return new FileData(header, this, this.zipData.slice(start + header.totalSize()));
   }
-  public getData(): Buffer {
+  public getData(): Uint8Array {
     return this.getFileData().decompress();
   }
-  public getRawData(): Buffer {
+  public getRawData(): Uint8Array {
     return this.getFileData().getRawData();
   }
   public getStats(): Stats {
@@ -565,7 +569,7 @@ export class CentralDirectory {
  *  .ZIP file comment       (variable size)
  */
 export class EndOfCentralDirectory {
-  constructor(private data: Buffer) {
+  constructor(private data: Uint8Array) {
     if (this.data.readUInt32LE(0) !== 0x06054b50) {
       throw new ApiError(
         ErrorCode.EINVAL,
@@ -600,7 +604,7 @@ export class EndOfCentralDirectory {
     // Assuming UTF-8. The specification doesn't specify.
     return safeToString(this.data, true, 22, this.cdZipCommentLength());
   }
-  public rawCdZipComment(): Buffer {
+  public rawCdZipComment(): Uint8Array {
     return this.data.slice(22, 22 + this.cdZipCommentLength());
   }
 }
@@ -613,7 +617,7 @@ export class ZipTOC {
     public index: FileIndex<CentralDirectory>,
     public directoryEntries: CentralDirectory[],
     public eocd: EndOfCentralDirectory,
-    public data: Buffer,
+    public data: Uint8Array,
   ) {}
 }
 
@@ -622,7 +626,7 @@ export class ZipTOC {
  */
 export interface ZipFSOptions {
   // The zip file as a binary buffer.
-  zipData: Buffer;
+  zipdata: Uint8Array;
   // The name of the zip file (optional).
   name?: string;
 }
@@ -711,7 +715,12 @@ export default class ZipFS extends SynchronousFileSystem implements IFileSystem 
 
   public static RegisterDecompressionMethod(
     m: CompressionMethod,
-    fcn: (data: Buffer, compressedSize: number, uncompressedSize: number, flags: number) => Buffer,
+    fcn: (
+      data: Uint8Array,
+      compressedSize: number,
+      uncompressedSize: number,
+      flags: number,
+    ) => Buffer,
   ): void {
     decompressionMethods[m] = fcn;
   }
@@ -720,7 +729,7 @@ export default class ZipFS extends SynchronousFileSystem implements IFileSystem 
    * Locates the end of central directory record at the end of the file.
    * Throws an exception if it cannot be found.
    */
-  private static _getEOCD(data: Buffer): EndOfCentralDirectory {
+  private static _getEOCD(data: Uint8Array): EndOfCentralDirectory {
     // Unfortunately, the comment is variable size and up to 64K in size.
     // We assume that the magic signature does not appear in the comment, and
     // in the bytes between the comment and the signature. Other ZIP
@@ -765,7 +774,7 @@ export default class ZipFS extends SynchronousFileSystem implements IFileSystem 
     }
   }
 
-  private static _computeIndex(data: Buffer, cb: CallbackTwoArgs<ZipTOC>) {
+  private static _computeIndex(data: Uint8Array, cb: CallbackTwoArgs<ZipTOC>) {
     try {
       const index: FileIndex<CentralDirectory> = new FileIndex<CentralDirectory>();
       const eocd: EndOfCentralDirectory = ZipFS._getEOCD(data);
@@ -785,7 +794,7 @@ export default class ZipFS extends SynchronousFileSystem implements IFileSystem 
   }
 
   private static _computeIndexResponsiveTrampoline(
-    data: Buffer,
+    data: Uint8Array,
     index: FileIndex<CentralDirectory>,
     cdPtr: number,
     cdEnd: number,
@@ -801,7 +810,7 @@ export default class ZipFS extends SynchronousFileSystem implements IFileSystem 
   }
 
   private static _computeIndexResponsive(
-    data: Buffer,
+    data: Uint8Array,
     index: FileIndex<CentralDirectory>,
     cdPtr: number,
     cdEnd: number,
@@ -828,7 +837,7 @@ export default class ZipFS extends SynchronousFileSystem implements IFileSystem 
   private _index: FileIndex<CentralDirectory> = new FileIndex<CentralDirectory>();
   private _directoryEntries: CentralDirectory[] = [];
   private _eocd: EndOfCentralDirectory | null = null;
-  private data: Buffer;
+  private data: Uint8Array;
 
   private constructor(input: ZipTOC, private name: string = '') {
     super();

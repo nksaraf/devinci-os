@@ -118,7 +118,7 @@ export function buffer2Uint8array(buff: Buffer): Uint8Array {
  * be zero-copy.
  * @hidden
  */
-export function arrayish2Buffer(arr: Arrayish<number>): Buffer {
+export function arrayish2Buffer(arr: Arrayish<number>): Uint8Array {
   if (arr instanceof Buffer) {
     return arr;
   } else if (arr instanceof Uint8Array) {
@@ -132,7 +132,7 @@ export function arrayish2Buffer(arr: Arrayish<number>): Buffer {
  * Converts the given Uint8Array into a Buffer. Attempts to be zero-copy.
  * @hidden
  */
-export function uint8Array2Buffer(u8: Uint8Array): Buffer {
+export function uint8Array2Buffer(u8: Uint8Array): Uint8Array {
   if (u8 instanceof Buffer) {
     return u8;
   } else if (u8.byteOffset === 0 && u8.byteLength === u8.buffer.byteLength) {
@@ -147,7 +147,7 @@ export function uint8Array2Buffer(u8: Uint8Array): Buffer {
  * zero-copy.
  * @hidden
  */
-export function arrayBuffer2Buffer(ab: ArrayBuffer | SharedArrayBuffer): Buffer {
+export function arrayBuffer2Buffer(ab: ArrayBuffer | SharedArrayBuffer): Uint8Array {
   return Buffer.from(<ArrayBuffer>ab);
 }
 
@@ -155,7 +155,7 @@ export function arrayBuffer2Buffer(ab: ArrayBuffer | SharedArrayBuffer): Buffer 
  * Copies a slice of the given buffer
  * @hidden
  */
-export function copyingSlice(buff: Buffer, start: number = 0, end = buff.length): Buffer {
+export function copyingSlice(buff: Buffer, start: number = 0, end = buff.length): Uint8Array {
   if (start < 0 || end < 0 || end > buff.length || start > end) {
     throw new TypeError(
       `Invalid slice bounds on buffer of length ${buff.length}: [${start}, ${end}]`,
@@ -185,12 +185,12 @@ export function copyingSlice(buff: Buffer, start: number = 0, end = buff.length)
 /**
  * @hidden
  */
-let emptyBuff: Buffer | null = null;
+let emptyBuff: Uint8Array | null = null;
 /**
  * Returns an empty buffer.
  * @hidden
  */
-export function emptyBuffer(): Buffer {
+export function emptyBuffer(): Uint8Array {
   if (emptyBuff) {
     return emptyBuff;
   }

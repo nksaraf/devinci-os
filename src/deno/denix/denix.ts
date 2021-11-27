@@ -3,12 +3,12 @@ import { Resource } from './interfaces';
 import { proxy, wrap } from 'comlink';
 import type { Remote } from 'comlink';
 import { ApiError, ERROR_KIND_TO_CODE } from 'os/kernel/fs/core/api_error';
-import { LocalNetwork, network, Socket } from './ops/network';
+import { LocalNetwork, network, Socket } from '../ops/network';
 import { op_async, op_sync } from './interfaces';
 import type { Op } from './interfaces';
-import { builtIns } from './ops/builtIns';
-import { fsOps } from './ops/fs';
-import { url } from './ops/url';
+import { builtIns } from '../ops/builtIns';
+import { fsOps } from '../ops/fs';
+import { url } from '../ops/url';
 import type { VirtualFileSystem } from 'os/kernel/fs';
 import EsbuildWorker from '../linker/esbuild-worker?worker';
 import { fromBase64 } from 'os/kernel/node/base64';
@@ -93,6 +93,8 @@ function syncOpCallXhr(op_code: number, arg1: any, arg2: any) {
 
 export class Kernel extends EventTarget {
   net: LocalNetwork = new LocalNetwork();
+  env: { [key: string]: any } = {};
+  cwd: any = '/';
   opSync(index, arg1 = undefined, arg2 = undefined) {
     if (!this.ops[index]) {
       throw new Error(`op ${index} not found`);
@@ -202,10 +204,10 @@ export class Kernel extends EventTarget {
       {
         name: 'op_cwd',
         sync: () => {
-          return '/';
+          return this.cwd;
         },
         async: async () => {
-          return '/';
+          return this.cwd;
         },
       },
       ...builtIns,

@@ -1,9 +1,9 @@
 import { VirtualFileSystem } from 'os/kernel/fs';
 import InMemoryFileSystem from 'os/kernel/fs/backend/InMemory';
 import path from 'path-browserify';
-import { expose, proxy } from './comlink';
-import { mountDenoLib } from './deno';
-import { newPromise } from './util';
+import { expose, proxy } from '../comlink';
+import { mountDenoLib } from '../deno';
+import { newPromise } from '../util';
 
 export class ExposedFileSystem extends VirtualFileSystem {
   constructor() {

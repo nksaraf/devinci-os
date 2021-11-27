@@ -7,11 +7,14 @@
   import { TTY, Xterm } from 'os/kernel/kernel/tty';
   import { proxy } from 'comlink';
   import { DenoWorker } from 'os/deno/DenoWorker';
+  import { deno, Deno } from 'os/deno';
   import { Desh } from './desh';
   let divEl: HTMLDivElement = null;
 
-
   onMount(() => {
+    // console.log(
+    //   new deno.context.Worker('https://deno.land/std@0.116.0/fs/walk_test.ts', { type: 'module' }),
+    // );
     const worker = new DenoWorker();
 
     const terminal = new Xterm();
@@ -31,7 +34,9 @@
         shell.handleTermData(event.detail);
       });
 
-      await shell.start();
+      deno.run('/src/deno/desh/src/crsh.js');
+
+      // await shell.start();
     })();
 
     terminal.open(divEl);

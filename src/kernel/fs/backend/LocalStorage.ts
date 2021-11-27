@@ -42,7 +42,7 @@ export class LocalStorageStore implements SyncKeyValueStore, SimpleSyncStore {
     return new SimpleSyncRWTransaction(this);
   }
 
-  public get(key: string): Buffer | undefined {
+  public get(key: string): Uint8Array | undefined {
     try {
       const data = global.localStorage.getItem(key);
       if (data !== null) {
@@ -55,7 +55,7 @@ export class LocalStorageStore implements SyncKeyValueStore, SimpleSyncStore {
     return undefined;
   }
 
-  public put(key: string, data: Buffer, overwrite: boolean): boolean {
+  public put(key: string, data: Uint8Array, overwrite: boolean): boolean {
     try {
       if (!overwrite && global.localStorage.getItem(key) !== null) {
         // Don't want to overwrite the key!

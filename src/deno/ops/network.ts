@@ -1,6 +1,6 @@
-import { Resource } from '../interfaces';
-import type { Kernel } from '../denix';
-import { op_sync, op_async } from '../interfaces';
+import { Resource } from '../denix/interfaces';
+import type { Kernel } from '../denix/denix';
+import { op_sync, op_async } from '../denix/interfaces';
 import { newPromise } from 'os/deno/util';
 
 export const network = [

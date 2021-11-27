@@ -98,7 +98,7 @@ export class IndexedDBRWTransaction
     super(tx, store);
   }
 
-  public put(key: string, data: Buffer, overwrite: boolean): Promise<boolean> {
+  public put(key: string, data: Uint8Array, overwrite: boolean): Promise<boolean> {
     try {
       const arraybuffer = buffer2ArrayBuffer(data);
       let r: IDBRequest;

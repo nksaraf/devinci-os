@@ -35,14 +35,14 @@ type TGetString = (d: Buffer, i: number, len: number) => string;
 /**
  * @hidden
  */
-function getASCIIString(data: Buffer, startIndex: number, length: number) {
+function getASCIIString(data: Uint8Array, startIndex: number, length: number) {
   return data.toString('ascii', startIndex, startIndex + length).trim();
 }
 
 /**
  * @hidden
  */
-function getJolietString(data: Buffer, startIndex: number, length: number): string {
+function getJolietString(data: Uint8Array, startIndex: number, length: number): string {
   if (length === 1) {
     // Special: Root, parent, current directory are still a single byte.
     return String.fromCharCode(data[startIndex]);
@@ -61,7 +61,7 @@ function getJolietString(data: Buffer, startIndex: number, length: number): stri
 /**
  * @hidden
  */
-function getDate(data: Buffer, startIndex: number): Date {
+function getDate(data: Uint8Array, startIndex: number): Date {
   const year = parseInt(getASCIIString(data, startIndex, 4), 10);
   const mon = parseInt(getASCIIString(data, startIndex + 4, 2), 10);
   const day = parseInt(getASCIIString(data, startIndex + 6, 2), 10);
@@ -76,7 +76,7 @@ function getDate(data: Buffer, startIndex: number): Date {
 /**
  * @hidden
  */
-function getShortFormDate(data: Buffer, startIndex: number): Date {
+function getShortFormDate(data: Uint8Array, startIndex: number): Date {
   const yearsSince1900 = data[startIndex];
   const month = data[startIndex + 1];
   const day = data[startIndex + 2];
@@ -91,7 +91,7 @@ function getShortFormDate(data: Buffer, startIndex: number): Date {
 /**
  * @hidden
  */
-function constructSystemUseEntry(bigData: Buffer, i: number): SystemUseEntry {
+function constructSystemUseEntry(bigdata: Uint8Array, i: number): SystemUseEntry {
   const data = bigData.slice(i);
   const sue = new SystemUseEntry(data);
   switch (sue.signatureWord()) {
@@ -136,10 +136,10 @@ function constructSystemUseEntry(bigData: Buffer, i: number): SystemUseEntry {
  * @hidden
  */
 function constructSystemUseEntries(
-  data: Buffer,
+  data: Uint8Array,
   i: number,
   len: number,
-  isoData: Buffer,
+  isodata: Uint8Array,
 ): SystemUseEntry[] {
   // If the remaining allocated space following the last recorded System Use Entry in a System
   // Use field or Continuation Area is less than four bytes long, it cannot contain a System
@@ -171,8 +171,8 @@ function constructSystemUseEntries(
  * @hidden
  */
 class VolumeDescriptor {
-  protected _data: Buffer;
-  constructor(data: Buffer) {
+  protected _data: Uint8Array;
+  constructor(data: Uint8Array) {
     this._data = data;
   }
   public type(): VolumeDescriptorTypeCode {
@@ -184,7 +184,7 @@ class VolumeDescriptor {
   public version(): number {
     return this._data[6];
   }
-  public data(): Buffer {
+  public data(): Uint8Array {
     return this._data.slice(7, 2048);
   }
 }
@@ -194,7 +194,7 @@ class VolumeDescriptor {
  */
 abstract class PrimaryOrSupplementaryVolumeDescriptor extends VolumeDescriptor {
   private _root: DirectoryRecord | null = null;
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
   public systemIdentifier(): string {
@@ -230,7 +230,7 @@ abstract class PrimaryOrSupplementaryVolumeDescriptor extends VolumeDescriptor {
   public locationOfOptionalTypeMPathTable(): number {
     return this._data.readUInt32BE(152);
   }
-  public rootDirectoryEntry(isoData: Buffer): DirectoryRecord {
+  public rootDirectoryEntry(isodata: Uint8Array): DirectoryRecord {
     if (this._root === null) {
       this._root = this._constructRootDirectoryRecord(this._data.slice(156));
       this._root.rootCheckForRockRidge(isoData);
@@ -273,14 +273,14 @@ abstract class PrimaryOrSupplementaryVolumeDescriptor extends VolumeDescriptor {
   public fileStructureVersion(): number {
     return this._data[881];
   }
-  public applicationUsed(): Buffer {
+  public applicationUsed(): Uint8Array {
     return this._data.slice(883, 883 + 512);
   }
-  public reserved(): Buffer {
+  public reserved(): Uint8Array {
     return this._data.slice(1395, 1395 + 653);
   }
   public abstract name(): string;
-  protected abstract _constructRootDirectoryRecord(data: Buffer): DirectoryRecord;
+  protected abstract _constructRootDirectoryRecord(data: Uint8Array): DirectoryRecord;
   protected abstract _getString(idx: number, len: number): string;
   protected _getString32(idx: number): string {
     return this._getString(idx, 32);
@@ -291,7 +291,7 @@ abstract class PrimaryOrSupplementaryVolumeDescriptor extends VolumeDescriptor {
  * @hidden
  */
 class PrimaryVolumeDescriptor extends PrimaryOrSupplementaryVolumeDescriptor {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
     if (this.type() !== VolumeDescriptorTypeCode.PrimaryVolumeDescriptor) {
       throw new ApiError(ErrorCode.EIO, `Invalid primary volume descriptor.`);
@@ -300,7 +300,7 @@ class PrimaryVolumeDescriptor extends PrimaryOrSupplementaryVolumeDescriptor {
   public name() {
     return 'ISO9660';
   }
-  protected _constructRootDirectoryRecord(data: Buffer): DirectoryRecord {
+  protected _constructRootDirectoryRecord(data: Uint8Array): DirectoryRecord {
     return new ISODirectoryRecord(data, -1);
   }
   protected _getString(idx: number, len: number): string {
@@ -312,7 +312,7 @@ class PrimaryVolumeDescriptor extends PrimaryOrSupplementaryVolumeDescriptor {
  * @hidden
  */
 class SupplementaryVolumeDescriptor extends PrimaryOrSupplementaryVolumeDescriptor {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
     if (this.type() !== VolumeDescriptorTypeCode.SupplementaryVolumeDescriptor) {
       throw new ApiError(ErrorCode.EIO, `Invalid supplementary volume descriptor.`);
@@ -335,10 +335,10 @@ class SupplementaryVolumeDescriptor extends PrimaryOrSupplementaryVolumeDescript
   public name() {
     return 'Joliet';
   }
-  public escapeSequence(): Buffer {
+  public escapeSequence(): Uint8Array {
     return this._data.slice(88, 120);
   }
-  protected _constructRootDirectoryRecord(data: Buffer): DirectoryRecord {
+  protected _constructRootDirectoryRecord(data: Uint8Array): DirectoryRecord {
     return new JolietDirectoryRecord(data, -1);
   }
   protected _getString(idx: number, len: number): string {
@@ -362,12 +362,12 @@ const enum FileFlags {
  * @hidden
  */
 abstract class DirectoryRecord {
-  protected _data: Buffer;
+  protected _data: Uint8Array;
   // Offset at which system use entries begin. Set to -1 if not enabled.
   protected _rockRidgeOffset: number;
   protected _suEntries: SystemUseEntry[] | null = null;
-  private _fileOrDir: Buffer | Directory<DirectoryRecord> | null = null;
-  constructor(data: Buffer, rockRidgeOffset: number) {
+  private _fileOrDir: Uint8Array | Directory<DirectoryRecord> | null = null;
+  constructor(data: Uint8Array, rockRidgeOffset: number) {
     this._data = data;
     this._rockRidgeOffset = rockRidgeOffset;
   }
@@ -381,7 +381,7 @@ abstract class DirectoryRecord {
    * !!ONLY VALID ON ROOT NODE!!
    * Checks if Rock Ridge is enabled, and sets the offset.
    */
-  public rootCheckForRockRidge(isoData: Buffer): void {
+  public rootCheckForRockRidge(isodata: Uint8Array): void {
     const dir = this.getDirectory(isoData);
     this._rockRidgeOffset = dir.getDotEntry(isoData)._getRockRidgeOffset(isoData);
     if (this._rockRidgeOffset > -1) {
@@ -419,7 +419,7 @@ abstract class DirectoryRecord {
   public identifier(): string {
     return this._getString(33, this._data[32]);
   }
-  public fileName(isoData: Buffer): string {
+  public fileName(isodata: Uint8Array): string {
     if (this.hasRockRidge()) {
       const fn = this._rockRidgeFilename(isoData);
       if (fn !== null) {
@@ -447,7 +447,7 @@ abstract class DirectoryRecord {
       return ident.slice(0, versionSeparator);
     }
   }
-  public isDirectory(isoData: Buffer): boolean {
+  public isDirectory(isodata: Uint8Array): boolean {
     let rv = !!(this.fileFlags() & FileFlags.Directory);
     // If it lacks the Directory flag, it may still be a directory if we've exceeded the directory
     // depth limit. Rock Ridge marks these as files and adds a special attribute.
@@ -456,13 +456,13 @@ abstract class DirectoryRecord {
     }
     return rv;
   }
-  public isSymlink(isoData: Buffer): boolean {
+  public isSymlink(isodata: Uint8Array): boolean {
     return (
       this.hasRockRidge() &&
       this.getSUEntries(isoData).filter((e) => e instanceof SLEntry).length > 0
     );
   }
-  public getSymlinkPath(isoData: Buffer): string {
+  public getSymlinkPath(isodata: Uint8Array): string {
     let p = '';
     const entries = this.getSUEntries(isoData);
     const getStr = this._getGetString();
@@ -497,7 +497,7 @@ abstract class DirectoryRecord {
       return p;
     }
   }
-  public getFile(isoData: Buffer): Buffer {
+  public getFile(isodata: Uint8Array): Uint8Array {
     if (this.isDirectory(isoData)) {
       throw new Error(`Tried to get a File from a directory.`);
     }
@@ -506,7 +506,7 @@ abstract class DirectoryRecord {
     }
     return <Buffer>this._fileOrDir;
   }
-  public getDirectory(isoData: Buffer): Directory<DirectoryRecord> {
+  public getDirectory(isodata: Uint8Array): Directory<DirectoryRecord> {
     if (!this.isDirectory(isoData)) {
       throw new Error(`Tried to get a Directory from a file.`);
     }
@@ -515,7 +515,7 @@ abstract class DirectoryRecord {
     }
     return <Directory<this>>this._fileOrDir;
   }
-  public getSUEntries(isoData: Buffer): SystemUseEntry[] {
+  public getSUEntries(isodata: Uint8Array): SystemUseEntry[] {
     if (!this._suEntries) {
       this._constructSUEntries(isoData);
     }
@@ -523,8 +523,8 @@ abstract class DirectoryRecord {
   }
   protected abstract _getString(i: number, len: number): string;
   protected abstract _getGetString(): TGetString;
-  protected abstract _constructDirectory(isoData: Buffer): Directory<DirectoryRecord>;
-  protected _rockRidgeFilename(isoData: Buffer): string | null {
+  protected abstract _constructDirectory(isodata: Uint8Array): Directory<DirectoryRecord>;
+  protected _rockRidgeFilename(isodata: Uint8Array): string | null {
     const nmEntries = <NMEntry[]>this.getSUEntries(isoData).filter((e) => e instanceof NMEntry);
     if (nmEntries.length === 0 || nmEntries[0].flags() & (NMFlags.CURRENT | NMFlags.PARENT)) {
       return null;
@@ -539,7 +539,7 @@ abstract class DirectoryRecord {
     }
     return str;
   }
-  private _constructSUEntries(isoData: Buffer): void {
+  private _constructSUEntries(isodata: Uint8Array): void {
     let i = 33 + this._data[32];
     if (i % 2 === 1) {
       // Skip padding field.
@@ -553,7 +553,7 @@ abstract class DirectoryRecord {
    * Returns -1 if rock ridge is not enabled. Otherwise, returns the offset
    * at which system use fields begin.
    */
-  private _getRockRidgeOffset(isoData: Buffer): number {
+  private _getRockRidgeOffset(isodata: Uint8Array): number {
     // In the worst case, we get some garbage SU entries.
     // Fudge offset to 0 before proceeding.
     this._rockRidgeOffset = 0;
@@ -584,13 +584,13 @@ abstract class DirectoryRecord {
  * @hidden
  */
 class ISODirectoryRecord extends DirectoryRecord {
-  constructor(data: Buffer, rockRidgeOffset: number) {
+  constructor(data: Uint8Array, rockRidgeOffset: number) {
     super(data, rockRidgeOffset);
   }
   protected _getString(i: number, len: number): string {
     return getASCIIString(this._data, i, len);
   }
-  protected _constructDirectory(isoData: Buffer): Directory<DirectoryRecord> {
+  protected _constructDirectory(isodata: Uint8Array): Directory<DirectoryRecord> {
     return new ISODirectory(this, isoData);
   }
   protected _getGetString(): TGetString {
@@ -602,13 +602,13 @@ class ISODirectoryRecord extends DirectoryRecord {
  * @hidden
  */
 class JolietDirectoryRecord extends DirectoryRecord {
-  constructor(data: Buffer, rockRidgeOffset: number) {
+  constructor(data: Uint8Array, rockRidgeOffset: number) {
     super(data, rockRidgeOffset);
   }
   protected _getString(i: number, len: number): string {
     return getJolietString(this._data, i, len);
   }
-  protected _constructDirectory(isoData: Buffer): Directory<DirectoryRecord> {
+  protected _constructDirectory(isodata: Uint8Array): Directory<DirectoryRecord> {
     return new JolietDirectory(this, isoData);
   }
   protected _getGetString(): TGetString {
@@ -642,8 +642,8 @@ const enum SystemUseEntrySignatures {
  * @hidden
  */
 class SystemUseEntry {
-  protected _data: Buffer;
-  constructor(data: Buffer) {
+  protected _data: Uint8Array;
+  constructor(data: Uint8Array) {
     this._data = data;
   }
   public signatureWord(): SystemUseEntrySignatures {
@@ -666,7 +666,7 @@ class SystemUseEntry {
  */
 class CEEntry extends SystemUseEntry {
   private _entries: SystemUseEntry[] | null = null;
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
   /**
@@ -687,7 +687,7 @@ class CEEntry extends SystemUseEntry {
   public continuationLength(): number {
     return this._data.readUInt32LE(20);
   }
-  public getEntries(isoData: Buffer): SystemUseEntry[] {
+  public getEntries(isodata: Uint8Array): SystemUseEntry[] {
     if (!this._entries) {
       const start = this.continuationLba() * 2048 + this.continuationLbaOffset();
       this._entries = constructSystemUseEntries(isoData, start, this.continuationLength(), isoData);
@@ -701,7 +701,7 @@ class CEEntry extends SystemUseEntry {
  * @hidden
  */
 class PDEntry extends SystemUseEntry {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
 }
@@ -711,7 +711,7 @@ class PDEntry extends SystemUseEntry {
  * @hidden
  */
 class SPEntry extends SystemUseEntry {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
   public checkBytesPass(): boolean {
@@ -727,7 +727,7 @@ class SPEntry extends SystemUseEntry {
  * @hidden
  */
 class STEntry extends SystemUseEntry {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
 }
@@ -737,7 +737,7 @@ class STEntry extends SystemUseEntry {
  * @hidden
  */
 class EREntry extends SystemUseEntry {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
   public identifierLength(): number {
@@ -771,7 +771,7 @@ class EREntry extends SystemUseEntry {
  * @hidden
  */
 class ESEntry extends SystemUseEntry {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
   public extensionSequence(): number {
@@ -784,7 +784,7 @@ class ESEntry extends SystemUseEntry {
  * @hidden
  */
 class RREntry extends SystemUseEntry {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
 }
@@ -794,7 +794,7 @@ class RREntry extends SystemUseEntry {
  * @hidden
  */
 class PXEntry extends SystemUseEntry {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
   public mode(): number {
@@ -819,7 +819,7 @@ class PXEntry extends SystemUseEntry {
  * @hidden
  */
 class PNEntry extends SystemUseEntry {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
   public devTHigh(): number {
@@ -835,7 +835,7 @@ class PNEntry extends SystemUseEntry {
  * @hidden
  */
 class SLEntry extends SystemUseEntry {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
   public flags(): number {
@@ -870,8 +870,8 @@ const enum SLComponentFlags {
  * @hidden
  */
 class SLComponentRecord {
-  private _data: Buffer;
-  constructor(data: Buffer) {
+  private _data: Uint8Array;
+  constructor(data: Uint8Array) {
     this._data = data;
   }
   public flags(): SLComponentFlags {
@@ -902,7 +902,7 @@ const enum NMFlags {
  * @hidden
  */
 class NMEntry extends SystemUseEntry {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
   public flags(): NMFlags {
@@ -918,7 +918,7 @@ class NMEntry extends SystemUseEntry {
  * @hidden
  */
 class CLEntry extends SystemUseEntry {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
   public childDirectoryLba(): number {
@@ -931,7 +931,7 @@ class CLEntry extends SystemUseEntry {
  * @hidden
  */
 class PLEntry extends SystemUseEntry {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
   public parentDirectoryLba(): number {
@@ -944,7 +944,7 @@ class PLEntry extends SystemUseEntry {
  * @hidden
  */
 class REEntry extends SystemUseEntry {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
 }
@@ -968,7 +968,7 @@ const enum TFFlags {
  * @hidden
  */
 class TFEntry extends SystemUseEntry {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
   public flags(): number {
@@ -1065,7 +1065,7 @@ class TFEntry extends SystemUseEntry {
  * @hidden
  */
 class SFEntry extends SystemUseEntry {
-  constructor(data: Buffer) {
+  constructor(data: Uint8Array) {
     super(data);
   }
   public virtualSizeHigh(): number {
@@ -1086,7 +1086,7 @@ abstract class Directory<T extends DirectoryRecord> {
   protected _record: T;
   private _fileList: string[] = [];
   private _fileMap: { [name: string]: T } = {};
-  constructor(record: T, isoData: Buffer) {
+  constructor(record: T, isodata: Uint8Array) {
     this._record = record;
     let i = record.lba();
     let iLimit = i + record.dataLength();
@@ -1135,20 +1135,20 @@ abstract class Directory<T extends DirectoryRecord> {
   public getFileList(): string[] {
     return this._fileList;
   }
-  public getDotEntry(isoData: Buffer): T {
+  public getDotEntry(isodata: Uint8Array): T {
     return this._constructDirectoryRecord(isoData.slice(this._record.lba()));
   }
-  protected abstract _constructDirectoryRecord(data: Buffer): T;
+  protected abstract _constructDirectoryRecord(data: Uint8Array): T;
 }
 
 /**
  * @hidden
  */
 class ISODirectory extends Directory<ISODirectoryRecord> {
-  constructor(record: ISODirectoryRecord, isoData: Buffer) {
+  constructor(record: ISODirectoryRecord, isodata: Uint8Array) {
     super(record, isoData);
   }
-  protected _constructDirectoryRecord(data: Buffer): ISODirectoryRecord {
+  protected _constructDirectoryRecord(data: Uint8Array): ISODirectoryRecord {
     return new ISODirectoryRecord(data, this._record.getRockRidgeOffset());
   }
 }
@@ -1157,10 +1157,10 @@ class ISODirectory extends Directory<ISODirectoryRecord> {
  * @hidden
  */
 class JolietDirectory extends Directory<JolietDirectoryRecord> {
-  constructor(record: JolietDirectoryRecord, isoData: Buffer) {
+  constructor(record: JolietDirectoryRecord, isodata: Uint8Array) {
     super(record, isoData);
   }
-  protected _constructDirectoryRecord(data: Buffer): JolietDirectoryRecord {
+  protected _constructDirectoryRecord(data: Uint8Array): JolietDirectoryRecord {
     return new JolietDirectoryRecord(data, this._record.getRockRidgeOffset());
   }
 }
@@ -1170,7 +1170,7 @@ class JolietDirectory extends Directory<JolietDirectoryRecord> {
  */
 export interface IsoFSOptions {
   // The ISO file in a buffer.
-  data: Buffer;
+  data: Uint8Array;
   // The name of the ISO (optional; used for debug messages / identification via getName()).
   name?: string;
 }
@@ -1207,7 +1207,7 @@ export default class IsoFS extends SynchronousFileSystem implements IFileSystem 
     return true;
   }
 
-  private _data: Buffer;
+  private _data: Uint8Array;
   private _pvd: PrimaryOrSupplementaryVolumeDescriptor;
   private _root: DirectoryRecord;
   private _name: string;
@@ -1219,7 +1219,7 @@ export default class IsoFS extends SynchronousFileSystem implements IFileSystem 
    * @param data The ISO file in a buffer.
    * @param name The name of the ISO (optional; used for debug messages / identification via getName()).
    */
-  private constructor(data: Buffer, name: string = '') {
+  private constructor(data: Uint8Array, name: string = '') {
     super();
     this._data = data;
     // Skip first 16 sectors.

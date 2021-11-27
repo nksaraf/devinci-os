@@ -65,6 +65,7 @@
     "comlink": "^4.3.1",
     "date-fns": "^2.24.0",
     "dompurify": "^2.3.3",
+    "es-module-lexer": "^0.9.3",
     "esbuild-wasm": "^0.13.14",
     "events": "^3.3.0",
     "graceful-fs": "4.2.6",

@@ -42,7 +42,7 @@ class OverlayFile extends InMemoryFile<UnlockedOverlayFS> implements File {
     path: string,
     flag: FileFlagString,
     stats: Stats,
-    data: Buffer,
+    data: Uint8Array,
   ) {
     super(fs, path, flag, stats, data);
   }

@@ -1,5 +1,5 @@
 import { Kernel } from './denix/denix';
-import { fs } from './fs';
+import { fs } from './fs/fs';
 
 export async function initKernel() {
   console.log('booting Kernel');

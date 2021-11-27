@@ -260,7 +260,7 @@ interface IAPIErrorArgument extends ISpecialArgument {
 function apiErrorLocal2Remote(e: ApiError): IAPIErrorArgument {
   return {
     type: SpecialArgType.API_ERROR,
-    errorData: bufferToTransferrableObject(e.writeToBuffer()),
+    errordata: Uint8ArrayToTransferrableObject(e.writeToBuffer()),
   };
 }
 
@@ -324,7 +324,7 @@ interface IStatsArgument extends ISpecialArgument {
 function statsLocal2Remote(stats: Stats): IStatsArgument {
   return {
     type: SpecialArgType.STATS,
-    statsData: bufferToTransferrableObject(stats.toBuffer()),
+    statsdata: Uint8ArrayToTransferrableObject(stats.toBuffer()),
   };
 }
 
@@ -376,7 +376,7 @@ function bufferToTransferrableObject(buff: Buffer): ArrayBuffer | SharedArrayBuf
 /**
  * @hidden
  */
-function transferrableObjectToBuffer(buff: ArrayBuffer | SharedArrayBuffer): Buffer {
+function transferrableObjectToBuffer(buff: ArrayBuffer | SharedArrayBuffer): Uint8Array {
   return arrayBuffer2Buffer(buff);
 }
 
@@ -386,14 +386,14 @@ function transferrableObjectToBuffer(buff: ArrayBuffer | SharedArrayBuffer): Buf
 function bufferLocal2Remote(buff: Buffer): IBufferArgument {
   return {
     type: SpecialArgType.BUFFER,
-    data: bufferToTransferrableObject(buff),
+    data: Uint8ArrayToTransferrableObject(buff),
   };
 }
 
 /**
  * @hidden
  */
-function bufferRemote2Local(buffArg: IBufferArgument): Buffer {
+function bufferRemote2Local(buffArg: IBufferArgument): Uint8Array {
   return transferrableObjectToBuffer(buffArg.data);
 }
 
@@ -466,7 +466,7 @@ class WorkerFile extends InMemoryFile<WorkerFS> {
     return {
       type: SpecialArgType.FD,
       id: this._remoteFdId,
-      data: bufferToTransferrableObject(this.getBuffer()),
+      data: Uint8ArrayToTransferrableObject(this.getBuffer()),
       stat: bufferToTransferrableObject(this.getStats().toBuffer()),
       path: this.getPath(),
       flag: this.getFlag(),

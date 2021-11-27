@@ -1,5 +1,5 @@
-import type { Kernel } from '../denix';
-import { op_sync, op_async } from '../interfaces';
+import type { Kernel } from '../denix/denix';
+import { op_sync, op_async } from '../denix/interfaces';
 
 export const builtIns = [
   op_sync('op_close', function (this: Kernel, rid) {
@@ -43,5 +43,18 @@ export const builtIns = [
   op_async('op_shutdown', async function (this: Kernel, rid: number) {
     let resource = this.getResource(rid);
     return await resource.shutdown();
+  }),
+  op_sync('op_get_env', function (this: Kernel, key: string) {
+    return this.env[key] ?? '';
+  }),
+  op_sync('op_set_env', function (this: Kernel, key: string, val: string) {
+    this.env[key] = val;
+  }),
+  op_sync('op_signal_bind', function (this: Kernel, signal: string, val: string) {
+    // this.env[key] = val;
+    this.addEventListener('signal', (e) => {});
+  }),
+  op_sync('op_set_raw', function (this: Kernel, rid: number) {
+    // this.env[key] = val;
   }),
 ];

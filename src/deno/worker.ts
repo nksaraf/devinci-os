@@ -2,7 +2,7 @@ import { kernel } from './init';
 import { DenoIsolate } from './deno';
 import { expose, wrap } from './comlink';
 import { Global } from 'os/kernel/global';
-import { remoteFS } from './fs';
+import { remoteFS } from './fs/fs';
 
 export let deno = new DenoIsolate();
 

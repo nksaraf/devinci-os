@@ -1,10 +1,8 @@
 import { wrap } from 'comlink';
 import type { Remote } from 'comlink';
-import InternalDenoWorker from './worker?worker';
 import type { DenoIsolate } from './deno';
-import { remoteFS } from './fs';
+import { remoteFS } from './fs/fs';
 import { newPromise } from './util';
-import { deno } from './index';
 
 export class DenoWorker {
   isolate: Remote<DenoIsolate>;
@@ -12,7 +10,11 @@ export class DenoWorker {
     return this.isolate.Deno as unknown as typeof Deno;
   }
   constructor() {
-    this.isolate = wrap(new InternalDenoWorker());
+    this.isolate = wrap(
+      new Worker('./worker?worker-file', {
+        type: 'module',
+      }),
+    );
     this.init();
   }
 

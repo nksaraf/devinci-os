@@ -24,7 +24,7 @@ interface IAsyncOperation {
  * We define our own file to interpose on syncSync() for mirroring purposes.
  */
 class MirrorFile extends InMemoryFile<AsyncMirror> implements File {
-  constructor(fs: AsyncMirror, path: string, flag: FileFlagString, stat: Stats, data: Buffer) {
+  constructor(fs: AsyncMirror, path: string, flag: FileFlagString, stat: Stats, data: Uint8Array) {
     super(fs, path, flag, stat, data);
   }
 

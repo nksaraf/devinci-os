@@ -1,9 +1,9 @@
 import { VirtualFileSystem } from 'os/kernel/fs';
-import { proxy, wrap } from './comlink';
-import type { Remote } from './comlink';
+import { proxy, wrap } from '../comlink';
+import type { Remote } from '../comlink';
 import type { ExposedFileSystem } from './fs.worker';
 import FSWorker from './fs.worker?worker';
-import { fromWireValue, toWireValue } from './transferHandlers';
+import { fromWireValue, toWireValue } from '../transferHandlers';
 
 interface RemoteFileSystem extends VirtualFileSystem {}
 class RemoteFileSystem {

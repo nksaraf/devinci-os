@@ -56,7 +56,8 @@ export default class Inode {
   /**
    * Writes the inode into the start of the buffer.
    */
-  public toBuffer(buff: Buffer = Buffer.alloc(this.getSize())): Buffer {
+  public toBuffer(arr: Uint8Array = new Uint8Array(this.getSize())): Uint8Array {
+    let buff = Buffer.from(arr);
     buff.writeUInt32LE(this.size, 0);
     buff.writeUInt16LE(this.mode, 4);
     buff.writeDoubleLE(this.atime, 6);

@@ -41,7 +41,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
     _flag: FileFlagString = constants.fs.O_RDONLY,
     _stat?: Stats,
     fileType: FileType = FileType.FILE,
-    // contents?: Buffer,
+    // contents?: Uint8Array,
   ) {
     super();
     this._path = _path;
@@ -53,7 +53,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
     // truncate/append to file.
     // if (this._stat.size !== this._buffer.length && isReadable(this._flag)) {
     //   throw new Error(
-    //     `Invalid buffer: Buffer is ${this._buffer.length} long, yet Stats object specifies that file is ${this._stat.size} long.`,
+    //     `Invalid buffer: Uint8Array is ${this._buffer.length} long, yet Stats object specifies that file is ${this._stat.size} long.`,
     //   );
     // }
     this._stat = _stat ?? new Stats(fileType, 0);
@@ -202,7 +202,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
    * @return [Number]
    */
   public async write(
-    buffer: Buffer,
+    buffer: Uint8Array,
     offset: number,
     length: number,
     position: number,
@@ -239,7 +239,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
    *   the current position.
    * @return [Number]
    */
-  public writeSync(buffer: Buffer, offset: number, length: number, position: number): number {
+  public writeSync(buffer: Uint8Array, offset: number, length: number, position: number): number {
     if (!isWriteable(this._flag)) {
       throw new ApiError(ErrorCode.EPERM, 'File not opened with a writeable mode.');
     }
@@ -354,7 +354,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
    * @return [Number]
    */
   public async read(
-    buffer: Buffer,
+    buffer: Uint8Array,
     offset: number,
     length: number,
     position: number,
@@ -437,9 +437,9 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
   }
 
   public async readString(): Promise<string> {
-    let buffer = Buffer.alloc(100);
+    let buffer = new Uint8Array(100);
     let readLength = await this.readBuffer(buffer, 0, length, 0);
-    return buffer.toString('utf8', 0, readLength);
+    return new TextDecoder().decode(buffer.subarray(0, readLength));
   }
 
   public async writeString(str: string): Promise<number> {

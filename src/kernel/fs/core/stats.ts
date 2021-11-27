@@ -72,7 +72,7 @@ export default class Stats {
   // group ID of owner
   public gid: number = 0;
   // XXX: Some file systems stash data on stats objects.
-  public fileData: Buffer | null = null;
+  public filedata: Uint8Array | null = null;
   public atimeMs: number;
   public mtimeMs: number;
   public ctimeMs: number;
@@ -188,7 +188,7 @@ export default class Stats {
     }
   }
 
-  public toBuffer(): Buffer {
+  public toBuffer(): Uint8Array {
     const buffer = Buffer.alloc(32);
     buffer.writeUInt32LE(this.size, 0);
     buffer.writeUInt32LE(this.mode, 4);

@@ -4,12 +4,11 @@ import type {
   SyncKeyValueRWTransaction,
 } from '../generic/key_value_filesystem';
 import { SimpleSyncRWTransaction, SyncKeyValueFileSystem } from '../generic/key_value_filesystem';
-import type { Buffer } from 'buffer';
 /**
  * A simple in-memory key-value store backed by a JavaScript object.
  */
 export class InMemoryStore implements SyncKeyValueStore, SimpleSyncStore {
-  private store: { [key: string]: Buffer } = {};
+  private store: { [key: string]: Uint8Array } = {};
 
   public name() {
     return InMemoryFileSystem.Name;
@@ -22,11 +21,11 @@ export class InMemoryStore implements SyncKeyValueStore, SimpleSyncStore {
     return new SimpleSyncRWTransaction(this);
   }
 
-  public get(key: string): Buffer {
+  public get(key: string): Uint8Array {
     return this.store[key];
   }
 
-  public put(key: string, data: Buffer, overwrite: boolean): boolean {
+  public put(key: string, data: Uint8Array, overwrite: boolean): boolean {
     if (!overwrite && this.store.hasOwnProperty(key)) {
       return false;
     }

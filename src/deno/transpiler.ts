@@ -1,12 +1,14 @@
 import { expose } from './comlink';
 import * as suc from 'sucrase';
+import { init, parse } from 'es-module-lexer';
 
 expose({
   transpile: async function (code, options) {
+    await init;
     if (code instanceof Uint8Array) {
       console.log(code);
       return suc.transform(new TextDecoder().decode(code), {
-        transforms: ['typescript'],
+        transforms: ['typescript', 'jsx'],
         disableESTransforms: true,
       }).code;
     } else {
@@ -19,10 +21,14 @@ expose({
         }),
       );
 
-      return suc.transform(response, {
-        transforms: ['typescript'],
+      let o = suc.transform(response, {
+        transforms: ['typescript', 'jsx'],
         disableESTransforms: true,
-      }).code;
+      });
+
+      console.log(parse(o.code));
+
+      return o.code;
     }
   },
 });

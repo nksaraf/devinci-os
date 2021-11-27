@@ -15,12 +15,12 @@ const ROOT_NODE_ID: string = '/';
 /**
  * @hidden
  */
-let emptyDirNode: Buffer | null = null;
+let emptyDirNode: Uint8Array | null = null;
 /**
  * Returns an empty directory node.
  * @hidden
  */
-function getEmptyDirNode(): Buffer {
+function getEmptyDirNode(): Uint8Array {
   if (emptyDirNode) {
     return emptyDirNode;
   }
@@ -105,7 +105,7 @@ export interface SyncKeyValueROTransaction {
    * @param key The key to look under for data.
    * @return The data stored under the key, or undefined if not present.
    */
-  get(key: string): Buffer | undefined;
+  get(key: string): Uint8Array | undefined;
 }
 
 /**
@@ -120,7 +120,7 @@ export interface SyncKeyValueRWTransaction extends SyncKeyValueROTransaction {
    *   avoids storing the data if the key exists.
    * @return True if storage succeeded, false otherwise.
    */
-  put(key: string, data: Buffer, overwrite: boolean): boolean;
+  put(key: string, data: Uint8Array, overwrite: boolean): boolean;
   /**
    * Deletes the data at the given key.
    * @param key The key to delete from the store.
@@ -141,8 +141,8 @@ export interface SyncKeyValueRWTransaction extends SyncKeyValueROTransaction {
  * support for transactions and such.
  */
 export interface SimpleSyncStore {
-  get(key: string): Buffer | undefined;
-  put(key: string, data: Buffer, overwrite: boolean): boolean;
+  get(key: string): Uint8Array | undefined;
+  put(key: string, data: Uint8Array, overwrite: boolean): boolean;
   del(key: string): void;
 }
 
@@ -244,7 +244,7 @@ export class SimpleSyncRWTransaction implements SyncKeyValueRWTransaction {
    * Stores data in the keys we modify prior to modifying them.
    * Allows us to roll back commits.
    */
-  private originalData: { [key: string]: Buffer | undefined } = {};
+  private originalData: { [key: string]: Uint8Array | undefined } = {};
   /**
    * List of keys modified in this transaction, if any.
    */
@@ -252,13 +252,13 @@ export class SimpleSyncRWTransaction implements SyncKeyValueRWTransaction {
 
   constructor(private store: SimpleSyncStore) {}
 
-  public get(key: string): Buffer | undefined {
+  public get(key: string): Uint8Array | undefined {
     const val = this.store.get(key);
     this.stashOldValue(key, val);
     return val;
   }
 
-  public put(key: string, data: Buffer, overwrite: boolean): boolean {
+  public put(key: string, data: Uint8Array, overwrite: boolean): boolean {
     this.markModified(key);
     return this.store.put(key, data, overwrite);
   }
@@ -292,7 +292,7 @@ export class SimpleSyncRWTransaction implements SyncKeyValueRWTransaction {
    * prevent needless `get` requests if the program modifies the data later
    * on during the transaction.
    */
-  private stashOldValue(key: string, value: Buffer | undefined) {
+  private stashOldValue(key: string, value: Uint8Array | undefined) {
     // Keep only the earliest value in the transaction.
     if (!this.originalData.hasOwnProperty(key)) {
       this.originalData[key] = value;
@@ -339,7 +339,7 @@ export class SyncKeyValueFile extends InMemoryFile<SyncKeyValueFileSystem> imple
     _path: string,
     _flag: FileFlagString,
     _stat: Stats,
-    contents?: Buffer,
+    contents?: Uint8Array,
   ) {
     super(_fs, _path, _flag, _stat, contents);
   }
@@ -521,7 +521,7 @@ export class SyncKeyValueFileSystem extends SynchronousFileSystem {
     return Object.keys(this.getDirListing(tx, p, this.findINode(tx, p))) as string[];
   }
 
-  public _syncSync(p: string, data: Buffer, stats: Stats): void {
+  public _syncSync(p: string, data: Uint8Array, stats: Stats): void {
     // @todo Ensure mtime updates properly, and use that to determine if a data
     //       update is required.
     const tx = this.store.beginTransaction('readwrite'),
@@ -627,7 +627,7 @@ export class SyncKeyValueFileSystem extends SynchronousFileSystem {
     if (inode === undefined) {
       throw ApiError.ENOENT(p);
     }
-    return Inode.fromBuffer(inode);
+    return Inode.fromBuffer(Buffer.from(inode));
   }
 
   /**
@@ -650,7 +650,7 @@ export class SyncKeyValueFileSystem extends SynchronousFileSystem {
    * the exceedingly unlikely chance that we try to reuse a random GUID.
    * @return The GUID that the data was stored under.
    */
-  private addNewNode(tx: SyncKeyValueRWTransaction, data: Buffer): string {
+  private addNewNode(tx: SyncKeyValueRWTransaction, data: Uint8Array): string {
     const retries = 0;
     let currId: string;
     while (retries < 5) {
@@ -680,7 +680,7 @@ export class SyncKeyValueFileSystem extends SynchronousFileSystem {
     p: string,
     type: FileType,
     mode: number,
-    data: Buffer,
+    data: Uint8Array,
   ): Inode {
     const parentDir = path.dirname(p),
       fname = path.basename(p),
@@ -811,7 +811,7 @@ export class SyncKeyValueFileSystem extends SynchronousFileSystem {
 //    * @param cb Triggered with an error and whether or not the value was
 //    *   committed.
 //    */
-//   put(key: string, data: Buffer, overwrite: boolean): Promise<boolean>;
+//   put(key: string, data: Uint8Array, overwrite: boolean): Promise<boolean>;
 //   /**
 //    * Deletes the data at the given key.
 //    * @param key The key to delete from the store.
@@ -1127,7 +1127,7 @@ export class SyncKeyValueFileSystem extends SynchronousFileSystem {
 //     });
 //   }
 
-//   public async sync(p: string, data: Buffer, stats: Stats): Promise<void> {
+//   public async sync(p: string, data: Uint8Array, stats: Stats): Promise<void> {
 //     // @todo Ensure mtime updates properly, and use that to determine if a data
 //     //       update is required.
 //     const tx = this.store.beginTransaction('readwrite');
@@ -1348,7 +1348,7 @@ export class SyncKeyValueFileSystem extends SynchronousFileSystem {
 //    */
 //   private addNewNode(
 //     tx: AsyncKeyValueRWTransaction,
-//     data: Buffer,
+//     data: Uint8Array,
 //     cb: CallbackTwoArgs<string>,
 //   ): void {
 //     let retries = 0,
@@ -1388,7 +1388,7 @@ export class SyncKeyValueFileSystem extends SynchronousFileSystem {
 //     p: string,
 //     type: FileType,
 //     mode: number,
-//     data: Buffer,
+//     data: Uint8Array,
 //   ): Promise<Inode> {
 //     const parentDir = path.dirname(p),
 //       fname = path.basename(p),
