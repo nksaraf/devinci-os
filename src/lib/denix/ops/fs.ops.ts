@@ -5,6 +5,7 @@ import { op_sync, op_async, Resource } from '../types';
 import type { File } from 'os/lib/fs/core/file';
 import { path } from 'os/lib/path';
 import { Buffer } from 'buffer';
+import { TTY } from 'os/lib/tty';
 
 export interface DirEntry {
   name: string;
@@ -61,7 +62,11 @@ export const fsOps = [
   {
     name: 'op_open_sync',
     sync: function (this: Kernel, arg) {
-      let file = this.fs.openSync(getAbsolutePath(arg.path, this), constants.fs.O_RDWR, arg.mode);
+      let file = this.fs.openSync(
+        getAbsolutePath(arg.path, this),
+        getFlagFromOptions(arg.options),
+        arg.mode,
+      );
       console.log('opened file');
       return this.addResource(new FileResource(file, arg.path));
     },
@@ -145,6 +150,35 @@ export const fsOps = [
     return entries;
   }),
 
+  op_sync('op_set_raw', function (this: Kernel, rid: number) {
+    let stdin = this.resourceTable.get(rid) as FileResource;
+
+    if (this.opSync(this.opCode('op_isatty'), rid)) {
+      let tty = stdin.file as TTY;
+      tty.setRawMode(true);
+    }
+    // this.env[key] = val;
+  }),
+
+  op_sync('op_console_size', function (this: Kernel, rid: number) {
+    let stdin = this.resourceTable.get(rid) as FileResource;
+
+    if (this.opSync(this.opCode('op_isatty'), rid)) {
+      let tty = stdin.file as TTY;
+      return tty.getSize();
+    }
+    // this.env[key] = val;
+  }),
+  op_sync('op_isatty', function (this: Kernel, rid: number) {
+    let stdin = this.resourceTable.get(rid) as FileResource;
+
+    if (this.opSync(this.opCode('op_isatty'), rid)) {
+      let tty = stdin.file as TTY;
+      tty.setRawMode(true);
+    }
+    // this.env[key] = val;
+  }),
+
   op_sync('op_read_dir_sync', function (this: Kernel, dirPath: string) {
     return this.fs.readdirSync(dirPath).map((p) => {
       let stat = this.fs.statSync(path.join(dirPath, p), false);
@@ -177,7 +211,8 @@ class ConsoleLogResource extends Resource {
   }
 }
 
-class FileResource extends Resource {
+export class FileResource extends Resource {
+  $name = 'file';
   constructor(public file: File, public name: string) {
     super();
   }

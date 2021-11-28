@@ -4,10 +4,10 @@ import { fromBase64 } from 'os/lib/base64';
 import { ApiError, ErrorCodeToName, ERROR_KIND_TO_CODE } from 'os/lib/error';
 import type { RemoteFileSystem } from 'os/lib/fs/remote';
 import type { VirtualFileSystem } from 'os/lib/fs/virtual';
-import { builtIns } from './ops/builtIns';
-import { fsOps } from './ops/fs';
-import { LocalNetwork, network } from './ops/network';
-import { url } from './ops/url';
+import { builtIns } from './ops/builtIns.ops';
+import { fsOps, TTYResource } from './ops/fs.ops';
+import { LocalNetwork, network } from './ops/network.ops';
+import { url } from './ops/url.ops';
 
 function syncOpCallXhr(op_code: number, arg1: any, arg2: any) {
   const xhr = new XMLHttpRequest();
@@ -88,12 +88,6 @@ function syncOpCallXhr(op_code: number, arg1: any, arg2: any) {
 // }
 
 export class Kernel extends EventTarget {
-  connect(port: MessagePort) {
-    throw new Error('Method not implemented.');
-  }
-  async newConnection(): Promise<MessagePort> {
-    throw new Error('Method not implemented.');
-  }
   net: LocalNetwork = new LocalNetwork();
   env: { [key: string]: any } = {};
   cwd: any = '/';
@@ -110,13 +104,34 @@ export class Kernel extends EventTarget {
       console.log('opcall sync', this.ops[index].name, opResult);
       return opResult ?? null;
     } catch (e) {
+      console.log("SOME ERROR", e);
       if (e instanceof ApiError) {
         console.log(e.code);
         let getCode = Object.entries(ERROR_KIND_TO_CODE).find(([k, v]) => v === e.errno);
         console.log('error code', getCode);
+        if (getCode) {
+          return {
+            $err_class_name: getCode[0],
+            code: getCode[1],
+            message: getCode[1],
+            stack: e.stack
+          };
+        } else  {
+          return {
+            $err_class_name: 'Error',
+            code: e.code,
+            message: e.message,
+            stack: e.stack
+          };
+        }
+        
+      } else if (e.$err_class_name) {
+        return e;
+      } else if (e instanceof Error) {
         return {
-          $err_class_name: getCode[0],
-          code: getCode[1],
+          $err_class_name: 'Error',
+          message: e.message,
+          stack: e.stack
         };
       }
       throw e;
@@ -154,6 +169,7 @@ export class Kernel extends EventTarget {
           $err_class_name: getCode[0],
           code: ErrorCodeToName[getCode[1]],
           message: ErrorCodeToName[getCode[1]],
+          stack: e.stack
         };
       }
       throw e;
@@ -181,9 +197,10 @@ export class Kernel extends EventTarget {
   async init() {
     this.resourceTable = new Map<number, Resource>();
 
-    this.stdin = this.addResource(new StdioResource(this, 'stdin'));
-    this.stdout = this.addResource(new StdioResource(this, 'stdout'));
-    this.stderr = this.addResource(new StdioResource(this, 'stderr'));
+    let tty = new TTYResource();
+    this.stdin = this.addResource(tty);
+    this.stdout = this.addResource(tty);
+    this.stderr = this.addResource(tty);
 
     this.#_ops = [
       op_sync('ops_sync', () => {
@@ -270,132 +287,6 @@ export class Kernel extends EventTarget {
   }
 }
 
-export class ServiceWorker {
-  constructor(public broadcastChannel: BroadcastChannel) {}
-
-  register(...handlers) {}
-
-  async start() {
-    const { rest } = await import('msw');
-
-    // let requests = {};
-    // const handleResponse = (e) => {
-    //   if (e.data.type === 'RESPONSE' && requests[e.data.requestId]) {
-    //     requests[e.data.requestId].resolve(e.data.response);
-    //   }
-    // };
-
-    this.broadcastChannel.addEventListener('message', (ev) => {
-      console.log(ev);
-    });
-
-    // let httpReq = new Request('https://deno.land/abcd', {});
-    // // @ts-ignore
-    // let request = Object.assign({}, httpReq, {
-    //   id: '1',
-    //   cookies: {},
-    //   url: new URL(httpReq.url),
-    //   method: 'GET',
-    // }) as MockedRequest<Promise<string>>;
-    // console.log(request);
-    // console.log(
-    //   rest
-    //     .get('https://deno.land/*', async (req, res, ctx) => {
-    //       console.log('/deno-land');
-    //       let originalResponse = await ctx.fetch(req.url.href);
-    //       let text = await originalResponse.text();
-
-    //       return res(ctx.body(text), ctx.set('content-type', 'application/javascript'));
-    //     })
-    //     .test(request),
-    // );
-
-    // let worker = setupWorker(
-    //   rest.get('https://deno.land/*', async (req, res, ctx) => {
-    //     console.log('/deno-land');
-    //     let originalResponse = await ctx.fetch(req.url.href);
-    //     let text = await originalResponse.text();
-
-    //     return res(ctx.body(text), ctx.set('content-type', 'application/javascript'));
-    //   }),
-    // rest.get('http://localhost:4507/*', async (req, res, ctx) => {
-    //   let originalResponse = await ctx.fetch(req.url.href);
-    //   return res(ctx.text(await originalResponse.text()));
-    // }),
-    // rest.get('/~p/:port/*', async (req, res, ctx) => {
-    //   console.log(req);
-    //   console.log('/~p/:port/*', req.url.href);
-    //   // somebody made some kind of request to my server
-
-    //   let resolve, reject;
-    //   let prom = new Promise<{
-    //     body: string;
-    //     headers: [string, string][];
-    //     status: number;
-    //   }>((res, rej) => {
-    //     resolve = res;
-    //     reject = rej;
-    //   });
-
-    //   requests[req.id] = { resolve, reject };
-
-    //   setTimeout(() => {
-    //     delete requests[req.id];
-    //     resolve({ body: 'timed out in 10 seconds', status: 404, headers: [] });
-    //   }, 10000);
-
-    //   let url = new URL('http://localhost:' + req.params.port + req.url.pathname.slice(7)).href;
-    //   console.log(url);
-
-    //   broadcastChannel.postMessage({
-    //     type: 'HTTP_REQUEST',
-    //     url: url,
-    //     port: req.params.port,
-    //     method: req.method,
-    //     headers: [...req.headers.entries()],
-    //     requestId: req.id,
-    //     referrer: req.referrer,
-    //   });
-
-    //   try {
-    //     let { body, status, headers } = await prom;
-    //     console.log('result', { body, status, headers });
-    //     return res(
-    //       ctx.set(Object.fromEntries(headers)),
-    //       ctx.body(body),
-    //       ctx.status(status),
-    //       ctx.set('Cross-Origin-Embedder-Policy', 'require-corp'),
-    //     );
-    //   } catch (e) {
-    //     return res(ctx.text(e.message));
-    //   }
-    // });
-    //   rest.post('/~deno/op/sync/:id', async (req, res, ctx) => {
-    //     let id = JSON.parse(req.body as string);
-    //     try {
-    //       let result = this.opSync(req.params.id, id[1], id[2]);
-    //       return res(ctx.json(result ?? null));
-    //     } catch (e) {
-    //       if (e instanceof ApiError) {
-    //         console.log(e.code);
-    //         let getCode = Object.entries(ERROR_KIND_TO_CODE).find(([k, v]) => v === e.errno);
-    //         console.log('error code', getCode);
-    //         return res(
-    //           ctx.json({
-    //             $err_class_name: getCode[0],
-    //             code: getCode[1],
-    //           }),
-    //         );
-    //       }
-    //       throw e;
-    //     }
-    //   }),
-    // );
-
-    console.log(import.meta);
-  }
-}
-
 export class RemoteKernel extends Kernel {
   proxy: Remote<Kernel>;
 
@@ -432,53 +323,51 @@ export class RemoteKernel extends Kernel {
   }
 }
 
-interface IKernel {}
-
 export class WasmStreamingResource extends Resource {
   url: string;
 }
 
-class StdioResource extends Resource {
-  constructor(public kernel: Kernel, public std: string) {
-    super();
-  }
-  async read(data: Uint8Array) {
-    console.log('reading');
-    return 0;
-  }
+// class StdioResource extends Resource {
+//   constructor(public kernel: Kernel, public std: string) {
+//     super();
+//   }
+//   async read(data: Uint8Array) {
+//     console.log('reading');
+//     return 0;
+//   }
 
-  readSync(data: Uint8Array) {
-    console.log('.help');
-    data.set(new TextEncoder().encode('.help'));
-    return 0;
-  }
-  async write(data: Uint8Array) {
-    let str = new TextDecoder().decode(data);
-    // console.log(str);
-    console.log(str);
+//   readSync(data: Uint8Array) {
+//     console.log('.help');
+//     data.set(new TextEncoder().encode('.help'));
+//     return 0;
+//   }
+//   async write(data: Uint8Array) {
+//     let str = new TextDecoder().decode(data);
+//     // console.log(str);
+//     console.log(str);
 
-    this.kernel.dispatchEvent(new CustomEvent('stdout', { detail: [str] }));
+//     this.kernel.dispatchEvent(new CustomEvent('stdout', { detail: [str] }));
 
-    return data.length;
-  }
+//     return data.length;
+//   }
 
-  writeSync(data: Uint8Array) {
-    console.log(data);
-    let str = new TextDecoder().decode(data);
-    // console.log(str);
-    console.log(str);
+//   writeSync(data: Uint8Array) {
+//     console.log(data);
+//     let str = new TextDecoder().decode(data);
+//     // console.log(str);
+//     console.log(str);
 
-    this.kernel.dispatchEvent(new CustomEvent('stdout', { detail: [str] }));
+//     this.kernel.dispatchEvent(new CustomEvent('stdout', { detail: [str] }));
 
-    return data.length;
-  }
-  close() {
-    //
-  }
-  shutdown() {
-    return Promise.resolve();
-  }
-}
+//     return data.length;
+//   }
+//   close() {
+//     //
+//   }
+//   shutdown() {
+//     return Promise.resolve();
+//   }
+// }
 
 class TextDecoderResource extends Resource {
   decoder = new TextDecoder();

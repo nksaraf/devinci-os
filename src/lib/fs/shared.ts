@@ -2,9 +2,45 @@ import { expose, proxy } from '../comlink';
 import InMemoryFileSystem from './inmemory';
 import { VirtualFileSystem } from './virtual';
 import { newPromise } from '../promise';
+import VirtualFile from './core/virtual_file';
+import type { File } from './core/file';
+import type Stats from './core/stats';
 
+export class SharedFile extends VirtualFile {
+  constructor(path: string, flag: number, stats: Stats, public file: File) {
+    super(path, flag, stats);
+  }
+
+  getConnection() {
+    const channel = new MessageChannel();
+    channel.port1.start();
+
+    expose(this, channel.port1);
+
+    return channel.port2;
+  }
+
+  refs = 0;
+  ref() {
+    this.refs++;
+  }
+
+  public async write(
+    buffer: Uint8Array,
+    offset: number,
+    length: number,
+    position: number,
+  ): Promise<number> {
+    return await this.file.write(buffer, offset, length, position);
+  }
+
+  unref() {
+    this.refs--;
+  }
+}
 
 export class SharedFileSystem extends VirtualFileSystem {
+  openedFiles: Record<string, SharedFile> = {};
   constructor() {
     super(new InMemoryFileSystem());
   }
@@ -25,6 +61,44 @@ export class SharedFileSystem extends VirtualFileSystem {
   }
 
   async open(...args: Parameters<typeof VirtualFileSystem.prototype.open>) {
-    return proxy(await super.open(...args));
+    if (this.openedFiles[args[0]]) {
+      this.openedFiles[args[0]].ref();
+      return this.openedFiles[args[0]];
+    }
+
+    let file = (await super.open(...args)) as VirtualFile;
+
+    let sharedFile = new SharedFile(file.getPath(), file.getFlag(), file.getStats(), file);
+    sharedFile.ref();
+    this.openedFiles[args[0]] = sharedFile;
+    return sharedFile;
   }
+
+  // closeHandle(path: string) {
+  //   let sharedFile = this.openedFiles[path];
+
+  //   if (!sharedFile) {
+  //     return;
+  //   }
+
+  //   sharedFile.unref();
+  //   if (sharedFile.refs === 0) {
+  //     sharedFile.closeSync();
+  //     delete this.openedFiles[path];
+  //   }
+  // }
+
+  // closeHandleSync(path: string) {
+  //   let sharedFile = this.openedFiles[path];
+
+  //   if (!sharedFile) {
+  //     return;
+  //   }
+
+  //   sharedFile.unref();
+  //   if (sharedFile.refs === 0) {
+  //     sharedFile.closeSync();
+  //     delete this.openedFiles[path];
+  //   }
+  // }
 }

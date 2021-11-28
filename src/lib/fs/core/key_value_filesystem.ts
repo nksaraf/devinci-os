@@ -5,7 +5,7 @@ import type { File } from './file';
 import type { FileFlagString } from './file_flag';
 import * as path from 'path';
 import Inode from './inode';
-import InMemoryFile from './preload_file';
+import InMemoryFile from './inmemory_file';
 import { emptyBuffer } from '../utils/util';
 import { Buffer } from 'buffer';
 /**

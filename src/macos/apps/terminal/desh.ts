@@ -1,10 +1,10 @@
 import type { Remote } from 'comlink';
 import type { DenoIsolate } from 'os/denix/isolatee';
 import type { TTY } from 'os/kernel/kernel/tty';
-import { Shell } from 'os/lib/shell/shell';
+import { LineDiscipline } from 'os/lib/shell/shell';
 import { fetchCommandFromWAPM, getWAPMUrlForCommandName } from './wapm';
 
-export class DenoREPL extends Shell {
+export class DenoREPL extends LineDiscipline {
   constructor(tty: TTY, public worker: Remote<DenoIsolate>) {
     super(tty);
   }
@@ -18,7 +18,7 @@ export class DenoREPL extends Shell {
   }
 }
 
-export class Desh extends Shell {
+export class Desh extends LineDiscipline {
   constructor(tty: TTY, public worker: Remote<DenoIsolate>) {
     super(tty);
   }

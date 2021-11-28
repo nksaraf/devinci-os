@@ -10,11 +10,10 @@ import {
 } from './shell-utils';
 import ShellHistory from './shell-history';
 import type { TTY } from '../tty';
-
-// import CommandRunner from "../command-runner/command-runner";
+import type { Xterm } from '../xterm';
 
 /**
- * A shell is the primary interface that is used to start other programs.
+ * A line discipline is the primary interface that is used to start other programs.
  * It's purpose to handle:
  * - Job control (control of child processes),
  * - Control Sequences (CTRL+C to kill the foreground process)
@@ -24,8 +23,7 @@ import type { TTY } from '../tty';
  */
 type AutoCompleteHandler = (index: number, tokens: string[]) => string[];
 
-export class Shell {
-  // wasmTerminalConfig: WasmTerminalConfig;
+export class LineDiscipline {
   tty: TTY;
   history: ShellHistory;
   commandRunner?: any;
@@ -33,7 +31,7 @@ export class Shell {
   maxAutocompleteEntries: number;
   _autocompleteHandlers: AutoCompleteHandler[];
   _active: boolean;
-  _activePrompt?: ActivePrompt;
+  _activeLine?: ActivePrompt;
   _activeCharPrompt?: ActiveCharPrompt;
 
   constructor(
@@ -56,21 +54,21 @@ export class Shell {
     this._active = false;
   }
 
-  getReadable() {
-    return new ReadableStream({
-      pull: async (controller) => {
-        if (!this.isPrompting()) {
-          this.prompt();
-        }
+  // getReadable() {
+  //   return new ReadableStream({
+  //     pull: async (controller) => {
+  //       if (!this.isPrompting()) {
+  //         this.prompt();
+  //       }
 
-        let input = await this._activePrompt.promise;
-        if (input === null) {
-          controller.close();
-        }
-        controller.enqueue(input);
-      },
-    });
-  }
+  //       let input = await this._activeLine.promise;
+  //       if (input === null) {
+  //         controller.close();
+  //       }
+  //       controller.enqueue(input);
+  //     },
+  //   });
+  // }
 
   // async *[Symbol.asyncIterator]() {
   //   while (true) {
@@ -88,14 +86,14 @@ export class Shell {
   // }
 
   async _processPrompt() {
-    let line = await this._activePrompt.promise;
+    let line = await this._activeLine.promise;
     // if (this.commandRunner) {
     //   this.commandRunner.kill();
     // }
 
     if (line === '') {
       // Simply prompt again
-      this._activePrompt = null;
+      this._activeLine = null;
       return await this.prompt();
     }
 
@@ -115,36 +113,36 @@ export class Shell {
     return line;
   }
 
-  async start() {
-    while (true) {
-      let line = await this.prompt();
-      if (line === null) {
-        break;
-      }
+  // async start() {
+  //   while (true) {
+  //     let line = await this.prompt();
+  //     if (line === null) {
+  //       break;
+  //     }
 
-      await this.handleCommand(line);
-    }
-  }
+  //     await this.handleCommand(line);
+  //   }
+  // }
 
-  async runCommand(line: string) {
-    if (this.isPrompting()) {
-      this.tty.setInput(line);
-      this.handleReadComplete();
-    }
-  }
+  // async runCommand(line: string) {
+  //   if (this.isPrompting()) {
+  //     this.tty.setInput(line);
+  //     this.handleReadComplete();
+  //   }
+  // }
 
-  async handleCommand(line: string) {
-    throw new Error('Not Implemented');
-  }
+  // async handleCommand(line: string) {
+  //   throw new Error('Not Implemented');
+  // }
 
   async prompt() {
     // If we are already prompting, do nothing...
-    if (this._activePrompt) {
+    if (this._activeLine) {
       return await this._processPrompt();
     }
 
     try {
-      this._activePrompt = this.tty.prompt('$ ');
+      this._activeLine = this.tty.prompt('$ ');
       this._active = true;
       return await this._processPrompt();
     } catch (e) {
@@ -155,33 +153,6 @@ export class Shell {
 
   isPrompting() {
     return this._active;
-  }
-
-  /**
-   * This function returns a command runner for the specified line
-   */
-  getCommandRunner(line: string) {
-    throw new Error('Not Implemented');
-    // return new CommandRunner(
-    //   this.wasmTerminalConfig,
-    //   line,
-    //   // Command Read Callback
-    //   async () => {
-    //     this._activePrompt = this.tty.prompt('');
-    //     this._active = true;
-    //     return this._activePrompt.promise;
-    //   },
-    //   // Command End Callback
-    //   () => {
-    //     // Doing a set timeout to allow whatever killed the process to do it's thing first
-    //     setTimeout(() => {
-    //       // tslint:disable-next-line
-    //       this.prompt();
-    //     });
-    //   },
-    //   // TTY
-    //   this.tty,
-    // );
   }
 
   /**
@@ -218,9 +189,9 @@ export class Shell {
    */
   resolveActiveRead() {
     // Abort the read if we were reading
-    if (this._activePrompt && this._activePrompt.resolve) {
-      this._activePrompt.resolve('');
-      this._activePrompt = undefined;
+    if (this._activeLine && this._activeLine.resolve) {
+      this._activeLine.resolve('');
+      this._activeLine = undefined;
     }
     if (this._activeCharPrompt && this._activeCharPrompt.resolve) {
       this._activeCharPrompt.resolve('');
@@ -233,12 +204,12 @@ export class Shell {
    * Abort a pending read operation
    */
   rejectActiveRead(reason = 'aborted') {
-    if (this._activePrompt || this._activeCharPrompt) {
+    if (this._activeLine || this._activeCharPrompt) {
       this.tty.print('\r\n');
     }
-    if (this._activePrompt && this._activePrompt.reject) {
-      this._activePrompt.reject(new Error(reason));
-      this._activePrompt = undefined;
+    if (this._activeLine && this._activeLine.reject) {
+      this._activeLine.reject(new Error(reason));
+      this._activeLine = undefined;
     }
     if (this._activeCharPrompt && this._activeCharPrompt.reject) {
       this._activeCharPrompt.reject(new Error(reason));
@@ -267,15 +238,15 @@ export class Shell {
     if (backspace) {
       if (this.tty.getCursor() <= 0) return;
       const newInput =
-        this.tty.getInput().substr(0, this.tty.getCursor() - 1) +
-        this.tty.getInput().substr(this.tty.getCursor());
+        this.tty.getInput().substring(0, this.tty.getCursor() - 1) +
+        this.tty.getInput().substring(this.tty.getCursor());
       this.tty.clearInput();
       this.tty.setCursorDirectly(this.tty.getCursor() - 1);
       this.tty.setInput(newInput, true);
     } else {
       const newInput =
-        this.tty.getInput().substr(0, this.tty.getCursor()) +
-        this.tty.getInput().substr(this.tty.getCursor() + 1);
+        this.tty.getInput().substring(0, this.tty.getCursor()) +
+        this.tty.getInput().substring(this.tty.getCursor() + 1);
       this.tty.setInput(newInput);
     }
   };
@@ -285,9 +256,9 @@ export class Shell {
    */
   handleCursorInsert = (data: string) => {
     const newInput =
-      this.tty.getInput().substr(0, this.tty.getCursor()) +
+      this.tty.getInput().substring(0, this.tty.getCursor()) +
       data +
-      this.tty.getInput().substr(this.tty.getCursor());
+      this.tty.getInput().substring(this.tty.getCursor());
     this.tty.setCursorDirectly(this.tty.getCursor() + data.length);
     this.tty.setInput(newInput);
   };
@@ -295,10 +266,10 @@ export class Shell {
   /**
    * Handle input completion
    */
-  handleReadComplete = () => {
-    if (this._activePrompt && this._activePrompt.resolve) {
-      this._activePrompt.resolve(this.tty.getInput());
-      this._activePrompt = undefined;
+  handleLineComplete = () => {
+    if (this._activeLine && this._activeLine.resolve) {
+      this._activeLine.resolve(this.tty.getInput());
+      this._activeLine = undefined;
     }
     this.tty.print('\r\n');
     this._active = false;
@@ -312,16 +283,12 @@ export class Shell {
     if (!this._active && data !== '\x03') {
       return;
     }
-    if (this.tty.getFirstInit() && this._activePrompt) {
-      let line = this.tty
-        .getBufferSync()
-        .getLine(this.tty.getBufferSync().cursorY + this.tty.getBufferSync().baseY);
-      let promptRead = (line as IBufferLine).translateToString(
-        false,
-        0,
-        this.tty.getBufferSync().cursorX,
-      );
-      this._activePrompt.promptPrefix = promptRead;
+    if (this.tty.getFirstInit() && this._activeLine) {
+      let buf = (this.tty.device as Xterm).buffer.normal;
+
+      let line = buf.getLine(buf.cursorY + buf.baseY);
+      let promptRead = (line as IBufferLine).translateToString(false, 0, buf.cursorX);
+      this._activeLine.promptPrefix = promptRead;
       this.tty.setPromptPrefix(promptRead);
       this.tty.setFirstInit(false);
     }
@@ -357,7 +324,7 @@ export class Shell {
 
     // Handle ANSI escape sequences
     if (ord === 0x1b) {
-      switch (data.substr(1)) {
+      switch (data.substring(1)) {
         case '[A': // Up arrow
           if (this.history) {
             let value = this.history.getPrevious();
@@ -413,7 +380,8 @@ export class Shell {
           ofs = closestLeftBoundary(this.tty.getInput(), this.tty.getCursor());
           if (ofs) {
             this.tty.setInput(
-              this.tty.getInput().substr(0, ofs) + this.tty.getInput().substr(this.tty.getCursor()),
+              this.tty.getInput().substring(0, ofs) +
+                this.tty.getInput().substring(this.tty.getCursor()),
             );
             this.tty.setCursor(ofs);
           }
@@ -429,7 +397,7 @@ export class Shell {
           if (isIncompleteInput(this.tty.getInput())) {
             this.handleCursorInsert('\n');
           } else {
-            this.handleReadComplete();
+            this.handleLineComplete();
           }
           break;
 
@@ -441,7 +409,7 @@ export class Shell {
 
         case '\t': // TAB
           if (this._autocompleteHandlers.length > 0) {
-            const inputFragment = this.tty.getInput().substr(0, this.tty.getCursor());
+            const inputFragment = this.tty.getInput().substring(0, this.tty.getCursor());
             const hasTrailingSpace = hasTrailingWhitespace(inputFragment);
             const candidates = collectAutocompleteCandidates(
               this._autocompleteHandlers,
@@ -461,7 +429,7 @@ export class Shell {
             } else if (candidates.length === 1) {
               // Just a single candidate? Complete
               const lastToken = getLastToken(inputFragment);
-              this.handleCursorInsert(candidates[0].substr(lastToken.length) + ' ');
+              this.handleCursorInsert(candidates[0].substring(lastToken.length) + ' ');
             } else if (candidates.length <= this.maxAutocompleteEntries) {
               // If we are less than maximum auto-complete candidates, print
               // them to the user and re-start prompt

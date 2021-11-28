@@ -54,7 +54,4 @@ export const builtIns = [
     // this.env[key] = val;
     this.addEventListener('signal', (e) => {});
   }),
-  op_sync('op_set_raw', function (this: Kernel, rid: number) {
-    // this.env[key] = val;
-  }),
 ];

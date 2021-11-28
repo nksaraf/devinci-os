@@ -6,7 +6,7 @@ import { ActionType, isWriteable, pathExistsAction } from './core/file_flag';
 import { copyingSlice } from './utils/util';
 import type { File } from './core/file';
 import Stats from './core/stats';
-import { NoSyncFile } from './core/preload_file';
+import { NoSyncFile } from './core/inmemory_file';
 import {
   xhrIsAvailable,
   asyncDownloadFile,

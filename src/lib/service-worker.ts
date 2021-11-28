@@ -6,6 +6,7 @@ import { fs } from './fs';
 import { newPromise } from './promise';
 import { ApiError, ERROR_KIND_TO_CODE } from './error';
 import { fromWireValue, toWireValue } from './comlink/http.handlers';
+import { constants } from './constants';
 
 export let broadcastChannel: BroadcastChannel = new BroadcastChannel('localhost');
 
@@ -51,7 +52,44 @@ async function createLocalNetwork() {
 
       if (fnName.endsWith('Sync')) {
         try {
-          let result = await fs[fnName.substr(0, fnName.length - 4)](...argList);
+          let result = await fs[fnName.substring(0, fnName.length - 4)](...argList);
+          console.log(result, toWireValue(result));
+          return res(ctx.json([null, toWireValue(result)] ?? [null]));
+        } catch (e) {
+          if (e instanceof ApiError) {
+            console.log(e.code);
+            let getCode = Object.entries(ERROR_KIND_TO_CODE).find(([k, v]) => v === e.errno);
+            console.log('error code', getCode);
+            return res(
+              ctx.json([
+                {
+                  $err_class_name: getCode[0],
+                  code: getCode[1],
+                  stack: e.stack,
+                  message: e.message,
+                },
+              ]),
+            );
+          }
+          throw e;
+        }
+      } else {
+        throw new Error('For async operations use the comlink connection');
+      }
+    }),
+    rest.post('/~file*', async (req, res, ctx) => {
+      // HANDING SYNCHRONOUS FILE SYSTEM OPERATIONS
+      let [path, fnName, args] = JSON.parse(req.body as string) as [string, string, any[]];
+
+      let argList = args.map((a) => fromWireValue(a[0]));
+      console.log(fnName, argList);
+
+      let file = await fs.open(path, constants.fs.O_RDWR, 0o777);
+
+      console.log(file);
+      if (fnName.endsWith('Sync')) {
+        try {
+          let result = await file[fnName.substring(0, fnName.length - 4)](...argList);
           console.log(result, toWireValue(result));
           return res(ctx.json([null, toWireValue(result)] ?? [null]));
         } catch (e) {
@@ -71,10 +109,9 @@ async function createLocalNetwork() {
           }
           throw e;
         }
-      } else  {
+      } else {
         throw new Error('For async operations use the comlink connection');
       }
-      return res(ctx.body('{}'));
     }),
     rest.get('/~p/:port/*', async (req, res, ctx) => {
       console.log(req);

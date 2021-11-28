@@ -2,7 +2,10 @@ import { Buffer } from 'buffer';
 import type { MockedRequest, MockedResponse } from 'msw';
 import { ApiError } from '../error';
 import Stats from '../fs/core/stats';
+import { RemoteFile } from '../fs/remote';
+import { SharedFile } from '../fs/shared';
 import { transferHandlers } from './comlink';
+import type { TransferHandler } from './comlink';
 export class Channel {
   portToExpose: MessagePort;
   portToWrap: MessagePort;
@@ -49,6 +52,32 @@ transferHandlers.set('MESSAGE_PORT', {
   deserialize: (obj) => obj,
 });
 
+transferHandlers.set('SHARED_FILE', {
+  canHandle: (obj): obj is SharedFile => obj instanceof SharedFile,
+  serialize: (obj: SharedFile) => {
+    let port = obj.getConnection();
+    return [
+      {
+        path: obj.getPath(),
+        stats: StatsHandler.serialize(obj.getStats()),
+        flag: obj.getFlag(),
+        port,
+      },
+      [port],
+    ];
+  },
+  deserialize: (obj) =>
+    new RemoteFile(obj.path, obj.flag, StatsHandler.deserialize(obj.stats), obj.port),
+} as TransferHandler<
+  SharedFile,
+  {
+    path: string;
+    stats: any;
+    flag: number;
+    port?: MessagePort;
+  }
+>);
+
 transferHandlers.set('CHANNEL', {
   canHandle: (obj): obj is Channel => obj instanceof Channel,
   serialize: (obj: Channel) => {
@@ -79,7 +108,7 @@ transferHandlers.set('EVENT', {
   deserialize: (obj: any) => new CustomEvent(obj.type, { detail: obj.detail }),
 });
 
-transferHandlers.set('STAT', {
+const StatsHandler = {
   canHandle: (value: any): value is Stats => value instanceof Stats,
   serialize: (value: Stats): [any, Transferable[]] => [
     {
@@ -97,7 +126,8 @@ transferHandlers.set('STAT', {
   ],
   deserialize: (value: any): Stats =>
     new Stats(value.itemType, value.size, value.mode, value.atime, value.mtime),
-});
+};
+transferHandlers.set('STAT', StatsHandler);
 
 function serializeHeaders(headers) {
   const reqHeaders = {};

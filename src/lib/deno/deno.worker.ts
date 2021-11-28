@@ -1,6 +1,6 @@
 import { DenoIsolate } from 'os/lib/denix/isolate';
 import { expose, wrap } from 'os/lib/comlink';
-import { fs, configure } from 'os/lib/fs';
+import { fs } from 'os/lib/fs';
 import { Global } from 'os/lib/global';
 import { RemoteFileSystem } from 'os/lib/fs/remote';
 import { Kernel } from 'os/lib/denix/denix';

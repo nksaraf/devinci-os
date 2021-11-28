@@ -14,7 +14,7 @@
   onMount(() => {
     const worker = new DenixWorker(isolate.kernel);
     const terminal = new Xterm();
-    const tty = new TTY(terminal);
+    const tty = new TTY();
     const shell = new Desh(tty, worker.isolate);
 
     (async () => {

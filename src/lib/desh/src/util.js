@@ -28,10 +28,9 @@ export const mergeArgsBetweenQuotes = (args) =>
       return [...prev, curr];
     }, [])
     .map((arg) =>
-      (arg.startsWith('"') && arg.endsWith('"')) ||
-      (arg.startsWith("'") && arg.endsWith("'"))
+      (arg.startsWith('"') && arg.endsWith('"')) || (arg.startsWith("'") && arg.endsWith("'"))
         ? arg.slice(1, arg.length - 1)
-        : arg
+        : arg,
     );
 
 export const replaceEnvVars = (stringInput) => {
@@ -75,22 +74,22 @@ export const evalAndInterpolateJS = (stringInput) => {
 };
 
 export const expandGlob = async (token) => {
-  let dir = ".";
-  if (token.includes("/")) {
-    dir = token.slice(0, token.lastIndexOf("/"));
+  let dir = '.';
+  if (token.includes('/')) {
+    dir = token.slice(0, token.lastIndexOf('/'));
   }
 
-  const suffix = token.slice(token.indexOf("*") + 1);
-  const prefix = token.slice(0, token.indexOf("*"));
+  const suffix = token.slice(token.indexOf('*') + 1);
+  const prefix = token.slice(0, token.indexOf('*'));
 
   let filesInCurrentDir = [];
 
   const withHomeExpanded = expandHome(dir);
 
   for await (const dirEntry of Deno.readDir(withHomeExpanded)) {
-    const fileSuffix = dirEntry.isDirectory ? "/" : "";
+    const fileSuffix = dirEntry.isDirectory ? '/' : '';
     const name = `${dirEntry.name}${fileSuffix}`;
-    const fileName = dir === "." ? name : `${dir}/${name}`;
+    const fileName = dir === '.' ? name : `${dir}/${name}`;
 
     if (fileName.endsWith(suffix) && fileName.startsWith(prefix)) {
       filesInCurrentDir.push(fileName);
@@ -109,10 +108,7 @@ export const getTokenUnderCursor = ({ text, cursorPosition }) => {
     const token = matchResult[0];
     const tokenIndex = matchResult.index;
 
-    if (
-      tokenIndex <= cursorPosition &&
-      tokenIndex + token.length >= cursorPosition
-    ) {
+    if (tokenIndex <= cursorPosition && tokenIndex + token.length >= cursorPosition) {
       // console.log("token is ", token, tokenIndex);
       return {
         token,
@@ -124,7 +120,7 @@ export const getTokenUnderCursor = ({ text, cursorPosition }) => {
   }
 
   return {
-    token: "",
+    token: '',
     tokenIndex: cursorPosition,
   };
 };
@@ -146,7 +142,7 @@ export const expandGlobs = async (stringInput) => {
 
       result =
         result.slice(0, globIndex) +
-        filesInCurrentDir.join(" ") +
+        filesInCurrentDir.join(' ') +
         result.slice(globIndex + globToken.length);
 
       matchResult = globRegex.exec(result);
@@ -161,37 +157,33 @@ export const expandGlobs = async (stringInput) => {
 export const expandDoubleBang = (command) => {
   const doubleBangRegex = /!!/g;
 
-  if (command.search("!!") === -1) {
+  if (command.search('!!') === -1) {
     return command;
   }
 
   const history = readHistory();
   const lastCommand = history[history.length - 1];
-  return command.replace(doubleBangRegex, lastCommand)
-}
+  return command.replace(doubleBangRegex, lastCommand);
+};
 
 export const expandCommand = async (command) => {
-  return await expandGlobs(
-    expandHome(
-      command
-    )
-  );
+  return await expandGlobs(expandHome(command));
 };
 
 export const expandHome = (stringInput) => {
   // Only match at start of line or after space. So that e.g. HEAD~2 in git still works.
   const homeRegex = /(?<=\ |^)\~/g;
 
-  return stringInput.replace(homeRegex, Deno.env.get("HOME"));
+  return stringInput.replace(homeRegex, Deno.env.get('HOME'));
 };
 
 // Runs a command line process and returns the resulting stdout
 export const exec = async (command, args) => {
   const p = Deno.run({
     cmd: [command, ...args],
-    stdin: "piped",
-    stdout: "piped",
-    stderr: "piped",
+    stdin: 'piped',
+    stdout: 'piped',
+    stderr: 'piped',
   });
 
   const resultByteArray = await Deno.readAll(p.stdout);
@@ -213,23 +205,21 @@ export const cursorIsInFunction = ({ text, cursorPosition }) => {
 export const cursorIsInQuotes = ({ text, cursorPosition }) => {
   const upToPosition = text.slice(0, cursorPosition);
   const upToPositionAsList = [...upToPosition];
-  const isInQuotes =
-    upToPositionAsList.filter((c) => c === '"').length % 2 === 1;
-  const isInSingleQuotes =
-    upToPositionAsList.filter((c) => c === "'").length % 2 === 1;
+  const isInQuotes = upToPositionAsList.filter((c) => c === '"').length % 2 === 1;
+  const isInSingleQuotes = upToPositionAsList.filter((c) => c === "'").length % 2 === 1;
 
   return isInQuotes || isInSingleQuotes;
 };
 
 const getHistoryFileLocation = () => {
-  const crshHome = Deno.env.get("CRSH_HOME");
+  const crshHome = Deno.env.get('CRSH_HOME');
   return `${crshHome}/history.json`;
 };
 
 const healHistoryFile = () => {
   Deno.writeFileSync(
     getHistoryFileLocation(),
-    new TextEncoder().encode(JSON.stringify([], null, 2))
+    new TextEncoder().encode(JSON.stringify([], null, 2)),
   );
 };
 
@@ -238,8 +228,9 @@ export const readHistory = () => {
     const historyBytes = Deno.readFileSync(getHistoryFileLocation());
     return JSON.parse(new TextDecoder().decode(historyBytes));
   } catch (e) {
-    console.log('what the');
+    console.log('what the', e);
     if (e instanceof Deno.errors.NotFound) {
+      console.log('here');
       healHistoryFile();
 
       return [];
@@ -252,6 +243,6 @@ export const readHistory = () => {
 export const addToHistory = (history) => {
   Deno.writeFileSync(
     getHistoryFileLocation(),
-    new TextEncoder().encode(JSON.stringify(history, null, 2))
+    new TextEncoder().encode(JSON.stringify(history, null, 2)),
   );
 };
