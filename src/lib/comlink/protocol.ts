@@ -109,3 +109,8 @@ export type Message =
   | ConstructMessage
   | EndpointMessage
   | ReleaseMessage;
+
+export interface ComlinkTransferable<T, R> {
+  serialize: () => R;
+  deserialize: (obj: R) => T;
+}

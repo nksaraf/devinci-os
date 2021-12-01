@@ -4,8 +4,7 @@ import type { ActiveCharPrompt, ActivePrompt } from './shell/shell-utils';
 import { InMemoryPipe } from './pipe';
 import { constants } from './constants';
 import { Buffer } from 'buffer';
-import 'xterm/css/xterm.css';
-import { data } from 'msw/lib/types/context';
+import { LineDiscipline } from './shell/shell';
 
 export interface IDisposable {
   dispose(): void;
@@ -97,20 +96,24 @@ export class TTY extends VirtualFile implements File {
 
   // inputStartCursor: number;
 
-  constructor(public device: TerminalDevice) {
+  public device: TerminalDevice;
+
+  constructor() {
     super();
     this._flag = constants.fs.O_RDWR;
 
     this._termSize = {
-      columns: this.device.cols,
-      rows: this.device.rows,
+      columns: 100,
+      rows: 80,
     };
     this._promptPrefix = '';
     this._continuationPromptPrefix = '';
     this._input = '';
     this._cursor = 0;
-
-    device.tty = this;
+    this.lineDiscipline = new LineDiscipline(this, {
+      historySize: 10,
+      maxAutocompleteEntries: 10,
+    });
   }
 
   connect(device: TerminalDevice) {
@@ -120,14 +123,22 @@ export class TTY extends VirtualFile implements File {
       rows: this.device.rows,
     };
 
-    this.device.addEventListener('data', (dat) => {
-      this._eventTarget.dispatchEvent(new CustomEvent('data', { detail: dat }));
+    device.tty = this;
+
+    this.device.addEventListener('data', (dat: CustomEvent) => {
+      if (this.rawMode) {
+        let buf = Buffer.from(dat.detail, 'utf-8');
+        this.pipe.writeBuffer(buf, 0, buf.length, null).then(() => {
+          console.log('wrritten line', this.getInput());
+        });
+      } else {
+        console.log(dat);
+        this.lineDiscipline.handleTermData(dat.detail);
+      }
     });
   }
 
-  addEventListener(name: string, cb: (e: any) => void) {
-    this._eventTarget.addEventListener.apply(this._eventTarget, [name, cb]);
-  }
+  lineDiscipline: LineDiscipline;
 
   setRawMode(rawMode: boolean) {
     this.rawMode = rawMode;
@@ -151,7 +162,9 @@ export class TTY extends VirtualFile implements File {
    */
   handleCursorInsert = (data: string) => {
     const newInput =
-      this.getInput().substr(0, this.getCursor()) + data + this.getInput().substr(this.getCursor());
+      this.getInput().substring(0, this.getCursor()) +
+      data +
+      this.getInput().substring(this.getCursor());
     this.setCursorDirectly(this.getCursor() + data.length);
     this.setInput(newInput);
   };
@@ -284,7 +297,7 @@ export class TTY extends VirtualFile implements File {
    * additions to the input.
    */
   applyPromptOffset(input: string, offset: number): number {
-    const newInput = this.applyPrompts(input.substr(0, offset));
+    const newInput = this.applyPrompts(input.substring(0, offset));
     return newInput.length;
   }
 
@@ -507,6 +520,10 @@ export class TTY extends VirtualFile implements File {
   }
 
   async readBuffer(buffer: Buffer, offset: number, length: number, position: number) {
+    if (!this.lineDiscipline.prompt) {
+      this.lineDiscipline.prompt(this._promptPrefix, this._continuationPromptPrefix);
+    }
+
     return await this.pipe.readBuffer(buffer, offset, length, position);
   }
 

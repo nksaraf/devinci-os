@@ -1,8 +1,8 @@
-import type { Remote } from 'comlink';
-import type { DenoIsolate } from 'os/denix/isolatee';
-import type { TTY } from 'os/kernel/kernel/tty';
-import { LineDiscipline } from 'os/lib/shell/shell';
-import { fetchCommandFromWAPM, getWAPMUrlForCommandName } from './wapm';
+import type { Remote } from '$lib/comlink/protocol.ts';
+import type { DenoIsolate } from '$lib/denix/isolate.ts';
+import type { TTY } from '$lib/tty.ts';
+import { LineDiscipline } from '$lib/shell/shell.ts';
+import { fetchCommandFromWAPM, getWAPMUrlForCommandName } from './wapm.ts';
 
 export class DenoREPL extends LineDiscipline {
   constructor(tty: TTY, public worker: Remote<DenoIsolate>) {

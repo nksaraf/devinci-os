@@ -6,7 +6,7 @@
 import { isIE, emptyBuffer } from './fs/utils/util';
 import { ApiError, ErrorCode } from './error';
 import { Buffer } from 'buffer';
-import { fakePromise, newPromise } from 'os/lib/promise';
+import { fakePromise, newPromise } from '$lib/promise';
 
 export const xhrIsAvailable = typeof XMLHttpRequest !== 'undefined' && XMLHttpRequest !== null;
 

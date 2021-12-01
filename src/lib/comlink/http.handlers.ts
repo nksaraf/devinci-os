@@ -1,4 +1,5 @@
-import type { TransferHandler } from './comlink';
+import type { TransferHandler } from './comlink/mod';
+
 import type { WireValue } from './protocol';
 import { WireValueType } from './protocol';
 import Stats from '../fs/core/stats';
@@ -77,7 +78,7 @@ export function fromWireValue(val: WireValue) {
 
   if (val.type === WireValueType.HANDLER) {
     console.log(transferHandlers);
-    return transferHandlers.get(val.name).deserialize(val.value);
+    return transferHandlers.get(val.name)?.deserialize(val.value);
   }
 }
 

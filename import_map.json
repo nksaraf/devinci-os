@@ -1,0 +1,9 @@
+{
+  "imports": {
+    "os/": "./src/",
+    "$lib/": "./src/lib/",
+    "/": "./",
+    "./": "./",
+    "comlink": "./src/lib/comlink/index.ts"
+  }
+}

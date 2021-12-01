@@ -135,19 +135,19 @@ export class LineDiscipline {
   //   throw new Error('Not Implemented');
   // }
 
-  async prompt() {
+  async prompt(activePrompt: string = '> ', continuationPromptPrefix: string = '|') {
     // If we are already prompting, do nothing...
     if (this._activeLine) {
       return await this._processPrompt();
     }
 
     try {
-      this._activeLine = this.tty.prompt('$ ');
+      this._activeLine = this.tty.prompt(activePrompt, continuationPromptPrefix);
       this._active = true;
       return await this._processPrompt();
     } catch (e) {
       this.tty.println(`${e.toString()}`);
-      return await this.prompt();
+      return await this.prompt(activePrompt, continuationPromptPrefix);
     }
   }
 

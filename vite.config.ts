@@ -86,6 +86,7 @@ export default defineConfig({
         find: 'comlink',
         replacement: new URL('./src/lib/comlink/index.ts', import.meta.url).pathname,
       },
+      { find: '$lib', replacement: new URL('./src/lib/', import.meta.url).pathname },
     ] as Alias[],
   },
   server: {

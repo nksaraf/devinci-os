@@ -12,12 +12,7 @@ import type {
   CompletionItem as GraphQLCompletionItem,
 } from 'graphql-language-service';
 
-import {
-  toGraphQLPosition,
-  toMonacoRange,
-  toMarkerData,
-  toCompletion,
-} from './utils';
+import { toGraphQLPosition, toMonacoRange, toMarkerData, toCompletion } from './utils';
 import type * as monacoApi from 'monaco-editor';
 import type { GraphQLSchema, DocumentNode } from 'graphql';
 
@@ -51,25 +46,18 @@ export class GraphQLWorker extends MonacoWorker {
 
   async validate(uri: string): Promise<editor.IMarkerData[]> {
     const document = this.getText(uri);
-    const graphqlDiagnostics = await this._languageService.getDiagnostics(
-      uri,
-      document
-    );
+    const graphqlDiagnostics = await this._languageService.getDiagnostics(uri, document);
     return graphqlDiagnostics.map(toMarkerData);
   }
 
   async doComplete(
     uri: string,
-    position: Position
+    position: Position,
   ): Promise<(GraphQLCompletionItem & { range: IRange })[]> {
     const document = this.getText(uri);
     const graphQLPosition = toGraphQLPosition(position);
 
-    const suggestions = await this._languageService.getCompletion(
-      uri,
-      document,
-      graphQLPosition
-    );
+    const suggestions = await this._languageService.getCompletion(uri, document, graphQLPosition);
     return suggestions.map((suggestion) => toCompletion(suggestion));
   }
 
@@ -77,11 +65,7 @@ export class GraphQLWorker extends MonacoWorker {
     const document = this.getText(uri);
     const graphQLPosition = toGraphQLPosition(position);
 
-    const hover = await this._languageService.getHover(
-      uri,
-      document,
-      graphQLPosition
-    );
+    const hover = await this._languageService.getHover(uri, document, graphQLPosition);
 
     return {
       content: hover,
@@ -91,8 +75,8 @@ export class GraphQLWorker extends MonacoWorker {
             column: graphQLPosition.character,
             line: graphQLPosition.line,
           },
-          document
-        )
+          document,
+        ),
       ),
     };
   }
@@ -102,9 +86,7 @@ export class GraphQLWorker extends MonacoWorker {
   }
 
   async getSchema() {
-    return await this.loadSchema(
-      this.options.languageConfig.schemaConfig.uri
-    ).then((schema) => {
+    return await this.loadSchema(this.options.languageConfig.schemaConfig.uri).then((schema) => {
       return printSchema(schema);
     });
   }
@@ -121,19 +103,13 @@ export class GraphQLWorker extends MonacoWorker {
     };
   };
 
-  provideCompletionItems: MonacoWorker['provideCompletionItems'] = async (
-    model,
-    pos,
-    ctx
-  ) => {
+  provideCompletionItems: MonacoWorker['provideCompletionItems'] = async (model, pos, ctx) => {
     const info = await this.doComplete(model.uri.toString(), pos);
     return {
       suggestions: info as any,
     };
   };
-  resolveCompletionItem: MonacoWorker['resolveCompletionItem'] = async (
-    item
-  ) => {
+  resolveCompletionItem: MonacoWorker['resolveCompletionItem'] = async (item) => {
     return item;
   };
 

@@ -1,9 +1,9 @@
-import 'os/lib/service-worker';
-import { fs } from 'os/lib/fs';
+import '$lib/service-worker';
+import { fs } from '$lib/fs';
 import { DenoIsolate } from '../denix/isolate';
-import { Global } from 'os/lib/global';
-import { RemoteFileSystem } from 'os/lib/fs/remote';
-import { Kernel } from 'os/lib/denix/denix';
+import { Global } from '$lib/global';
+import { RemoteFileSystem } from '$lib/fs/remote';
+import { DenixProcess } from '$lib/denix/denix';
 
 export const fsWorker = new Worker('/src/lib/deno/fs.worker.ts?worker_file', {
   type: 'module',
@@ -15,13 +15,13 @@ fs.rootFs = fsRemote;
 
 await fsRemote.proxy.ready();
 
-export const Denix = new Kernel();
-await Denix.init();
-Denix.fs = fs;
-Denix.fsRemote = fsRemote;
+export const main = new DenixProcess();
+await main.init();
+main.fs = fs;
+main.fsRemote = fsRemote;
 
 export let isolate = new DenoIsolate();
-await isolate.attach(Denix);
+await isolate.attach(main);
 
 export const Deno = isolate.context.Deno;
 Global.Deno = isolate.context.Deno;

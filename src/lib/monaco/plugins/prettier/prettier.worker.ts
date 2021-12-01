@@ -1,19 +1,11 @@
-import {
-  MonacoWorker,
-  initialize,
-  IWorkerContext,
-  importScript,
-} from '../../worker';
+import { MonacoWorker, initialize, IWorkerContext, importScript } from '../../worker';
 
 export class PrettierWorker extends MonacoWorker {
   options: { parser: string; plugins: string[] };
   loader: Promise<any>;
   plugins: any[] = [];
   prettier: any = {};
-  constructor(
-    ctx: IWorkerContext<undefined>,
-    config: { parser: string; plugins: string[] }
-  ) {
+  constructor(ctx: IWorkerContext<undefined>, config: { parser: string; plugins: string[] }) {
     super(ctx, config);
     this.options = config;
     this.loader = this.importPrettier();
@@ -33,7 +25,7 @@ export class PrettierWorker extends MonacoWorker {
   }
 
   provideDocumentFormattingEdits: MonacoWorker['provideDocumentFormattingEdits'] = async (
-    model
+    model,
   ) => {
     const { plugins, ...options } = this.options;
     console.log(`[prettier] formatting`);
@@ -58,8 +50,7 @@ export class PrettierWorker extends MonacoWorker {
       {
         range:
           originalFullRange.endLineNumber > formattedFulLRange.endLineNumber ||
-          (originalFullRange.endLineNumber ===
-            formattedFulLRange.endLineNumber &&
+          (originalFullRange.endLineNumber === formattedFulLRange.endLineNumber &&
             originalFullRange.endColumn > formattedFulLRange.endColumn)
             ? originalFullRange
             : formattedFulLRange,

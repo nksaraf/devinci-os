@@ -1,11 +1,11 @@
-import { constants } from 'os/lib/constants';
-import { mkdirpSync, mkdirp } from 'os/lib/fs/utils/util';
-import type { Kernel } from '../denix';
+import { constants } from '$lib/constants';
+import { mkdirpSync, mkdirp } from '$lib/fs/utils/util';
+import type { DenixProcess } from '../denix';
 import { op_sync, op_async, Resource } from '../types';
-import type { File } from 'os/lib/fs/core/file';
-import { path } from 'os/lib/path';
+import type { File } from '$lib/fs/core/file';
+import { path } from '$lib/path';
 import { Buffer } from 'buffer';
-import { TTY } from 'os/lib/tty';
+import type { TTY } from '$lib/tty';
 
 export interface DirEntry {
   name: string;
@@ -35,11 +35,11 @@ const getFlagFromOptions = (options: Deno.OpenOptions): number => {
 };
 
 export const fsOps = [
-  op_sync('op_read_sync', function (this: Kernel, rid: number, data: Uint8Array) {
+  op_sync('op_read_sync', function (this: DenixProcess, rid: number, data: Uint8Array) {
     let res = this.getResource(rid) as FileResource;
     return res.readSync(data);
   }),
-  op_sync('op_write_sync', function (this: Kernel, rid: number, data: Uint8Array) {
+  op_sync('op_write_sync', function (this: DenixProcess, rid: number, data: Uint8Array) {
     let res = this.getResource(rid) as FileResource;
     return res.writeSync(data);
   }),
@@ -47,7 +47,7 @@ export const fsOps = [
   {
     name: 'op_open_async',
     async: async function (
-      this: Kernel,
+      this: DenixProcess,
       arg: { path: string; options: Deno.OpenOptions; mode: number },
     ) {
       let file = await this.fs.open(
@@ -61,7 +61,7 @@ export const fsOps = [
   },
   {
     name: 'op_open_sync',
-    sync: function (this: Kernel, arg) {
+    sync: function (this: DenixProcess, arg) {
       let file = this.fs.openSync(
         getAbsolutePath(arg.path, this),
         getFlagFromOptions(arg.options),
@@ -73,7 +73,7 @@ export const fsOps = [
   },
   {
     name: 'op_mkdir_sync',
-    sync: function (this: Kernel, { path, recursive }) {
+    sync: function (this: DenixProcess, { path, recursive }) {
       if (recursive) {
         mkdirpSync(path, 0x644, this.fs);
       } else {
@@ -83,7 +83,7 @@ export const fsOps = [
   },
   {
     name: 'op_mkdir_async',
-    async: async function (this: Kernel, { path, recursive }) {
+    async: async function (this: DenixProcess, { path, recursive }) {
       if (recursive) {
         await mkdirp(path, 0x644, this.fs);
       } else {
@@ -92,35 +92,35 @@ export const fsOps = [
     },
   },
 
-  op_async('op_fstat_async', async function (this: Kernel, rid) {
+  op_async('op_fstat_async', async function (this: DenixProcess, rid) {
     let file = this.getResource(rid) as FileResource;
     return file.file.statSync();
   }),
 
-  op_sync('op_fstat_sync', function (this: Kernel, rid) {
+  op_sync('op_fstat_sync', function (this: DenixProcess, rid) {
     let file = this.getResource(rid) as FileResource;
     return file.file.statSync();
   }),
 
-  op_async('op_stat_async', async function (this: Kernel, { path, lstat }) {
+  op_async('op_stat_async', async function (this: DenixProcess, { path, lstat }) {
     let stat = await this.fs.stat(getAbsolutePath(path, this), lstat);
     return stat;
   }),
 
-  op_sync('op_seek_sync', function (this: Kernel, { rid, offset, whence }) {
+  op_sync('op_seek_sync', function (this: DenixProcess, { rid, offset, whence }) {
     console.log(rid, offset, whence);
     (this.getResource(rid) as FileResource).seekSync(offset, whence);
   }),
 
-  op_sync('op_stat_sync', function (this: Kernel, { path, lstat }) {
+  op_sync('op_stat_sync', function (this: DenixProcess, { path, lstat }) {
     let stat = this.fs.statSync(getAbsolutePath(path, this), lstat);
     console.log(stat);
     return stat;
   }),
-  op_sync('op_remove_sync', function (this: Kernel, { path }) {
+  op_sync('op_remove_sync', function (this: DenixProcess, { path }) {
     this.fs.unlinkSync(getAbsolutePath(path, this));
   }),
-  op_async('op_remove_async', async function (this: Kernel, { path, recursive }) {
+  op_async('op_remove_async', async function (this: DenixProcess, { path, recursive }) {
     let absPath = getAbsolutePath(path, this);
     let stat = await this.fs.stat(absPath, false);
 
@@ -130,11 +130,11 @@ export const fsOps = [
       await this.fs.unlink(absPath);
     }
   }),
-  op_sync('op_fdatasync_sync', function (this: Kernel, rid) {
+  op_sync('op_fdatasync_sync', function (this: DenixProcess, rid) {
     (this.getResource(rid) as FileResource).file.datasyncSync();
   }),
 
-  op_async('op_read_dir_async', async function (this: Kernel, dirPath: string) {
+  op_async('op_read_dir_async', async function (this: DenixProcess, dirPath: string) {
     let files = await this.fs.readdir(dirPath);
     let entries: DirEntry[] = [];
     for (var file of files) {
@@ -150,17 +150,18 @@ export const fsOps = [
     return entries;
   }),
 
-  op_sync('op_set_raw', function (this: Kernel, rid: number) {
-    let stdin = this.resourceTable.get(rid) as FileResource;
+  op_sync('op_set_raw', function (this: DenixProcess, args: { rid: number }) {
+    let stdin = this.resourceTable.get(args.rid) as FileResource;
 
-    if (this.opSync(this.opCode('op_isatty'), rid)) {
+    if (this.opSync(this.opCode('op_isatty'), args.rid)) {
+      console.log(stdin);
       let tty = stdin.file as TTY;
       tty.setRawMode(true);
     }
     // this.env[key] = val;
   }),
 
-  op_sync('op_console_size', function (this: Kernel, rid: number) {
+  op_sync('op_console_size', function (this: DenixProcess, rid: number) {
     let stdin = this.resourceTable.get(rid) as FileResource;
 
     if (this.opSync(this.opCode('op_isatty'), rid)) {
@@ -169,17 +170,14 @@ export const fsOps = [
     }
     // this.env[key] = val;
   }),
-  op_sync('op_isatty', function (this: Kernel, rid: number) {
+  op_sync('op_isatty', function (this: DenixProcess, rid: number) {
     let stdin = this.resourceTable.get(rid) as FileResource;
 
-    if (this.opSync(this.opCode('op_isatty'), rid)) {
-      let tty = stdin.file as TTY;
-      tty.setRawMode(true);
-    }
+    return true;
     // this.env[key] = val;
   }),
 
-  op_sync('op_read_dir_sync', function (this: Kernel, dirPath: string) {
+  op_sync('op_read_dir_sync', function (this: DenixProcess, dirPath: string) {
     return this.fs.readdirSync(dirPath).map((p) => {
       let stat = this.fs.statSync(path.join(dirPath, p), false);
       return {
@@ -298,6 +296,6 @@ export class FileResource extends Resource {
   }
 }
 
-function getAbsolutePath(p: string, kernel: Kernel): string {
+function getAbsolutePath(p: string, kernel: DenixProcess): string {
   return path.isAbsolute(p) ? p : path.join(kernel.opSync(kernel.opCode('op_cwd')), p);
 }

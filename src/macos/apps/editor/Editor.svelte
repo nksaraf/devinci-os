@@ -15,10 +15,6 @@
   let Monaco: typeof monaco;
   export let args;
 
-  console.log(args);
-
-  const fs = getContext('kernel');
-
   let disposables = [];
 
   onMount(async () => {
@@ -68,7 +64,7 @@
 </script>
 
 <div class="h-full flex flex-col overflow-hidden">
-  <div class="editor-header relative app-window-drag-handle">
+  <div class="editor-header relative {win.dragHandleClass}">
     <div class="file-header flex flex-row items-center justify-center w-full">
       <div class="i-vscode-icons-file-type-vscode mr-3" />
       <div class="font-bold text-base">{args.path}</div>

@@ -1,20 +1,22 @@
-import { wrap } from 'comlink';
-import type { Remote } from 'comlink';
+import { wrap } from '$lib/comlink/mod';
+import type { Remote } from '$lib/comlink/mod';
 import type { DenoIsolate } from '../denix/isolate';
-import { newPromise } from 'os/lib/promise';
-import type { Kernel } from '../denix/denix';
+import { newPromise } from '$lib/promise';
+import type { DenixProcess } from '../denix/denix';
 
 export class DenixWorker {
   isolate: Remote<DenoIsolate>;
   get Deno(): typeof Deno {
     return this.isolate.Deno as unknown as typeof Deno;
   }
-  constructor(kernel) {
+  constructor(public kernel) {
     this.isolate = wrap(
       new Worker('/src/lib/deno/deno.worker.ts?worker-file', {
         type: 'module',
       }),
     );
+
+    // resolved later when ready() is called by user, should probably make the whole thing one async function
     this.connect(kernel);
   }
 
@@ -23,7 +25,7 @@ export class DenixWorker {
     await this.readyPromise.promise;
   }
 
-  async connect(kernel: Kernel) {
+  async connect(kernel: DenixProcess) {
     let port = await kernel.fsRemote.proxy.newConnection();
     await this.isolate.connectRemote(port);
     this.readyPromise.resolve(true);

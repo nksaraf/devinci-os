@@ -1,5 +1,5 @@
-import { checkFlag } from "os/lib/bit";
-import { constants } from "os/lib/constants";
+import { checkFlag } from '$lib/bit';
+import { constants } from '$lib/constants';
 
 export enum ActionType {
   // Indicates that the code should not do anything.

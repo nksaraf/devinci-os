@@ -222,11 +222,11 @@ export class ApiError extends Error {
   /**
    * Creates an ApiError object from a buffer.
    */
-  public static fromBuffer(buffer: Buffer, i: number = 0): ApiError {
-    return ApiError.fromJSON(
-      JSON.parse(buffer.toString('utf8', i + 4, i + 4 + buffer.readUInt32LE(i))),
-    );
-  }
+  // public static fromBuffer(buffer: Uint8Array, i: number = 0): ApiError {
+  //   return ApiError.fromJSON(
+  //     JSON.parse(buffer.toString('utf8', i + 4, i + 4 + buffer.readUInt32LE(i))),
+  //   );
+  // }
 
   public static FileError(code: ErrorCode, p: string): ApiError {
     return new ApiError(code, ErrorStrings[code], p);
@@ -256,7 +256,7 @@ export class ApiError extends Error {
     return this.FileError(ErrorCode.ENOTEMPTY, path);
   }
 
-  public errno: string;
+  public errno: ErrorCode;
   public code: ErrorCode;
   public path: string | undefined;
   // Unsupported.
@@ -275,7 +275,7 @@ export class ApiError extends Error {
    */
   constructor(type: ErrorCode, message: string = ErrorStrings[type], path?: string) {
     super(message);
-    this.code = ErrorCode[type];
+    this.code = ErrorCode[type] as unknown as ErrorCode;
     this.errno = type;
     this.path = path;
     this.stack = new Error(`${this.code}: ${message}${this.path ? `, '${this.path}'` : ''}`).stack;
@@ -302,21 +302,21 @@ export class ApiError extends Error {
   /**
    * Writes the API error into a buffer.
    */
-  public writeToBuffer(
-    data: Uint8Array = new Uint8Array(this.bufferSize()),
-    i: number = 0,
-  ): Uint8Array {
-    const buffer = Buffer.from(data);
-    const bytesWritten = buffer.write(JSON.stringify(this.toJSON()), i + 4);
-    buffer.writeUInt32LE(bytesWritten, i);
-    return buffer;
-  }
+  // public writeToBuffer(
+  //   data: Uint8Array = new Uint8Array(this.bufferSize()),
+  //   i: number = 0,
+  // ): Uint8Array {
+  //   const buffer = Buffer.from(data);
+  //   const bytesWritten = buffer.write(JSON.stringify(this.toJSON()), i + 4);
+  //   buffer.writeUInt32LE(bytesWritten, i);
+  //   return buffer;
+  // }
 
   /**
    * The size of the API error in buffer-form in bytes.
-   */
-  public bufferSize(): number {
-    // 4 bytes for string length.
-    return 4 + Buffer.byteLength(JSON.stringify(this.toJSON()));
-  }
+  //  */
+  // public bufferSize(): number {
+  //   // 4 bytes for string length.
+  //   return 4 + Buffer.byteLength(JSON.stringify(this.toJSON()));
+  // }
 }

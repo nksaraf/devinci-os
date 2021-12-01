@@ -3,25 +3,19 @@ import { asDisposable, disposeAll } from '../utils';
 import { setupWorkerProviders, defaultProviderConfig } from './providers';
 
 export class WorkerConfig<TOptions>
-  implements monacoApi.IDisposable, monacoApi.worker.IWorkerConfig<TOptions> {
+  implements monacoApi.IDisposable, monacoApi.worker.IWorkerConfig<TOptions>
+{
   _monaco: typeof monacoApi;
   private _onDidChange;
   private _config: monacoApi.worker.IWorkerConfig<TOptions>;
-  constructor(
-    config: monacoApi.worker.IWorkerConfig<TOptions>,
-    monaco: typeof monacoApi
-  ) {
+  constructor(config: monacoApi.worker.IWorkerConfig<TOptions>, monaco: typeof monacoApi) {
     this._config = config;
     this._monaco = monaco;
-    this._onDidChange = new this._monaco.Emitter<
-      monacoApi.worker.IWorkerConfig<TOptions>
-    >();
+    this._onDidChange = new this._monaco.Emitter<monacoApi.worker.IWorkerConfig<TOptions>>();
   }
   // @ts-ignore
 
-  get onDidChange(): monacoApi.IEvent<
-    monacoApi.worker.IWorkerConfig<TOptions>
-  > {
+  get onDidChange(): monacoApi.IEvent<monacoApi.worker.IWorkerConfig<TOptions>> {
     return this._onDidChange.event;
   }
 
@@ -81,7 +75,7 @@ export class WorkerClient<TOptions, TWorker> implements monacoApi.IDisposable {
       providers = defaultProviderConfig,
       timeoutDelay = STOP_WHEN_IDLE_FOR,
     }: monacoApi.worker.IWorkerConfig<TOptions>,
-    monaco: typeof monacoApi
+    monaco: typeof monacoApi,
   ) {
     this._config = new WorkerConfig(
       {
@@ -92,28 +86,17 @@ export class WorkerClient<TOptions, TWorker> implements monacoApi.IDisposable {
         providers,
         timeoutDelay,
       },
-      monaco
+      monaco,
     );
     this._monaco = monaco;
-    this._idleCheckInterval = window.setInterval(
-      () => this._checkIfIdle(),
-      30 * 1000
-    );
+    this._idleCheckInterval = window.setInterval(() => this._checkIfIdle(), 30 * 1000);
     this._lastUsedTime = 0;
     this._worker = null;
     this._client = null;
-    const stopWorkerConfigListener = this._config.onDidChange(() =>
-      this._stopWorker()
-    );
-    const registerProviderListener = this._config.onDidChange(() =>
-      this._registerProviders()
-    );
+    const stopWorkerConfigListener = this._config.onDidChange(() => this._stopWorker());
+    const registerProviderListener = this._config.onDidChange(() => this._registerProviders());
     this._providerDisposables = [];
-    this._disposables = [
-      stopWorkerConfigListener,
-      registerProviderListener,
-      this._config,
-    ];
+    this._disposables = [stopWorkerConfigListener, registerProviderListener, this._config];
     this._registerProviders();
   }
 
@@ -146,7 +129,7 @@ export class WorkerClient<TOptions, TWorker> implements monacoApi.IDisposable {
         this.config.languageId,
         this.config.providers,
         this,
-        this._monaco
+        this._monaco,
       );
       this._disposables.push(asDisposable(this._providerDisposables));
     }
@@ -156,9 +139,7 @@ export class WorkerClient<TOptions, TWorker> implements monacoApi.IDisposable {
     return this._config;
   }
 
-  get onConfigDidChange(): monacoApi.IEvent<
-    monacoApi.worker.IWorkerConfig<TOptions>
-  > {
+  get onConfigDidChange(): monacoApi.IEvent<monacoApi.worker.IWorkerConfig<TOptions>> {
     return this._config.onDidChange;
   }
 
@@ -200,7 +181,7 @@ export class WorkerClient<TOptions, TWorker> implements monacoApi.IDisposable {
           createData: {
             ...this.config.options,
           },
-        }
+        },
       );
       this._client = this._worker.getProxy() as Promise<TWorker>;
     }

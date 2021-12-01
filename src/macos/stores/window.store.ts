@@ -58,6 +58,7 @@ export interface WindowAPI extends Writable<IWindow> {
   open: () => void;
   focus: () => void;
   maximize?: () => void;
+  dragHandleClass?: string;
   app: AppConfig;
   // minimize: () => void;
   // maximize: () => void;

@@ -8,7 +8,7 @@
   import finder from 'os/macos/apps/finder/finder';
   import BootupScreen from '@ui/components/Desktop/BootupScreen.svelte';
   import GitCloner from './GitCloner.svelte';
-  import Toaster from 'os/lib/toasts';
+  import Toaster from '$lib/toasts';
   import type { Kernel } from 'os/denix/denix';
 
   export let url = '';

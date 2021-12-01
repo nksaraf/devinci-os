@@ -4,7 +4,7 @@
 import type { IFileSystem } from '../core/file_system';
 import { ErrorCode, ApiError } from '../../error';
 import * as path from 'path';
-import { Buffer } from 'os/lib/buffer';
+import { Buffer } from '$lib/buffer';
 
 export function deprecationMessage(print: boolean, fsName: string, opts: any): void {
   if (print) {

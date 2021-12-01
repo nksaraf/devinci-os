@@ -40,7 +40,7 @@ export default (
   //   | { [key: string]: keyof typeof knownPlugins }
   // )[] = Object.keys(knownParsers),
   prettierOptions: any = {},
-  { workerSrc }: { workerSrc?: string | (() => Worker) } = {}
+  { workerSrc }: { workerSrc?: string | (() => Worker) } = {},
 ) =>
   createPlugin(
     {
@@ -48,8 +48,7 @@ export default (
       dependencies: ['core.workers'],
     },
     (monaco) => {
-      const workerPath =
-        workerSrc ?? monaco.loader.workersPath + 'prettier.monaco.worker.js';
+      const workerPath = workerSrc ?? monaco.loader.workersPath + 'prettier.monaco.worker.js';
 
       monaco.plugin.prettier = {
         enable: (
@@ -58,7 +57,7 @@ export default (
             parser = knownParsers[languageId],
             plugins = knownPlugins[parser],
             ...options
-          } = prettierOptions
+          } = prettierOptions,
         ) => {
           return monaco.worker.register({
             languageId: languageId,
@@ -90,5 +89,5 @@ export default (
           // monaco.languages.html.htmlDefaults.
         }
       };
-    }
+    },
   );

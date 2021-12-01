@@ -39,7 +39,7 @@ export const createPlugin = (
     name?: string;
     format?: 'url' | 'local';
   },
-  plugin: monacoApi.plugin.IPlugin
+  plugin: monacoApi.plugin.IPlugin,
 ) => {
   plugin.dependencies = dependencies;
   plugin.label = name;
@@ -47,13 +47,13 @@ export const createPlugin = (
   return plugin;
 };
 
-export const compose = (
-  ...plugins: monacoApi.plugin.IPlugin[]
-): monacoApi.plugin.IPlugin => (obj) => {
-  for (var plugin of plugins) {
-    plugin(obj);
-  }
-};
+export const compose =
+  (...plugins: monacoApi.plugin.IPlugin[]): monacoApi.plugin.IPlugin =>
+  (obj) => {
+    for (var plugin of plugins) {
+      plugin(obj);
+    }
+  };
 
 import scopeEval from 'scope-eval';
 
@@ -89,7 +89,7 @@ async function fetchPlugin({ url, fetchOptions = {} }) {
           'monaco-editor-core': monaco,
           'monaco-editor': monaco,
           'use-monaco': monaco,
-        }
+        },
       );
     } catch (e) {
       console.log('[monaco] Error installing plugin from', url);
@@ -123,7 +123,7 @@ export const createRemotePlugin = ({
       console.log('[monaco] fetching plugin from', url);
       const remotePlugin = await fetchPlugin({ url, fetchOptions });
       return remotePlugin(monaco);
-    }
+    },
   );
 };
 
@@ -200,11 +200,7 @@ export default (monaco: typeof monacoApi) => {
           let plugin = plugins[i];
 
           plugin =
-            typeof plugin === 'function'
-              ? plugin
-              : plugin.url
-              ? await fetchPlugin(plugin)
-              : null;
+            typeof plugin === 'function' ? plugin : plugin.url ? await fetchPlugin(plugin) : null;
 
           if (!plugin) {
             throw new Error(`Couldn't resolve plugin, ${plugin}`);
@@ -213,9 +209,7 @@ export default (monaco: typeof monacoApi) => {
           plugin.label = plugin.label ?? plugin.name;
 
           if (installed[plugin.label]) {
-            console.log(
-              `[monaco] skipped installing ${plugin.label} (already installed)`
-            );
+            console.log(`[monaco] skipped installing ${plugin.label} (already installed)`);
             return;
           }
 

@@ -32,13 +32,11 @@ declare module 'monaco-editor' {
       onRegister?: (
         // client: WorkerClient<T, any>,
         client: any,
-        monaco: typeof monacoApi
+        monaco: typeof monacoApi,
       ) => void;
     }
 
-    function register<TOptions>(
-      config: worker.IWorkerConfig<TOptions>
-    ): monacoApi.IDisposable;
+    function register<TOptions>(config: worker.IWorkerConfig<TOptions>): monacoApi.IDisposable;
 
     function setup(basePath?: string): void;
 
@@ -54,10 +52,7 @@ declare module 'monaco-editor' {
 
     function updateConfig<TOptions>(
       label: string,
-      config?: Omit<
-        monacoApi.worker.IWorkerConfig<TOptions>,
-        'languageId' | 'label'
-      >
+      config?: Omit<monacoApi.worker.IWorkerConfig<TOptions>, 'languageId' | 'label'>,
     ): void;
 
     function updateOptions<TOptions>(label: string, options?: TOptions): void;
@@ -131,9 +126,7 @@ export default createPlugin(
             const workerSrc = this.workerClients[label].src;
             console.log(`[monaco] loading worker: ${label}`);
             if (typeof workerSrc === 'string') {
-              var workerBlobURL = createBlobURL(
-                `importScripts("${workerSrc}")`
-              );
+              var workerBlobURL = createBlobURL(`importScripts("${workerSrc}")`);
               return new Worker(workerBlobURL, {
                 name: label,
               });
@@ -161,9 +154,7 @@ export default createPlugin(
         }
         return client;
       }
-      register<TOptions>(
-        config: monacoApi.worker.IWorkerRegistrationOptions<TOptions>
-      ) {
+      register<TOptions>(config: monacoApi.worker.IWorkerRegistrationOptions<TOptions>) {
         // if (config.languageId) {
         //   return monaco.languages.onLanguage(config.languageId, () => {
         //     return this._registerWorker(config);
@@ -186,20 +177,13 @@ export default createPlugin(
         }
         return this.getClient<any, TWorker>(label).getSyncedWorker(...uri);
       }
-      setConfig<TOptions>(
-        label: string,
-        config: monacoApi.worker.IWorkerConfig<TOptions>
-      ) {
+      setConfig<TOptions>(label: string, config: monacoApi.worker.IWorkerConfig<TOptions>) {
         this.getClient<TOptions, any>(label).config.setConfig(config);
       }
       updateOptions<TOptions>(label: string, options: TOptions) {
         this.getClient<TOptions, any>(label).config.setOptions(options);
       }
-      setEnvironment({
-        getWorkerUrl = noop,
-        getWorker = noop,
-        baseUrl = undefined,
-      }: Environment) {
+      setEnvironment({ getWorkerUrl = noop, getWorker = noop, baseUrl = undefined }: Environment) {
         if (baseUrl || getWorker || getWorkerUrl) {
           const getWorkerPath = (_moduleId: string, label: string) => {
             const url = getWorkerUrl?.(label);
@@ -230,7 +214,7 @@ export default createPlugin(
     Object.assign(monaco, {
       worker: new MonacoWorkerApi(),
     });
-  }
+  },
 );
 
 function createBlobURL(workerSrc: string) {

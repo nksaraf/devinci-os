@@ -1,13 +1,15 @@
 import  type{ Remote } from 'comlink';
 import { Resource, type ResourceTable, op_sync, type Op } from './types';
-import { fromBase64 } from 'os/lib/base64';
-import { ApiError, ErrorCodeToName, ERROR_KIND_TO_CODE } from 'os/lib/error';
-import type { RemoteFileSystem } from 'os/lib/fs/remote';
-import type { VirtualFileSystem } from 'os/lib/fs/virtual';
+import { fromBase64 } from '$lib/base64';
+import { ApiError, ErrorCodeToName, ERROR_KIND_TO_CODE } from '$lib/error';
+import type { RemoteFileSystem } from '$lib/fs/remote';
+import type { VirtualFileSystem } from '$lib/fs/virtual';
 import { builtIns } from './ops/builtIns.ops';
-import { fsOps, TTYResource } from './ops/fs.ops';
+import { FileResource, fsOps } from './ops/fs.ops';
 import { LocalNetwork, network } from './ops/network.ops';
 import { url } from './ops/url.ops';
+import { TTY } from '../tty';
+import { Xterm } from '../xterm';
 
 function syncOpCallXhr(op_code: number, arg1: any, arg2: any) {
   const xhr = new XMLHttpRequest();
@@ -87,7 +89,7 @@ function syncOpCallXhr(op_code: number, arg1: any, arg2: any) {
 //   }
 // }
 
-export class Kernel extends EventTarget {
+export class DenixProcess extends EventTarget {
   net: LocalNetwork = new LocalNetwork();
   env: { [key: string]: any } = {};
   cwd: any = '/';
@@ -197,10 +199,10 @@ export class Kernel extends EventTarget {
   async init() {
     this.resourceTable = new Map<number, Resource>();
 
-    let tty = new TTYResource();
-    this.stdin = this.addResource(tty);
-    this.stdout = this.addResource(tty);
-    this.stderr = this.addResource(tty);
+    let tty = new TTY(new Xterm()); 
+    this.stdin = this.addResource(new FileResource(tty, '/dev/tty0'));
+    this.stdout = this.addResource(new FileResource(tty, '/dev/tty0'));
+    this.stderr = this.addResource(new FileResource(tty, '/dev/tty0'));
 
     this.#_ops = [
       op_sync('ops_sync', () => {
@@ -246,21 +248,21 @@ export class Kernel extends EventTarget {
           return this.addResource(new TextDecoderResource());
         },
       },
-      op_sync('op_env', function (this: Kernel) {
+      op_sync('op_env', function (this: DenixProcess) {
         return {
           PWD: '/',
         };
       }),
       {
         name: 'op_wasm_streaming_set_url',
-        sync: function (this: Kernel, rid: number, url: string) {
+        sync: function (this: DenixProcess, rid: number, url: string) {
           (this.getResource(rid) as WasmStreamingResource).url = url;
         },
       },
 
       {
         name: 'op_wasm_streaming_feed',
-        sync: function (this: Kernel, rid: number, chunk: Uint8Array) {
+        sync: function (this: DenixProcess, rid: number, chunk: Uint8Array) {
           (this.getResource(rid) as WasmStreamingResource).write(chunk);
         },
       },
@@ -287,8 +289,10 @@ export class Kernel extends EventTarget {
   }
 }
 
-export class RemoteKernel extends Kernel {
-  proxy: Remote<Kernel>;
+
+
+export class RemoteKernel extends DenixProcess {
+  proxy: Remote<DenixProcess>;
 
   opSync(op_code, arg1, arg2) {
     console.group('op sync', op_code, arg1, arg2);

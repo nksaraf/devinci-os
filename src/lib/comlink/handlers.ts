@@ -5,7 +5,9 @@ import Stats from '../fs/core/stats';
 import { RemoteFile } from '../fs/remote';
 import { SharedFile } from '../fs/shared';
 import { transferHandlers } from './comlink';
+
 import type { TransferHandler } from './comlink';
+
 export class Channel {
   portToExpose: MessagePort;
   portToWrap: MessagePort;
@@ -41,7 +43,7 @@ transferHandlers.set('BUFFER', {
   serialize: (obj: Buffer) => {
     return [obj, obj.buffer instanceof ArrayBuffer ? [obj.buffer] : []];
   },
-  deserialize: (obj) => Buffer.from(obj),
+  deserialize: (obj: Buffer) => Buffer.from(obj),
 });
 
 transferHandlers.set('MESSAGE_PORT', {
@@ -89,7 +91,7 @@ transferHandlers.set('CHANNEL', {
 transferHandlers.set('READABLE_STREAM', {
   canHandle: (obj): obj is ReadableStream => obj instanceof ReadableStream,
   serialize: (obj: ReadableStream) => {
-    return [obj, [obj]];
+    return [obj, [obj as unknown as Transferable]];
   },
   deserialize: (obj) => obj,
 });

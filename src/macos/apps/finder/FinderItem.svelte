@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type Stats from 'os/lib/fs/core/stats';
+  import type Stats from '$lib/fs/core/stats';
 
   import { getContext } from 'svelte';
 

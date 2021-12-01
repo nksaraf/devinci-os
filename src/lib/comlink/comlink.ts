@@ -11,7 +11,7 @@
  * limitations under the License.
  */
 
-import { ApiError } from '../error';
+import { ApiError, ErrorCode } from '../error';
 import type { Endpoint, EventSource, WireValue, Message, PostMessageWithOrigin } from './protocol';
 
 import { MessageType, WireValueType } from './protocol';
@@ -221,7 +221,9 @@ interface ThrownValue {
   [throwMarker]: unknown; // just needs to be present
   value: unknown;
 }
-type SerializedThrownValue = { isError: true; value: Error } | { isError: false; value: unknown };
+type SerializedThrownValue =
+  | { isError: true; value: Error & { errno?: string; code?: ErrorCode }; type?: string }
+  | { isError: false; value: unknown };
 
 /**
  * Internal transfer handler to handle thrown exceptions.
@@ -250,7 +252,7 @@ const throwTransferHandler: TransferHandler<ThrownValue, SerializedThrownValue> 
           message: value.message,
           name: value.name,
           stack: value.stack,
-        },
+        } as Error,
       };
     } else {
       serialized = { isError: false, value };

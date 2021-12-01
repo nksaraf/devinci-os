@@ -30,6 +30,7 @@
       "__/helpers/*": ["./packages/macos-ui/src/helpers/*"],
       "@ui/*": ["./packages/macos-ui/src/*"],
       "os/*": ["./src/*"],
+      "$lib/*": ["./src/lib/*"],
       "comlink": ["./deno/comlink/index.ts"],
       "vs/*": ["./packages/vscode/src/vs/*"]
     },

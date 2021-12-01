@@ -1,15 +1,16 @@
-import { DenoIsolate } from 'os/lib/denix/isolate';
-import { expose, wrap } from 'os/lib/comlink';
-import { fs } from 'os/lib/fs';
-import { Global } from 'os/lib/global';
-import { RemoteFileSystem } from 'os/lib/fs/remote';
-import { Kernel } from 'os/lib/denix/denix';
+import { DenoIsolate } from '$lib/denix/isolate';
+import { expose, wrap } from '$lib/comlink/mod';
+
+import { fs } from '$lib/fs';
+import { Global } from '$lib/global';
+import { RemoteFileSystem } from '$lib/fs/remote';
+import { DenixProcess } from '$lib/denix/denix';
 
 let fsRemote = new RemoteFileSystem(undefined, true);
 
 fs.rootFs = fsRemote;
 
-export const Denix = new Kernel();
+export const Denix = new DenixProcess();
 await Denix.init();
 Denix.fs = fs;
 Denix.fsRemote = fsRemote;

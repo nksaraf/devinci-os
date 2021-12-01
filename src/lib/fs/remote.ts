@@ -1,5 +1,5 @@
-import { wrap } from '../comlink';
-import type { Remote } from '../comlink';
+import { wrap } from '../comlink/mod';
+import type { Remote } from '../comlink/mod';
 import { fromWireValue, toWireValue } from '../comlink/http.handlers';
 import type { VirtualFileSystem } from './virtual';
 import type { SharedFileSystem } from './shared';

@@ -3,7 +3,7 @@ import * as path from 'path';
 import { wrap } from 'comlink';
 import EsbuildWorker from './esbuild-worker?worker';
 import { syncDownloadFile } from 'os/tmp/fs/generic/xhr';
-import Global from 'os/lib/global';
+import Global from '$lib/global';
 import type { Context } from '../../denix/isolatee';
 import { getModuleFn } from '../../denix/runtimee';
 import { getEvalAsyncFunction } from '../eval';

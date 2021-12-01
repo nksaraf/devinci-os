@@ -25,5 +25,5 @@ export default (config: SchemaConfig) =>
           diagnostics: true,
         },
       });
-    }
+    },
   );

@@ -1,7 +1,7 @@
-import { constants } from 'os/lib/constants';
-import HTTPRequest from 'os/lib/fs/http';
-import { mkdirp } from 'os/lib/fs/utils/util';
-import type { VirtualFileSystem } from 'os/lib/fs/virtual';
+import { constants } from '$lib/constants';
+import HTTPRequest from '$lib/fs/http';
+import { mkdirp } from '$lib/fs/utils/util';
+import type { VirtualFileSystem } from '$lib/fs/virtual';
 import * as path from 'path';
 import { evalWithContext, getEvalAsyncFunction } from '../eval';
 import type { Context } from './isolate';

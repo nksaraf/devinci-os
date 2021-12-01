@@ -6,7 +6,7 @@ import {
   AsyncKeyValueFileSystem,
 } from './core/key_value_filesystem';
 import { ApiError, ErrorCode } from '../lib/error';
-import global from 'os/lib/global';
+import global from '$lib/global';
 import { arrayBuffer2Buffer, buffer2ArrayBuffer } from './utils/util';
 /**
  * Get the indexedDB constructor for the current browser.

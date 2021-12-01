@@ -3,10 +3,7 @@ import { createPlugin } from '../../monaco';
 
 declare module 'monaco-editor' {
   namespace languages.typescript {
-    function loadTypes(
-      name: string,
-      version: string
-    ): Promise<{ [key: string]: string }>;
+    function loadTypes(name: string, version: string): Promise<{ [key: string]: string }>;
     // function exposeGlobalFromPackage(
     //   pkg: string,
     //   imported: string,
@@ -17,9 +14,7 @@ declare module 'monaco-editor' {
   }
 }
 
-export default (
-  compilerOptions: monacoApi.languages.typescript.CompilerOptions = {}
-) =>
+export default (compilerOptions: monacoApi.languages.typescript.CompilerOptions = {}) =>
   createPlugin(
     {
       name: 'typescript.typings',
@@ -30,7 +25,7 @@ export default (
 
       if (!monaco.languages.typescript) {
         console.warn(
-          `Couldn't install typescript.typings since the typescript worker is not registered`
+          `Couldn't install typescript.typings since the typescript worker is not registered`,
         );
         return;
       }
@@ -55,8 +50,7 @@ export default (
         // isolatedModules: true,
         jsx: monaco.languages.typescript.JsxEmit.React,
         module: monaco.languages.typescript.ModuleKind.ESNext,
-        moduleResolution:
-          monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+        moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
         noEmit: true,
         lib: ['dom', 'dom.iterable', 'esnext'],
         resolveJsonModule: true,
@@ -65,12 +59,8 @@ export default (
         ...compilerOptions,
       };
 
-      monaco.languages.typescript.typescriptDefaults.setCompilerOptions(
-        defaultCompilerOptions
-      );
-      monaco.languages.typescript.javascriptDefaults.setCompilerOptions(
-        defaultCompilerOptions
-      );
+      monaco.languages.typescript.typescriptDefaults.setCompilerOptions(defaultCompilerOptions);
+      monaco.languages.typescript.javascriptDefaults.setCompilerOptions(defaultCompilerOptions);
 
       let _imports = [
         `// stub
@@ -96,12 +86,12 @@ export default (
         // console.log(currentLib);
         let lib1 = monaco.languages.typescript.typescriptDefaults.addExtraLib(
           code,
-          'file:///global.d.ts'
+          'file:///global.d.ts',
         );
 
         let lib2 = monaco.languages.typescript.javascriptDefaults.addExtraLib(
           code,
-          'file:///global.d.ts'
+          'file:///global.d.ts',
         );
 
         extraLibs.set('global.d.ts', {
@@ -124,12 +114,12 @@ export default (
             extraLib && extraLib.dispose();
             let extraLib1 = monaco.languages.typescript.typescriptDefaults.addExtraLib(
               typings[path],
-              'file:///' + path
+              'file:///' + path,
             );
 
             let extraLib2 = monaco.languages.typescript.javascriptDefaults.addExtraLib(
               typings[path],
-              'file:///' + path
+              'file:///' + path,
             );
 
             extraLibs.set(path, {
@@ -178,5 +168,5 @@ export default (
       resetGlobal();
 
       return disposable;
-    }
+    },
   );

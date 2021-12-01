@@ -1,4 +1,5 @@
-import { expose } from './comlink';
+import { expose } from './comlink/mod';
+
 import * as suc from 'sucrase';
 import { init, parse } from 'es-module-lexer';
 

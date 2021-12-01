@@ -1,4 +1,4 @@
-import { expose, proxy } from '../comlink';
+import { expose, proxy } from '../comlink/mod';
 import InMemoryFileSystem from './inmemory';
 import { VirtualFileSystem } from './virtual';
 import { newPromise } from '../promise';
@@ -31,7 +31,17 @@ export class SharedFile extends VirtualFile {
     length: number,
     position: number,
   ): Promise<number> {
-    return await this.file.write(buffer, offset, length, position);
+    let num = await this.file.write(buffer, offset, length, position);
+    await this.file.sync();
+    return num;
+  }
+
+  public async close(): Promise<void> {
+    this.unref();
+
+    if (this.refs === 0) {
+      await this.file.close();
+    }
   }
 
   unref() {
@@ -73,32 +83,4 @@ export class SharedFileSystem extends VirtualFileSystem {
     this.openedFiles[args[0]] = sharedFile;
     return sharedFile;
   }
-
-  // closeHandle(path: string) {
-  //   let sharedFile = this.openedFiles[path];
-
-  //   if (!sharedFile) {
-  //     return;
-  //   }
-
-  //   sharedFile.unref();
-  //   if (sharedFile.refs === 0) {
-  //     sharedFile.closeSync();
-  //     delete this.openedFiles[path];
-  //   }
-  // }
-
-  // closeHandleSync(path: string) {
-  //   let sharedFile = this.openedFiles[path];
-
-  //   if (!sharedFile) {
-  //     return;
-  //   }
-
-  //   sharedFile.unref();
-  //   if (sharedFile.refs === 0) {
-  //     sharedFile.closeSync();
-  //     delete this.openedFiles[path];
-  //   }
-  // }
 }

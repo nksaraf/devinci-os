@@ -1,4 +1,4 @@
-import { newPromise } from 'os/lib/promise';
+import { newPromise } from '$lib/promise';
 
 const CUTOFF = 8192;
 

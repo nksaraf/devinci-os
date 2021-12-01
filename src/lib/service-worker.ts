@@ -1,6 +1,6 @@
 import { rest, setupWorker } from 'msw';
 import TranspileWorker from './transpiler.worker.ts?worker';
-import { wrap } from './comlink';
+import { wrap } from './comlink/mod';
 
 import { fs } from './fs';
 import { newPromise } from './promise';

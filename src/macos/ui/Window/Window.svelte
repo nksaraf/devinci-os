@@ -127,8 +127,10 @@
     focusApp();
   });
 
-  setContext('window', windowData);
-  setContext('windowAPI', Object.assign({}, window, { maximize }));
+  let dragHandleClass = `window-${id}-drag-handle`;
+
+  $: setContext('window', windowData);
+  $: setContext('windowAPI', Object.assign({}, window, { maximize, dragHandleClass }));
 </script>
 
 {#if fullScreen}
@@ -194,17 +196,19 @@
   <section
     w-full
     h-full
+    class="window"
+    data-window-id={id}
+    data-app-id={app.id}
     class:bg-gray-100={!transparent}
     class:transparent
     class:window-shadow={frame}
-    class="window"
     class:dark={$theme.scheme === 'dark'}
     style="width: {+width / 16}rem;height: {+height / 16}rem; z-index: {zIndex}"
     tabindex="-1"
     bind:this={windowEl}
     use:draggable={{
       defaultPosition,
-      handle: '.app-window-drag-handle',
+      handle: `.${dragHandleClass}`,
       bounds: { bottom: 84, top: 22.7, left: -600, right: -600 },
       disabled: !draggingEnabled,
       gpuAcceleration: false,

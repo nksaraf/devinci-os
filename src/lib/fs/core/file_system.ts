@@ -10,7 +10,7 @@ import {
 import * as path from 'path';
 import { mkdirpSync } from '../utils/util';
 import { Buffer } from 'buffer';
-import { constants } from 'os/lib/constants';
+import { constants } from '$lib/constants';
 // import wasmUrl from 'asc:./fs.asm';
 
 // WebAssembly.instantiateStreaming(fetch(wasmUrl), {}).then(({ instance }) =>

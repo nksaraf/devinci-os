@@ -58,8 +58,7 @@ const polyfillTheme = (vsCodeTheme) => {
   // 2.1 First, lets fill in core values that are used to infer other values
 
   uiColors.foreground = uiColors.foreground || codesandboxColors.foreground;
-  uiColors.errorForeground =
-    uiColors.errorForeground || codesandboxColors.errorForeground;
+  uiColors.errorForeground = uiColors.errorForeground || codesandboxColors.errorForeground;
 
   uiColors.sideBar = {
     background:
@@ -81,8 +80,7 @@ const polyfillTheme = (vsCodeTheme) => {
     foreground: uiColors.input.foreground || uiColors.sideBar.foreground,
     border: uiColors.input.border || uiColors.sideBar.border,
     placeholderForeground:
-      uiColors.input.placeholderForeground ||
-      codesandboxColors.input.placeholderForeground,
+      uiColors.input.placeholderForeground || codesandboxColors.input.placeholderForeground,
   };
 
   uiColors.quickInput = {
@@ -91,10 +89,8 @@ const polyfillTheme = (vsCodeTheme) => {
   };
 
   uiColors.editorHoverWidget = {
-    background:
-      uiColors.editorHoverWidget.background || uiColors.sideBar.background,
-    foreground:
-      uiColors.editorHoverWidget.foreground || uiColors.sideBar.foreground,
+    background: uiColors.editorHoverWidget.background || uiColors.sideBar.background,
+    foreground: uiColors.editorHoverWidget.foreground || uiColors.sideBar.foreground,
     border: uiColors.editorHoverWidget.border || uiColors.sideBar.border,
   };
 
@@ -102,10 +98,8 @@ const polyfillTheme = (vsCodeTheme) => {
     uiColors.inputOption.activeBorder || uiColors.input.placeholderForeground;
 
   uiColors.button = {
-    background:
-      uiColors.button.background || codesandboxColors.button.background,
-    foreground:
-      uiColors.button.foreground || codesandboxColors.button.foreground,
+    background: uiColors.button.background || codesandboxColors.button.background,
+    foreground: uiColors.button.foreground || codesandboxColors.button.foreground,
   };
 
   // Step 3. Infer values that are not defined by vscode theme
@@ -122,51 +116,38 @@ const polyfillTheme = (vsCodeTheme) => {
   const mutedForeground = withContrast(
     uiColors.input.placeholderForeground,
     uiColors.sideBar.background,
-    type
+    type,
   );
 
   if (uiColors.sideBar.border === uiColors.sideBar.background) {
-    uiColors.sideBar.border = decreaseContrast(
-      uiColors.sideBar.background,
-      0.25
-    );
+    uiColors.sideBar.border = decreaseContrast(uiColors.sideBar.background, 0.25);
   }
 
   if (uiColors.sideBar.hoverBackground === uiColors.sideBar.background) {
-    uiColors.sideBar.hoverBackground = decreaseContrast(
-      uiColors.sideBar.background,
-      0.25
-    );
+    uiColors.sideBar.hoverBackground = decreaseContrast(uiColors.sideBar.background, 0.25);
   }
 
   if (uiColors.list.hoverBackground === uiColors.sideBar.background) {
     if (
       uiColors.list.inactiveSelectionBackground &&
-      uiColors.list.hoverBackground !==
-        uiColors.list.inactiveSelectionBackground
+      uiColors.list.hoverBackground !== uiColors.list.inactiveSelectionBackground
     ) {
       uiColors.list.hoverBackground = uiColors.list.inactiveSelectionBackground;
     } else {
       // if that didnt work, its math time
-      uiColors.list.hoverBackground = decreaseContrast(
-        uiColors.sideBar.background,
-        0.25
-      );
+      uiColors.list.hoverBackground = decreaseContrast(uiColors.sideBar.background, 0.25);
     }
   }
 
   uiColors.list.foreground = uiColors.list.foreground || mutedForeground;
-  uiColors.list.hoverForeground =
-    uiColors.list.hoverForeground || uiColors.sideBar.foreground;
-  uiColors.list.hoverBackground =
-    uiColors.list.hoverBackground || uiColors.sideBar.hoverBackground;
+  uiColors.list.hoverForeground = uiColors.list.hoverForeground || uiColors.sideBar.foreground;
+  uiColors.list.hoverBackground = uiColors.list.hoverBackground || uiColors.sideBar.hoverBackground;
 
   uiColors.titleBar.activeBackground =
     uiColors.titleBar.activeBackground || uiColors.sideBar.background;
   uiColors.titleBar.activeForeground =
     uiColors.titleBar.activeForeground || uiColors.sideBar.foreground;
-  uiColors.titleBar.border =
-    uiColors.titleBar.border || uiColors.sideBar.border;
+  uiColors.titleBar.border = uiColors.titleBar.border || uiColors.sideBar.border;
 
   // Step 3.2
   // On the same theme of design decisions for interfaces,
@@ -260,7 +241,7 @@ const polyfillTheme = (vsCodeTheme) => {
     uiColors.activityBar.selectedForeground,
     uiColors.activityBar.inactiveForeground,
     type,
-    'icon'
+    'icon',
   );
 
   const colors = {};
@@ -319,10 +300,5 @@ const withContrast = (color, background, type, contrastType = 'text') => {
 
   // recursively increase contrast
   const increaseContrast = type === 'dark' ? lighten : darken;
-  return withContrast(
-    increaseContrast(color, 0.1),
-    background,
-    type,
-    contrastType
-  );
+  return withContrast(increaseContrast(color, 0.1), background, type, contrastType);
 };

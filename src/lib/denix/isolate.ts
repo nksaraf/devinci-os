@@ -1,5 +1,5 @@
 import { ApiError, ErrorCodeToName, ERROR_KIND_TO_CODE } from '../error';
-import type { Kernel } from './denix';
+import type { DenixProcess } from './denix';
 import { loadDenoRuntime } from './runtime';
 
 export type Context = typeof globalThis;
@@ -22,10 +22,11 @@ interface IDenoCore {
 
 export class DenoIsolate extends EventTarget {
   id: number;
-  kernel: Kernel;
+  process: DenixProcess;
   core: IDenoCore;
 
   wasmStreamingCallback;
+
   Deno: typeof Deno;
   onConnect: any;
 
@@ -43,12 +44,14 @@ export class DenoIsolate extends EventTarget {
           return;
         }
 
-        this.kernel.dispatchEvent(new CustomEvent('console', { detail: args.toString() }));
+        this.process.dispatchEvent(new CustomEvent('console', { detail: args.toString() }));
       },
       setMacrotaskCallback: (cb) => {
         console.log('macrostask callback');
       },
       setWasmStreamingCallback: (cb) => {
+        // we dont do anything with this callback right now
+        // we override the default implementation in the runtime of compileStreaming
         this.wasmStreamingCallback = cb;
       },
       decode: function (data: Uint8Array) {
@@ -72,17 +75,17 @@ export class DenoIsolate extends EventTarget {
   public context: Context;
 
   opcallSync(op_code: number, arg1: any, arg2: any) {
-    return this.kernel.opSync(op_code, arg1, arg2);
+    return this.process.opSync(op_code, arg1, arg2);
   }
 
-  opcallAsync(...args: Parameters<Kernel['opAsync']>) {
-    this.kernel.opAsync(...args).then((value) => {
+  opcallAsync(...args: Parameters<DenixProcess['opAsync']>) {
+    this.process.opAsync(...args).then((value) => {
       this.core.opresolve(args[1], value);
     });
   }
 
-  async attach(kernel: Kernel) {
-    this.kernel = kernel;
+  async attach(kernel: DenixProcess) {
+    this.process = kernel;
 
     let context = await loadDenoRuntime(this.core, kernel.fs);
 

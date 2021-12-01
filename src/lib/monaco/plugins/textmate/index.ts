@@ -10,7 +10,7 @@ declare module 'monaco-editor' {
     // export let : {
     export let registerSyntax: (
       language: string,
-      syntax?: monacoApi.plugin.textmate.SyntaxSource
+      syntax?: monacoApi.plugin.textmate.SyntaxSource,
     ) => Promise<void>;
 
     interface ILanguageExtensionPoint {
@@ -66,37 +66,32 @@ const knonwSyntaxes = {
     format: 'url' as const,
     responseFormat: 'json' as const,
     scopeName: 'source.graphql',
-    url:
-      'https://raw.githubusercontent.com/codesandbox/codesandbox-client/master/standalone-packages/vscode-extensions/out/extensions/kumar-harsh.graphql-for-vscode-1.13.0/syntaxes/graphql.json',
+    url: 'https://raw.githubusercontent.com/codesandbox/codesandbox-client/master/standalone-packages/vscode-extensions/out/extensions/kumar-harsh.graphql-for-vscode-1.13.0/syntaxes/graphql.json',
   },
   'source.json.comments': {
     format: 'url' as const,
     scopeName: 'source.json.comments',
     responseFormat: 'json' as const,
 
-    url:
-      'https://raw.githubusercontent.com/codesandbox/codesandbox-client/master/standalone-packages/vscode-extensions/out/extensions/json/syntaxes/JSONC.tmLanguage.json',
+    url: 'https://raw.githubusercontent.com/codesandbox/codesandbox-client/master/standalone-packages/vscode-extensions/out/extensions/json/syntaxes/JSONC.tmLanguage.json',
   },
   'source.tsx': {
     format: 'url' as const,
     scopeName: 'source.tsx',
     responseFormat: 'plist' as const,
-    url:
-      'https://raw.githubusercontent.com/microsoft/TypeScript-TmLanguage/master/TypeScriptReact.tmLanguage',
+    url: 'https://raw.githubusercontent.com/microsoft/TypeScript-TmLanguage/master/TypeScriptReact.tmLanguage',
   },
   'source.css': {
     format: 'url' as const,
     scopeName: 'source.css',
     responseFormat: 'json' as const,
-    url:
-      'https://raw.githubusercontent.com/codesandbox/codesandbox-client/master/standalone-packages/vscode-extensions/out/extensions/css/syntaxes/css.tmLanguage.json',
+    url: 'https://raw.githubusercontent.com/codesandbox/codesandbox-client/master/standalone-packages/vscode-extensions/out/extensions/css/syntaxes/css.tmLanguage.json',
   },
   'text.html.basic': {
     format: 'url' as const,
     scopeName: 'text.html.basic',
     responseFormat: 'json' as const,
-    url:
-      'https://raw.githubusercontent.com/codesandbox/codesandbox-client/master/standalone-packages/vscode-extensions/out/extensions/html/syntaxes/html.tmLanguage.json',
+    url: 'https://raw.githubusercontent.com/codesandbox/codesandbox-client/master/standalone-packages/vscode-extensions/out/extensions/html/syntaxes/html.tmLanguage.json',
   },
 };
 
@@ -150,7 +145,7 @@ export default () =>
       async function registerSyntax(
         language: string,
         scopeName = knonwScopes[language],
-        syntax = knonwSyntaxes[scopeName]
+        syntax = knonwSyntaxes[scopeName],
       ) {
         syntax = syntax.format ? syntax : knonwSyntaxes[scopeName];
         syntaxes[scopeName] = syntax;
@@ -209,5 +204,5 @@ export default () =>
           monaco.languages.registerSyntax(def.id);
         }
       };
-    }
+    },
   );

@@ -1,6 +1,7 @@
-import { mountDenoLib } from 'os/lib/denix/runtime';
-import { expose } from 'os/lib/comlink';
-import { SharedFileSystem } from 'os/lib/fs/shared';
+import { mountDenoLib } from '$lib/denix/runtime';
+import { expose } from '$lib/comlink/mod';
+
+import { SharedFileSystem } from '$lib/fs/shared';
 
 const fs = new SharedFileSystem();
 

@@ -1,7 +1,8 @@
 <script lang="ts">
   import * as path from 'path';
 
-  import { setContext } from 'svelte';
+  import { getContext, setContext } from 'svelte';
+  import type { WindowAPI } from '__/stores/window.store';
 
   import FinderGrid from './FinderGrid.svelte';
   export let args;
@@ -13,13 +14,15 @@
       directory = newPath;
     },
   });
+
+  let win = getContext('windowAPI') as WindowAPI;
 </script>
 
 <div class="flex flex-row relative" h-full w-full>
   <nav h-full w-36 class="finder-left-panel" />
   <div class="flex flex-col flex-1" style="overflow: hidden" h-full>
     <header
-      class="app-window-drag-handle finder-header h-14 bg-white flex flex-row items-center px-8"
+      class="{win.dragHandleClass} finder-header h-14 bg-white flex flex-row items-center px-8"
     >
       <div class="i-bi-chevron-left text-lg" />
       <div class="i-bi-chevron-right ml-8 text-lg" />

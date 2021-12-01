@@ -6,8 +6,8 @@ import {
   SimpleSyncRWTransaction,
   SyncKeyValueRWTransaction,
 } from './core/key_value_filesystem';
-import { ApiError, ErrorCode } from 'os/lib/error';
-import global from 'os/lib/global';
+import { ApiError, ErrorCode } from '$lib/error';
+import global from '$lib/global';
 
 /**
  * Some versions of FF and all versions of IE do not support the full range of

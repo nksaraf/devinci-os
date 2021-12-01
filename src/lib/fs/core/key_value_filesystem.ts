@@ -1,5 +1,5 @@
 import { SynchronousFileSystem } from './file_system';
-import { ApiError, ErrorCode } from 'os/lib/error';
+import { ApiError, ErrorCode } from '$lib/error';
 import { default as Stats, FileType } from './stats';
 import type { File } from './file';
 import type { FileFlagString } from './file_flag';
