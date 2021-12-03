@@ -25,6 +25,17 @@ export class SharedFile extends VirtualFile {
     this.refs++;
   }
 
+  public async read(
+    buffer: Uint8Array,
+    offset: number,
+    length: number,
+    position: number,
+  ): Promise<number> {
+    console.log('read', this.getPath(), offset, length, position);
+    let num = await this.file.read(buffer, offset, length, position);
+    return num;
+  }
+
   public async write(
     buffer: Uint8Array,
     offset: number,
@@ -32,12 +43,12 @@ export class SharedFile extends VirtualFile {
     position: number,
   ): Promise<number> {
     let num = await this.file.write(buffer, offset, length, position);
-    await this.file.sync();
     return num;
   }
 
   public async close(): Promise<void> {
     this.unref();
+    await this.file.sync();
 
     if (this.refs === 0) {
       await this.file.close();

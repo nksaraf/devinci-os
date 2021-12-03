@@ -120,7 +120,6 @@ const doSearchAndUpdateResults = async (buffer, history, reverseISearchIndex) =>
 };
 
 export const readCommand = async () => {
-  debugger;
   // This sets the terminal to non-canonical mode.
   // That's essential for capturing raw key-presses.
   // It's what allows pressing up to navigate history, for example. Or moving the cursor left
@@ -148,19 +147,19 @@ export const readCommand = async () => {
   let currentBuffer = commandBuffer;
   let reverseISearchResult = null;
 
-  const history = readHistory();
+  const history = [];
 
   let currentHistoryIndex = history.length;
 
   const writingCommandPromise = new Promise(async (resolve, reject) => {
     let running = true;
     while (running) {
-      running = false;
       const buf = new Uint8Array(256);
       const numberOfBytesRead = await Deno.stdin.read(buf);
+      console.log(numberOfBytesRead);
       const relevantBuf = buf.slice(0, numberOfBytesRead);
 
-      // console.debug("got ", buf.slice(0, numberOfBytesRead));
+      console.debug('got ', buf.slice(0, numberOfBytesRead));
 
       const commonMap = {
         ctrlc: async () => {
@@ -298,6 +297,8 @@ export const readCommand = async () => {
             currentBuffer.text.slice(currentBuffer.cursorPosition, currentBuffer.text.length);
 
           await rewriteLineAfterCursor(currentBuffer);
+
+          console.log('HEEETY');
 
           for (var i = 0; i < decodedString.length; i++) {
             await Deno.stdout.write(Uint8Array.from(reverseControlCharactersBytesMap.cursorRight));
@@ -520,12 +521,12 @@ export const readCommand = async () => {
   // This means that "!!" never appears in the history.
   const result = expandDoubleBang(currentBuffer.text);
 
-  if (result.length > 0) {
-    history.push(result);
-    addToHistory(history);
+  // if (result.length > 0) {
+  //   history.push(result);
+  //   addToHistory(history);
 
-    currentHistoryIndex = history.length;
-  }
+  //   currentHistoryIndex = history.length;
+  // }
 
   return result;
 };

@@ -4,10 +4,13 @@ import { ApiError } from '../error';
 import Stats from '../fs/core/stats';
 import { RemoteFile } from '../fs/remote';
 import { SharedFile } from '../fs/shared';
-import { transferHandlers } from './comlink';
+import { fromWireValue, toWireValue, transferHandlers } from './comlink';
 
 import type { TransferHandler } from './comlink';
-
+import { createResourceTable, resourceTableSymbol } from '../denix/types';
+import type { ResourceTable } from '../denix/types';
+import { FileResource } from '../denix/ops/fs.ops';
+import type VirtualFile from '../fs/core/virtual_file';
 export class Channel {
   portToExpose: MessagePort;
   portToWrap: MessagePort;
@@ -54,32 +57,6 @@ transferHandlers.set('MESSAGE_PORT', {
   deserialize: (obj) => obj,
 });
 
-transferHandlers.set('SHARED_FILE', {
-  canHandle: (obj): obj is SharedFile => obj instanceof SharedFile,
-  serialize: (obj: SharedFile) => {
-    let port = obj.getConnection();
-    return [
-      {
-        path: obj.getPath(),
-        stats: StatsHandler.serialize(obj.getStats()),
-        flag: obj.getFlag(),
-        port,
-      },
-      [port],
-    ];
-  },
-  deserialize: (obj) =>
-    new RemoteFile(obj.path, obj.flag, StatsHandler.deserialize(obj.stats), obj.port),
-} as TransferHandler<
-  SharedFile,
-  {
-    path: string;
-    stats: any;
-    flag: number;
-    port?: MessagePort;
-  }
->);
-
 transferHandlers.set('CHANNEL', {
   canHandle: (obj): obj is Channel => obj instanceof Channel,
   serialize: (obj: Channel) => {
@@ -99,15 +76,16 @@ transferHandlers.set('READABLE_STREAM', {
 transferHandlers.set('EVENT', {
   canHandle: (obj): obj is CustomEvent => obj instanceof CustomEvent,
   serialize: (ev: CustomEvent) => {
+    let [value, transferables] = toWireValue(ev.detail);
     return [
       {
         type: ev.type,
-        detail: ev.detail,
+        detail: value,
       },
-      [],
+      [...transferables],
     ];
   },
-  deserialize: (obj: any) => new CustomEvent(obj.type, { detail: obj.detail }),
+  deserialize: (obj: any) => new CustomEvent(obj.type, { detail: fromWireValue(obj.detail) }),
 });
 
 const StatsHandler = {
@@ -126,8 +104,10 @@ const StatsHandler = {
     },
     [],
   ],
-  deserialize: (value: any): Stats =>
-    new Stats(value.itemType, value.size, value.mode, value.atime, value.mtime),
+  deserialize: (value: any): Stats => {
+    console.log('deserializing statts', value);
+    return new Stats(value.itemType, value.size, value.mode, value.atime, value.mtime);
+  },
 };
 transferHandlers.set('STAT', StatsHandler);
 
@@ -227,3 +207,77 @@ transferHandlers.set('HTTP_RESPONSE', {
     });
   },
 });
+
+transferHandlers.set('RESOURCE_TABLE', {
+  canHandle: (obj): obj is ResourceTable => obj?.[resourceTableSymbol],
+  serialize: (request: ResourceTable): [{}, Transferable[]] => {
+    let obj = {};
+    let transferables = [];
+    for (let [key, value] of Object.entries(request)) {
+      console.log(key, value);
+      if (value.type === 'file') {
+        let fileResource = value as FileResource;
+        let file = fileResource.file as VirtualFile;
+        if (file instanceof SharedFile) {
+          obj[key] = toWireValue(file);
+        } else {
+          const sharedFile = new SharedFile(file.getPath(), file.getFlag(), file.getStats(), file);
+          const [value, transfers] = toWireValue(sharedFile);
+          obj[key] = {
+            type: 'file',
+            file: value,
+          };
+          transferables = transferables.concat(transfers);
+        }
+      }
+    }
+
+    console.log(obj);
+
+    return [obj, transferables];
+  },
+  deserialize: (obj: MockedResponse) => {
+    console.log(obj);
+    let resourceTable = createResourceTable();
+    for (let [key, value] of Object.entries(obj)) {
+      if (value.type === 'file') {
+        let file = fromWireValue(value.file) as SharedFile;
+        resourceTable[key] = new FileResource(file, file.getPath());
+      }
+    }
+    return resourceTable;
+  },
+});
+
+transferHandlers.set('SHARED_FILE', {
+  canHandle: (obj): obj is SharedFile => obj instanceof SharedFile,
+  serialize: (obj: SharedFile) => {
+    let port = obj.getConnection();
+    console.log('serialize', StatsHandler.serialize(obj.getStats()));
+    return [
+      {
+        path: obj.getPath(),
+        stats: StatsHandler.serialize(obj.getStats())[0],
+        flag: obj.getFlag(),
+        port,
+      },
+      [port],
+    ];
+  },
+  deserialize: (obj) => {
+    return new RemoteFile(
+      obj.path,
+      obj.flag,
+      StatsHandler.deserialize(obj.stats),
+      obj.port,
+    ) as unknown as SharedFile;
+  },
+} as TransferHandler<
+  SharedFile,
+  {
+    path: string;
+    stats: any;
+    flag: number;
+    port?: MessagePort;
+  }
+>);

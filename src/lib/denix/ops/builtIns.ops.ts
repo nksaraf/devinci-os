@@ -1,94 +1,131 @@
 import { op_async, op_sync, Resource } from '../types';
-import type { DenixProcess } from '../denix';
-import { DenixWorker } from '$lib/deno/worker';
+import type { Process } from '../denix';
+import type { FileResource } from './fs.ops';
 
 export const builtIns = [
-  op_sync('op_close', function (this: DenixProcess, rid) {
+  op_sync('op_close', function (this: Process, rid) {
     console.log('closing', rid);
-    if (!this.resourceTable.has(rid)) {
-      return;
-    }
-    let resource = this.getResource(rid);
-    resource.close();
-    this.resourceTable.delete(rid);
+    this.closeResource(rid);
   }),
-  op_sync('op_try_close', function (this: DenixProcess, rid) {
+  op_sync('op_try_close', function (this: Process, rid) {
     console.log('try closing', rid);
-    let resource = this.getResource(rid);
     try {
-      resource.close();
-      this.resourceTable.delete(rid);
+      this.closeResource(rid);
     } catch (e) {
-      console.log('couldnt close', rid, resource);
+      console.log('couldnt close', rid);
     }
   }),
-  op_sync('op_print', function (this: DenixProcess, msg: string, is_err: boolean) {
-    console.log(msg);
+  op_sync('op_print', function (this: Process, msg: string, is_err: boolean) {
+    if (is_err) {
+      (this.getResource(this.stderr) as FileResource).writeSync(new TextEncoder().encode(msg));
+    } else {
+      (this.getResource(this.stdout) as FileResource).writeSync(new TextEncoder().encode(msg));
+    }
   }),
   {
     name: 'op_read',
     sync: () => {},
-    async: async function (this: DenixProcess, rid: number, data: Uint8Array) {
+    async: async function (this: Process, rid: number, data: Uint8Array) {
       let resource = this.getResource(rid);
+      console.log('reading', resource);
       return await resource.read(data);
     },
   },
   {
     name: 'op_write',
     sync: () => {},
-    async: async function (this: DenixProcess, rid: number, data: Uint8Array) {
+    async: async function (this: Process, rid: number, data: Uint8Array) {
       let resource = this.getResource(rid);
       return await resource.write(data);
     },
   },
-  op_async('op_shutdown', async function (this: DenixProcess, rid: number) {
+  op_async('op_shutdown', async function (this: Process, rid: number) {
     let resource = this.getResource(rid);
     return await resource.shutdown();
   }),
-  op_sync('op_get_env', function (this: DenixProcess, key: string) {
+  op_sync('op_get_env', function (this: Process, key: string) {
     return this.env[key] ?? '';
   }),
-  op_sync('op_set_env', function (this: DenixProcess, key: string, val: string) {
+  op_sync('op_set_env', function (this: Process, key: string, val: string) {
     this.env[key] = val;
   }),
-  op_sync('op_signal_bind', function (this: DenixProcess, signal: string, val: string) {
+  op_sync('op_signal_bind', function (this: Process, signal: string, val: string) {
     // this.env[key] = val;
     this.addEventListener('signal', (e) => {});
   }),
   op_sync(
     'op_run',
     function (
-      this: DenixProcess,
+      this: Process,
       args: { cwd; cmd; stdin; stdout; stderr; stdinRid; stdoutRid; stderrRid },
     ) {
       let { cwd, cmd, stdin, stdout, stderr } = args;
 
-      const process = new DenixWorker(this);
+      // const process = navigator.process.spawn({
+      //   cmd,
+      //   cwd,
+      //   stdin,
+      // });
 
-      if (stdin === 'inherit') {
-        process.addResource();
-      }
+      let rid = this.addResource(
+        new ChildWorkerResource(
+          navigator.isolate.run(`/bin/${cmd[0]}.ts`, {
+            args: cmd,
+            mode: 'module',
+          }),
+        ),
+      );
 
-      process.isolate.run(cmd[2]);
+      // if (stdin === 'inherit') {
+      //   process.addResource();
+      // }
 
-      let rid = this.addResource(new ChildProcessResource());
+      // process.isolate.run(cmd[2]);
+
+      // let rid = this.addResource(new ChildProcessResource());
       return {
         rid,
       };
     },
   ),
+  op_async('op_run_status', async function (this: Process, rid: number) {
+    const resource = this.getResource(rid) as ChildWorkerResource;
+
+    try {
+      let result = await resource.promise;
+      return {
+        statusCode: result,
+        gotSignal: false,
+      };
+    } catch (e) {
+      await this.getResource(this.stderr).write(new TextEncoder().encode(e.message + '\r\n'));
+      return {
+        statusCode: -1,
+        gotSignal: false,
+      };
+    }
+  }),
 ];
 
-let PROCESS_ID = 0;
-class Process extends EventTarget {
-  pid: number;
-  resourceTable: Map<number, Resource> = new Map();
-  constructor({ cmd, cwd, env, stdin, stdout, stderr, permissions }) {
+class ChildWorkerResource extends Resource {
+  constructor(public promise) {
     super();
-    this.pid = PROCESS_ID++;
   }
+
+  close() {}
 }
 
+let PROCESS_ID = 0;
+// class Process extends EventTarget {
+//   pid: number;
+//   resourceTable: Map<number, Resource> = new Map();
+//   constructor({ cmd, cwd, env, stdin, stdout, stderr, permissions }) {
+//     super();
+//     this.pid = PROCESS_ID++;
+//   }
+// }
+
 class ChildProcessResource extends Resource {
+  type = 'child_process';
   pid: number;
 }

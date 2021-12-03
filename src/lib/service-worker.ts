@@ -1,4 +1,11 @@
 import { rest, setupWorker } from 'msw';
+import type {
+  DefaultRequestBody,
+  RequestParams,
+  ResponseResolver,
+  RestContext,
+  RestRequest,
+} from 'msw';
 import TranspileWorker from './transpiler.worker.ts?worker';
 import { wrap } from './comlink/mod';
 
@@ -22,14 +29,22 @@ async function createLocalNetwork() {
     handleResponse(ev);
   });
 
-  const transpileHandler = async (req, res, ctx) => {
+  const transpileHandler: ResponseResolver<
+    RestRequest<DefaultRequestBody, RequestParams>,
+    RestContext,
+    any
+  > = async (req, res, ctx) => {
     const orig = await ctx.fetch(req);
+    if (orig.status !== 200) {
+      return res(ctx.status(orig.status, orig.statusText));
+    }
+
     let data = await transpiler.transpile(orig.body);
 
     if (req.url.search.includes('script')) {
       data =
         'import.meta.main = true\n' +
-        (data.startsWith('#!') ? data.substr(data.indexOf('\n')) : data);
+        (data.startsWith('#!') ? data.substring(data.indexOf('\n')) : data);
     }
     return res(ctx.body(data), ctx.set('Content-Type', 'application/javascript'));
   };
@@ -38,6 +53,7 @@ async function createLocalNetwork() {
     rest.get('https://deno.land/std*', transpileHandler),
     rest.get('https://deno.land/x/*', transpileHandler),
     rest.get('https://raw.githubusercontent.com/*', transpileHandler),
+    rest.get('/bin/*', transpileHandler),
     rest.get('https://gist.githubusercontent.com/*', transpileHandler),
     rest.get('https://crux.land/router*', (req, res, ctx) => {
       req.url = new URL('http://localhost:3000/src/deno/router.ts');

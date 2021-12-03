@@ -1,0 +1,36 @@
+diff --git a/node_modules/absurd-sql/dist/indexeddb-main-thread.js b/node_modules/absurd-sql/dist/indexeddb-main-thread.js
+index 54487ae..a7b110c 100644
+--- a/node_modules/absurd-sql/dist/indexeddb-main-thread.js
++++ b/node_modules/absurd-sql/dist/indexeddb-main-thread.js
+@@ -7,20 +7,20 @@
+ // backend code, so users of this code need to pass an `() =>
+ // import('worker.js')` expression to get the worker module to run.
+ 
+-function isWorker() {
+-  return (
+-    typeof WorkerGlobalScope !== 'undefined' &&
+-    self instanceof WorkerGlobalScope
+-  );
+-}
++// function isWorker() {
++//   return (
++//     typeof WorkerGlobalScope !== 'undefined' &&
++//     self instanceof WorkerGlobalScope
++//   );
++// }
+ 
+ function makeStartWorkerFromMain(getModule) {
+   return (argBuffer, resultBuffer, parentWorker) => {
+-    if (isWorker()) {
+-      throw new Error(
+-        '`startWorkerFromMain` should only be called from the main thread'
+-      );
+-    }
++    // if (isWorker()) {
++    //   throw new Error(
++    //     '`startWorkerFromMain` should only be called from the main thread'
++    //   );
++    // }
+ 
+     if (typeof Worker === 'undefined') {
+       // We're on the main thread? Weird: it doesn't have workers

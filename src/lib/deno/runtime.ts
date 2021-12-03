@@ -152,7 +152,7 @@ export async function mountDenoLib(fs: VirtualFileSystem) {
   }
   console.log('heree');
 
-  fs.mount('/lib/deno', testFS);
+  await fs.mount('/lib/deno', testFS);
 
   console.log('heree done', await fs.readdir('/lib/deno'));
 }

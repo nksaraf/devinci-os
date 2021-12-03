@@ -27,10 +27,11 @@ export const run = (userInput, isTTY) => {
       try {
         const result = Function(`return ${userInput}`)();
         console.log(result);
+        resolve(result);
       } catch (err) {
         console.error(err.toString());
+        reject(err);
       }
-      resolve(result);
       return;
     }
 

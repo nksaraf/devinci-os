@@ -11,16 +11,16 @@ const runMain = async () => {
     Deno.exit();
   });
 
-  // while (true) {
-  const userInput = await readCommand();
-  console.log(userInput);
+  while (true) {
+    const userInput = await readCommand();
+    console.log(userInput);
 
-  // try {
-  //   await run(userInput, true);
-  // } catch (err) {
-  //   console.error(err);
-  // }
-  // }
+    try {
+      await run(userInput, true);
+    } catch (err) {
+      console.error(err);
+    }
+  }
 };
 
 await runMain();

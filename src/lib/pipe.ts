@@ -7,7 +7,7 @@ let id = 0;
 // Pipes have a waiting mechanism,
 // A read with not callback until it actually gets the data
 export class InMemoryPipe {
-  bufs: Buffer[] = [];
+  bufs: Uint8Array[] = [];
   id = id++;
   refcount: number = 1; // maybe more accurately a reader count
   readWaiter: Function = undefined;
@@ -22,7 +22,7 @@ export class InMemoryPipe {
     return len;
   }
 
-  async writeBuffer(b: Buffer, offset: number, length: number, pos: number): Promise<number> {
+  async writeBuffer(b: Uint8Array, offset: number, length: number, pos: number): Promise<number> {
     this.bufs.push(b);
     // call backs readers who were blocked on this pipe
     this.releaseReader();
@@ -43,11 +43,7 @@ export class InMemoryPipe {
     }
   }
 
-  async readBuffer(buf: Buffer, off: number, len: number, pos: number): Promise<number> {
-    if (off !== 0) {
-      console.log('ERROR: Pipe.read w/ non-zero offset');
-    }
-
+  async readBuffer(buf: Uint8Array, off: number, len: number, pos: number): Promise<number> {
     // there is either some data or the file is closed so no more data can come
     if (this.bufs.length || this.closed) {
       let n = this.copy(buf, off, len, pos);
@@ -68,7 +64,7 @@ export class InMemoryPipe {
     return await promise.promise;
   }
 
-  readBufferSync(buf: Buffer, off: number, len: number, pos: number): number {
+  readBufferSync(buf: Uint8Array, off: number, len: number, pos: number): number {
     return this.copy(buf, off, len, pos);
   }
 
@@ -88,15 +84,15 @@ export class InMemoryPipe {
     this.readWaiter = undefined;
   }
 
-  private copy(dst: Buffer, offset: number, len: number, pos: number): number {
+  private copy(dst: Uint8Array, offset: number, len: number, pos: number): number {
     let result = 0;
     // ensure pos is a number
     pos = pos ? pos : 0;
 
     while (this.bufs.length > 0 && len > 0) {
       let src = this.bufs[0];
-
-      let n = src.copy(dst, pos);
+      let n = src.length;
+      dst.set(src, pos);
       pos += n;
       result += n;
       len -= n;

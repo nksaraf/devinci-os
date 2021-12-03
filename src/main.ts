@@ -1,4 +1,4 @@
-import './lib/deno/window';
+import './lib/deno/deno';
 import 'uno.css';
 import '@ui/css/global.scss';
 import { render } from './macos';

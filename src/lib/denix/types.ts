@@ -5,7 +5,7 @@ export type Op = {
 };
 
 export interface Resource {
-  name: string;
+  type: string;
   read(data: Uint8Array): Promise<number>;
   write(data: Uint8Array): Promise<number>;
   close(): void;
@@ -13,6 +13,7 @@ export interface Resource {
 }
 
 export class Resource implements Resource {
+  type = 'resource';
   async read(data: Uint8Array): Promise<number> {
     throw new Error('Method not implemented.');
   }
@@ -30,8 +31,15 @@ export class Resource implements Resource {
   }
 }
 
-export type ResourceTable = Map<number, Resource>;
+export type ResourceTable = { [key: number]: Resource };
 
+export const resourceTableSymbol = Symbol('resourceTable');
+
+export function createResourceTable(): ResourceTable {
+  let table = {};
+  table[resourceTableSymbol] = true;
+  return table;
+}
 function op(
   name: string,
   execute: {

@@ -4,46 +4,38 @@
   import type { WindowAPI } from '__/stores/window.store';
   import TrafficLights from 'os/macos/ui/Window/TrafficLights.svelte';
   import ExpandSvg from '@ui/components/SVG/traffic-lights/ExpandSVG.svelte';
-  import { TTY } from '$lib/tty';
   import { Xterm } from '$lib/xterm';
+  import { proxy } from 'os/lib/comlink/mod';
+  import { createResourceTable } from 'os/lib/denix/types';
+  import { FileResource } from 'os/lib/denix/ops/fs.ops';
+  import type { TTY } from 'os/lib/tty/tty';
+  import { fs } from '$lib/fs';
+
   let divEl: HTMLDivElement = null;
-  import { parse } from 'https://deno.land/std@0.116.0/flags/mod.ts';
-
-  async function shell(tty) {
-    let data = await tty.lineDiscipline.prompt('> ');
-
-    let { _ } = parse(data.split(' '));
-    let cmd = _[0];
-
-    switch (cmd) {
-      case 'help':
-
-      case 'ls':
-        for await (let entry of Deno.readDir('.')) {
-          tty.println(entry.name);
-        }
-      default:
-        tty.println('command not found: ' + cmd);
-    }
-  }
 
   onMount(() => {
-    // const worker = new DenixWorker(isolate.kernel);
-
     const terminal = new Xterm();
-    const tty = new TTY();
 
-    tty.connect(terminal);
+    (async () => {
+      debugger;
+      const tty = (await fs.open('/dev/tty1', 1, 0x666)) as TTY;
+      tty.connect(terminal);
 
-    // Deno.run({
-    //   cmd: ['deno', 'run', '/src/lib/desh/src/crsh.js'],
-    //   stdin: 'piped',
-    //   stdout: 'inherit',
-    //   stderr: 'inherit',
-    // });
-    shell(tty).catch(console.error);
-
-    terminal.open(divEl);
+      const resourceTable = createResourceTable();
+      resourceTable[0] = new FileResource(tty, 'tty1');
+      resourceTable[1] = new FileResource(tty, 'tty1');
+      resourceTable[2] = new FileResource(tty, 'tty1');
+      navigator.process
+        .spawn({
+          tty: proxy(tty),
+          cmd: ['deno', 'run', '/src/lib/desh/src/crsh.js'],
+          cwd: '/lib/deno',
+          resourceTable,
+        })
+        .then(async (process) => {
+          terminal.open(divEl);
+        });
+    })();
   });
 
   export let args;

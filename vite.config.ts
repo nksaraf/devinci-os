@@ -102,6 +102,7 @@ export default defineConfig({
   optimizeDeps: {
     include: [
       './node_modules/readable-stream/readable-browser.js',
+      './node_modules/debug/src/browser.js',
       // './src/deno/denix/deno-sw.ts'
     ],
   },

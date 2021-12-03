@@ -1,10 +1,11 @@
-import type { File } from './fs/core/file';
-import VirtualFile from './fs/core/virtual_file';
-import type { ActiveCharPrompt, ActivePrompt } from './shell/shell-utils';
-import { InMemoryPipe } from './pipe';
-import { constants } from './constants';
+import type { File } from '../fs/core/file';
+import VirtualFile from '../fs/core/virtual_file';
+import type { ActiveCharPrompt, ActivePrompt } from './utils';
+import { InMemoryPipe } from '../pipe';
+import { constants } from '../constants';
 import { Buffer } from 'buffer';
-import { LineDiscipline } from './shell/shell';
+import { LineDiscipline } from './line_discipline';
+import { newPromise } from '../promise';
 
 export interface IDisposable {
   dispose(): void;
@@ -98,8 +99,8 @@ export class TTY extends VirtualFile implements File {
 
   public device: TerminalDevice;
 
-  constructor() {
-    super();
+  constructor(path) {
+    super(path,);
     this._flag = constants.fs.O_RDWR;
 
     this._termSize = {
@@ -126,10 +127,11 @@ export class TTY extends VirtualFile implements File {
     device.tty = this;
 
     this.device.addEventListener('data', (dat: CustomEvent) => {
+      console.log(this.rawMode);
       if (this.rawMode) {
         let buf = Buffer.from(dat.detail, 'utf-8');
         this.pipe.writeBuffer(buf, 0, buf.length, null).then(() => {
-          console.log('wrritten line', this.getInput());
+          console.log('wrritten line', dat.detail);
         });
       } else {
         console.log(dat);
@@ -141,17 +143,17 @@ export class TTY extends VirtualFile implements File {
   lineDiscipline: LineDiscipline;
 
   setRawMode(rawMode: boolean) {
+    console.log('setting raw mode');
     this.rawMode = rawMode;
   }
 
   /**
    * Handle input completion
    */
-  handleLineComplete = () => {
-    this.print('\r\n');
-    let buf = Buffer.from(this.getInput(), 'utf-8');
+  handleLineComplete = (line) => {
+    let buf = Buffer.from(line, 'utf-8');
     this.pipe.writeBuffer(buf, 0, buf.length, null).then(() => {
-      console.log('wrritten line', this.getInput());
+      console.log('wrritten line', line);
     });
 
     this.setInput('');
@@ -181,7 +183,11 @@ export class TTY extends VirtualFile implements File {
    */
   print(message: string, cb?: () => void) {
     const normInput = message.replace(/[\r\n]+/g, '\n').replace(/\n/g, '\r\n');
-    this.device.write(normInput, cb);
+
+    if (this.device) {
+      this.device.write(normInput, cb);
+    }
+    console.log(normInput);
   }
 
   /**
@@ -232,6 +238,10 @@ export class TTY extends VirtualFile implements File {
       resolve: readResolve,
       reject: readReject,
     };
+  }
+
+  async sync() {
+    return;
   }
 
   /**
@@ -514,17 +524,31 @@ export class TTY extends VirtualFile implements File {
     this._continuationPromptPrefix = value;
   }
 
-  async writeBuffer(buffer: Buffer, offset: number, length: number, position: number) {
-    this.device.write(buffer);
-    return length;
+  writeSync(buffer: Uint8Array, offset: number, length: number, position: number) {
+    const promise = newPromise<number>();
+    this.print(new TextDecoder().decode(buffer), () => {
+      promise.resolve(buffer.length);
+    });
+
+    return buffer.length;
+  }
+
+  async write(buffer: Uint8Array, offset: number, length: number, position: number) {
+    const promise = newPromise<number>();
+    this.print(new TextDecoder().decode(buffer), () => {
+      promise.resolve(buffer.length);
+    });
+
+    return buffer.length;
   }
 
   async readBuffer(buffer: Buffer, offset: number, length: number, position: number) {
-    if (!this.lineDiscipline.prompt) {
+    console.log('readBuffer', buffer, offset, length, position);
+    if (!this.rawMode && !this.lineDiscipline._active) {
       this.lineDiscipline.prompt(this._promptPrefix, this._continuationPromptPrefix);
     }
 
-    return await this.pipe.readBuffer(buffer, offset, length, position);
+    return await this.pipe.readBuffer(buffer, offset, buffer.byteLength, position);
   }
 
   pipe = new InMemoryPipe();

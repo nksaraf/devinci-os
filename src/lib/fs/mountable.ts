@@ -2,7 +2,7 @@ import { BaseFileSystem } from './core/file_system';
 import type { IFileSystem, FileSystemOptions } from './core/file_system';
 import { ApiError, ErrorCode } from '../error';
 import * as path from 'path';
-import { mkdirpSync } from './utils/util';
+import { mkdirp, mkdirpSync } from './utils/util';
 import { constants } from '../constants';
 
 /**
@@ -84,7 +84,7 @@ export default class MountableFileSystem extends BaseFileSystem implements IFile
   /**
    * Mounts the file system at the given mount point.
    */
-  public mount(mountPoint: string, fs: IFileSystem): void {
+  public async mount(mountPoint: string, fs: IFileSystem): Promise<void> {
     if (mountPoint[0] !== '/') {
       mountPoint = `/${mountPoint}`;
     }
@@ -92,7 +92,7 @@ export default class MountableFileSystem extends BaseFileSystem implements IFile
     if (this.mntMap[mountPoint]) {
       throw new ApiError(ErrorCode.EINVAL, 'Mount point ' + mountPoint + ' is already taken.');
     }
-    mkdirpSync(mountPoint, 0x1ff, this.rootFs);
+    await mkdirp(mountPoint, 0x1ff, this.rootFs);
     this.mntMap[mountPoint] = fs;
     this.mountList.push(mountPoint);
     this.mountList = this.mountList.sort((a, b) => b.length - a.length);

@@ -56,7 +56,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
     //     `Invalid buffer: Uint8Array is ${this._buffer.length} long, yet Stats object specifies that file is ${this._stat.size} long.`,
     //   );
     // }
-    this._stat = _stat ?? new Stats(fileType, 0);
+    this._stat = _stat ?? new Stats(fileType, -1);
   }
 
   createReadStream() {
@@ -438,7 +438,7 @@ export default abstract class VirtualFile extends SynchronousBaseFile {
 
   public async readString(): Promise<string> {
     let buffer = new Uint8Array(100);
-    let readLength = await this.readBuffer(buffer, 0, length, 0);
+    let readLength = await this.read(buffer, 0, 100, 0);
     return new TextDecoder().decode(buffer.subarray(0, readLength));
   }
 

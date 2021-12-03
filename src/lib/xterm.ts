@@ -1,6 +1,6 @@
 import { Terminal } from 'xterm';
-import { TTY, MOBILE_KEYBOARD_EVENTS } from './tty';
-import type { IDisposable, TerminalDevice } from './tty';
+import { TTY, MOBILE_KEYBOARD_EVENTS } from './tty/tty';
+import type { IDisposable, TerminalDevice } from './tty/tty';
 
 // dispatches 'data' event when data is received from the terminal
 // listen to this to handle data
@@ -166,8 +166,8 @@ export class Xterm extends Terminal implements TerminalDevice {
     this.tty.setInput(this.tty.getInput(), true);
   };
 
-  write(data: Uint8Array) {
+  write(data: Uint8Array, cb) {
     // console.log(new TextDecoder().decode(data));
-    super.write(data);
+    super.write(data, cb);
   }
 }

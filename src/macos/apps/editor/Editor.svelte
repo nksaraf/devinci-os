@@ -10,6 +10,7 @@
   import TrafficLights from 'os/macos/ui/Window/TrafficLights.svelte';
   import type { WindowAPI } from '__/stores/window.store';
   import ExpandSvg from '@ui/components/SVG/traffic-lights/ExpandSVG.svelte';
+  import { readAll } from 'https://deno.land/std@0.116.0/streams/conversion.ts';
   let divEl: HTMLDivElement = null;
   let editor: monaco.editor.IStandaloneCodeEditor;
   let Monaco: typeof monaco;
@@ -43,9 +44,12 @@
       await Deno.writeTextFile(args.path, editor.getValue());
     }
 
-    let data = await Deno.readTextFile(args.path);
+    let data = await Deno.open(args.path, { read: true });
+
+    let d = await readAll(data);
+    console.log(d);
     editor = Monaco.editor.create(divEl, {
-      value: data as string,
+      value: new TextDecoder().decode(d),
       fontSize: 14,
       theme: 'vs-light',
       cursorStyle: 'line-thin',

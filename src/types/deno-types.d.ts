@@ -62,6 +62,7 @@ declare interface PerformanceMeasureOptions {
 }
 
 declare namespace Deno {
+  export let console: Console;
   /** A set of error constructors that are raised by Deno APIs. */
   export namespace errors {
     export class NotFound extends Error {}

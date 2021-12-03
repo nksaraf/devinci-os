@@ -1,5 +1,5 @@
 import type { IBufferLine } from 'xterm';
-import type { ActiveCharPrompt, ActivePrompt } from './shell-utils';
+import type { ActiveCharPrompt, ActivePrompt } from './utils';
 import {
   closestLeftBoundary,
   closestRightBoundary,
@@ -7,9 +7,9 @@ import {
   getLastToken,
   hasTrailingWhitespace,
   isIncompleteInput,
-} from './shell-utils';
-import ShellHistory from './shell-history';
-import type { TTY } from '../tty';
+} from './utils';
+import ShellHistory from './history';
+import type { TTY } from './tty';
 import type { Xterm } from '../xterm';
 
 /**
@@ -135,7 +135,10 @@ export class LineDiscipline {
   //   throw new Error('Not Implemented');
   // }
 
-  async prompt(activePrompt: string = '> ', continuationPromptPrefix: string = '|') {
+  async prompt(
+    activePrompt: string = this.tty._promptPrefix,
+    continuationPromptPrefix: string = this.tty._continuationPromptPrefix,
+  ) {
     // If we are already prompting, do nothing...
     if (this._activeLine) {
       return await this._processPrompt();
@@ -143,6 +146,10 @@ export class LineDiscipline {
 
     try {
       this._activeLine = this.tty.prompt(activePrompt, continuationPromptPrefix);
+
+      this._activeLine.promise.then((data) => {
+        this.tty.handleLineComplete(data);
+      });
       this._active = true;
       return await this._processPrompt();
     } catch (e) {

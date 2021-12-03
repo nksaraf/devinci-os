@@ -1,8 +1,8 @@
-import type { DenixProcess } from '../denix';
+import type { Process } from '../denix';
 import { op_async, op_sync, Resource } from '../types';
 
 export const network = [
-  op_sync('op_net_listen', function (this: DenixProcess, args): OpConn {
+  op_sync('op_net_listen', function (this: Process, args): OpConn {
     switch (args.transport) {
       case 'tcp': {
         console.log('tcp listener', args);
@@ -27,7 +27,7 @@ export const network = [
       }
     }
   }),
-  op_async('op_net_accept', async function (this: DenixProcess, args): Promise<OpConn> {
+  op_async('op_net_accept', async function (this: Process, args): Promise<OpConn> {
     console.log('starting to accept', args);
 
     let listener = this.getResource<TcpListenerResource>(args.rid);
@@ -43,7 +43,7 @@ export const network = [
       remoteAddr: clientSocket.peerAddr,
     };
   }),
-  op_async('op_net_connect', async function (this: DenixProcess, args): Promise<OpConn> {
+  op_async('op_net_connect', async function (this: Process, args): Promise<OpConn> {
     switch (args.transport) {
       case 'tcp': {
         console.log('tcp listener', args);
@@ -67,14 +67,12 @@ export const network = [
     }
   }),
 
-  op_sync('op_http_start', function (this: DenixProcess, rid): number {
+  op_sync('op_http_start', function (this: Process, rid): number {
     let stream = this.getResource<TcpStreamResource>(rid);
     return this.addResource(new HttpConnResource(stream));
   }),
 
-  op_async('op_http_accept', async function (this: DenixProcess, rid): Promise<
-    [number, any, any, any]
-  > {
+  op_async('op_http_accept', async function (this: Process, rid): Promise<[number, any, any, any]> {
     let httpConn = this.getResource<HttpConnResource>(rid);
 
     let request = await httpConn.accept();
@@ -88,7 +86,7 @@ export const network = [
   }),
   op_async(
     'op_http_write_headers',
-    async function (this: DenixProcess, [rid, status, headers], respBody): Promise<void> {
+    async function (this: Process, [rid, status, headers], respBody): Promise<void> {
       let httpConn = this.getResource<HttpConnResource>(rid);
       console.log('written response', console.log(httpConn));
 
@@ -109,7 +107,7 @@ export const network = [
   ),
   {
     name: 'op_fetch',
-    sync: function (this: DenixProcess, arg) {
+    sync: function (this: Process, arg) {
       let requestRid = this.addResource(
         new FetchRequestResource(
           arg.url,
@@ -125,8 +123,8 @@ export const network = [
     },
   },
 
-  op_async('op_fetch_send', async function (this: DenixProcess, rid: number) {
-    let httpRequest = this.resourceTable.get(rid) as FetchRequestResource;
+  op_async('op_fetch_send', async function (this: Process, rid: number) {
+    let httpRequest = this.getResource(rid) as FetchRequestResource;
 
     let url = new URL(httpRequest.url);
     if (url.protocol === 'file:') {
@@ -248,7 +246,7 @@ export class Socket extends EventTarget {
   isListening: boolean;
   addr: OpAddr;
   peerAddr: OpAddr;
-  listen(kernel: DenixProcess, addr: OpAddr) {
+  listen(kernel: Process, addr: OpAddr) {
     kernel.net.bind(addr, this);
     kernel.net.listen(this);
     this.addr = addr;
@@ -256,7 +254,7 @@ export class Socket extends EventTarget {
     return;
   }
 
-  constructor(public kernel: DenixProcess) {
+  constructor(public kernel: Process) {
     super();
     this.addEventListener('packet', (event) => {
       console.log('packet', event.detail);

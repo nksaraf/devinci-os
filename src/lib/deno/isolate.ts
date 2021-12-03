@@ -1,6 +1,7 @@
-import { ApiError, ErrorCodeToName, ERROR_KIND_TO_CODE } from '../error';
-import type { DenixProcess } from './denix';
+import { ApiError } from '../error';
+import type { Process } from '../denix/denix';
 import { loadDenoRuntime } from './runtime';
+import type { ResourceTable } from '../denix/types';
 
 export type Context = typeof globalThis;
 
@@ -20,9 +21,12 @@ interface IDenoCore {
   syncOpsCache?(): void;
 }
 
+// This is an isolated Deno environment. It needs to be connected to a process
+// for its ops to be available. This loads the Deno runtime and sets it up using the
+// provided process. this is the public API available to the user, not the process itself
 export class DenoIsolate extends EventTarget {
   id: number;
-  process: DenixProcess;
+  process: Process;
   core: IDenoCore;
 
   wasmStreamingCallback;
@@ -30,19 +34,23 @@ export class DenoIsolate extends EventTarget {
   Deno: typeof Deno;
   onConnect: any;
 
-  constructor({ onConnect = async (port: MessagePort) => {} } = {}) {
+  constructor({} = {}) {
     super();
-    this.onConnect = onConnect;
 
     this.core = {
       opcallSync: this.opcallSync.bind(this),
       opcallAsync: this.opcallAsync.bind(this),
       callConsole: (oldLog, newLog, ...args) => {
-        console.log(...args);
+        oldLog(...args);
 
-        if (args[0].startsWith('op sync') || args[0].startsWith('op async')) {
+        if (
+          typeof args[0] === 'string' &&
+          (args[0].startsWith('op sync') || args[0].startsWith('op async'))
+        ) {
           return;
         }
+
+        newLog(...args);
 
         this.process.dispatchEvent(new CustomEvent('console', { detail: args.toString() }));
       },
@@ -72,24 +80,24 @@ export class DenoIsolate extends EventTarget {
     this.id = ISOLATE_ID++;
   }
 
-  public context: Context;
+  public window: Context;
 
   opcallSync(op_code: number, arg1: any, arg2: any) {
     return this.process.opSync(op_code, arg1, arg2);
   }
 
-  opcallAsync(...args: Parameters<DenixProcess['opAsync']>) {
+  opcallAsync(...args: Parameters<Process['opAsync']>) {
     this.process.opAsync(...args).then((value) => {
       this.core.opresolve(args[1], value);
     });
   }
 
-  async attach(kernel: DenixProcess) {
+  async attach(kernel: Process) {
     this.process = kernel;
 
     let context = await loadDenoRuntime(this.core, kernel.fs);
 
-    this.context = context;
+    this.window = context;
 
     this.core.syncOpsCache();
 
@@ -98,16 +106,17 @@ export class DenoIsolate extends EventTarget {
       debugFlag: true,
       noColor: false,
       unstableFlag: true,
-      args: [],
+      args: kernel.cmd,
       // location: window.location.href,
       // ...options,
     });
 
-    this.Deno = this.context.Deno;
+    this.Deno = this.window.Deno;
 
+    // @ts-ignore
     this.Deno.core.registerErrorClass('ApiError', ApiError);
 
-    Object.assign(this.context, {
+    Object.assign(this.window, {
       WebAssembly: {
         compileStreaming: async (source) => {
           let res = await source;
@@ -121,7 +130,7 @@ export class DenoIsolate extends EventTarget {
     });
   }
 
-  async connectRemote(port: MessagePort) {
+  async connectRemote(port: MessagePort, resourceTable: ResourceTable) {
     await this.onConnect(port);
   }
 
@@ -134,17 +143,30 @@ export class DenoIsolate extends EventTarget {
     path: string,
     options: {
       args?: string[];
-    } = {},
+      mode?: 'script' | 'module';
+    } = {
+      mode: 'script',
+    },
   ) {
     if (path.endsWith('.wasm')) {
       return await this.runWASM(path, options);
     }
 
-    await new Function(`return async () => {
-      return await import("${path}?script")
-    }`)()();
+    if (options.mode === 'script') {
+      let result = await new Function(`return async () => {
+        return await import("${path}?script")
+      }`)()();
 
-    return;
+      return result;
+    } else {
+      let result = await new Function(`return async () => {
+        const { main } = await import("${path}")
+        console.log(main);
+        return await main(${JSON.stringify(options.args)})
+      }`)()();
+
+      return result;
+    }
   }
 
   async runWASM(path: string, options: { args?: string[] }) {

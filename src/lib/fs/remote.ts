@@ -34,6 +34,27 @@ export class RemoteFile extends VirtualFile {
     ]) as number;
   }
 
+  async read(buffer: Uint8Array, offset: number, length: number, position: number) {
+    console.log('readingggg', buffer, offset, length, position);
+    const sharedBuffer = new SharedArrayBuffer(buffer.byteLength);
+    let nread = await this.proxy.read(new Uint8Array(sharedBuffer), offset, length, position);
+    if (nread > 0) {
+      buffer.set(new Uint8Array(sharedBuffer, 0, nread));
+      return nread;
+    }
+    return 0;
+  }
+
+  public readSync(buffer: Uint8Array, offset: number, length: number, position: number): number {
+    console.log('heree');
+    return syncFileOpCallXhr(this.getPath(), 'readSync', [
+      buffer,
+      offset,
+      length,
+      position,
+    ]) as number;
+  }
+
   async write(
     buffer: Uint8Array,
     offset: number,
@@ -70,6 +91,7 @@ export class RemoteFileSystem {
 
 function syncOpCallXhr(op_code: string, args) {
   const xhr = new XMLHttpRequest();
+  console.log('fs', op_code, ...args);
   xhr.open('POST', '/~fs/' + op_code, false);
   xhr.send(JSON.stringify([op_code, args.map(toWireValue)]));
   // look ma, i'm synchronous (•‿•)
@@ -91,7 +113,7 @@ function syncFileOpCallXhr(path: string, op_code: string, args) {
   xhr.send(JSON.stringify([path, op_code, args.map(toWireValue)]));
   // look ma, i'm synchronous (•‿•)
   console.log('json response', xhr.responseText);
-  let result = JSON.parse(xhr.responseText.length > 0 ? xhr.responseText : 'null');
+  let result = JSON.parse(xhr.responseText.length > 0 ? xhr.responseText : 'null') ?? [null, null];
   console.log(result);
 
   if (result[0]) {
@@ -99,7 +121,8 @@ function syncFileOpCallXhr(path: string, op_code: string, args) {
   }
 
   if (!result[1]) {
-    throw new Error('No result');
+    // throw new Error('No result');
+    return undefined;
   }
 
   const value = fromWireValue(result[1][0]);
