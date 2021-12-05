@@ -14,6 +14,7 @@ import { newPromise } from './promise';
 import { ApiError, ERROR_KIND_TO_CODE } from './error';
 import { fromWireValue, toWireValue } from './comlink/http.handlers';
 import { constants } from './constants';
+import { processManager } from '$lib/denix/bootup';
 
 export let broadcastChannel: BroadcastChannel = new BroadcastChannel('localhost');
 
@@ -59,6 +60,24 @@ async function createLocalNetwork() {
       req.url = new URL('http://localhost:3000/src/deno/router.ts');
       return transpileHandler(req, res, ctx);
     }),
+    rest.get('/_/lib/deno/test_util/std/*', (req, res, ctx) => {
+      req.url = new URL(
+        'https://deno.land/std@0.116.0/' +
+          req.url.pathname.slice('/_/lib/deno/test_util/std/'.length),
+      );
+      return transpileHandler(req, res, ctx);
+    }),
+    rest.get('/_/*', async (req, res, ctx) => {
+      let file = await Deno.readFile(req.url.pathname.slice(2));
+      let data = await transpiler.transpile(new Uint8Array(file));
+
+      if (req.url.search.includes('script')) {
+        data =
+          'import.meta.main = true\n' +
+          (data.startsWith('#!') ? data.substring(data.indexOf('\n')) : data);
+      }
+      return res(ctx.body(data), ctx.set('Content-Type', 'application/javascript'));
+    }),
     rest.post('/~fs*', async (req, res, ctx) => {
       // HANDING SYNCHRONOUS FILE SYSTEM OPERATIONS
       let [fnName, args] = JSON.parse(req.body as string) as [string, any[]];
@@ -93,6 +112,42 @@ async function createLocalNetwork() {
         throw new Error('For async operations use the comlink connection');
       }
     }),
+
+    rest.post('/~proc*', async (req, res, ctx) => {
+      // HANDING SYNCHRONOUS FILE SYSTEM OPERATIONS
+      let [fnName, args] = JSON.parse(req.body as string) as [string, any[]];
+
+      let argList = args.map((a) => fromWireValue(a[0]));
+      console.log(fnName, argList);
+
+      if (fnName.endsWith('Sync')) {
+        try {
+          let result = await processManager[fnName.substring(0, fnName.length - 4)](...argList);
+          console.log(result, toWireValue(result));
+          return res(ctx.json([null, toWireValue(result)] ?? [null]));
+        } catch (e) {
+          if (e instanceof ApiError) {
+            console.log(e.code);
+            let getCode = Object.entries(ERROR_KIND_TO_CODE).find(([k, v]) => v === e.errno);
+            console.log('error code', getCode);
+            return res(
+              ctx.json([
+                {
+                  $err_class_name: getCode[0],
+                  code: getCode[1],
+                  stack: e.stack,
+                  message: e.message,
+                },
+              ]),
+            );
+          }
+          throw e;
+        }
+      } else {
+        throw new Error('For async operations use the comlink connection');
+      }
+    }),
+
     rest.post('/~file*', async (req, res, ctx) => {
       // HANDING SYNCHRONOUS FILE SYSTEM OPERATIONS
       let [path, fnName, args] = JSON.parse(req.body as string) as [string, string, any[]];

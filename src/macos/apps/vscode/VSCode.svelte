@@ -2,7 +2,7 @@
   import { getContext, onMount } from 'svelte';
   // import fs from 'os/kernel/fs';
   import TrafficLights from 'os/macos/ui/Window/TrafficLights.svelte';
-  import type { WindowAPI } from '__/stores/window.store';
+  import type { WebViewAPI } from '__/stores/window.store';
   import ExpandSvg from '@ui/components/SVG/traffic-lights/ExpandSVG.svelte';
   import { createVSCode } from 'vs/devinci/workbench';
 
@@ -53,7 +53,7 @@
     };
   });
 
-  const win = getContext('windowAPI') as WindowAPI;
+  const win = getContext('windowAPI') as WebViewAPI;
 </script>
 
 <div class="h-full flex flex-col overflow-hidden">

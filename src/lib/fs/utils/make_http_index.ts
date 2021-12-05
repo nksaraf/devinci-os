@@ -1,6 +1,6 @@
-#! /usr/bin/env tsm
+#! /usr/bin/env deno run --allow-read --compat --unstable
 import * as fs from 'fs';
-import * as path from 'path';
+import * as path from 'path-browserify';
 
 const symLinks: { [dev: number]: { [ino: number]: boolean } } = {};
 const ignoreFiles = ['.git', 'node_modules', 'bower_components', 'build'];
@@ -18,15 +18,16 @@ function rdSync(dpath: string, tree: FileTree, name: string): FileTree {
     try {
       // Avoid infinite loops.
       const lstat = fs.lstatSync(fpath);
+      let key = lstat.dev as number;
       if (lstat.isSymbolicLink()) {
-        if (!symLinks[lstat.dev]) {
-          symLinks[lstat.dev] = {};
+        if (!symLinks[key]) {
+          symLinks[key] = {};
         }
         // Ignore if we've seen it before
-        if (symLinks[lstat.dev][lstat.ino]) {
+        if (symLinks[key][lstat.ino as number]) {
           return;
         }
-        symLinks[lstat.dev][lstat.ino] = true;
+        symLinks[key][lstat.ino as number] = true;
       }
       const fstat = fs.statSync(fpath);
       if (fstat.isDirectory()) {

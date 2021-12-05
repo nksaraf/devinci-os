@@ -1,15 +1,12 @@
-import * as monacoApi from "monaco-editor";
+import type * as monacoApi from 'monaco-editor';
 
 // as described in issue: https://github.com/NeekSandhu/monaco-textmate/issues/5
-export const textMateToMonacoToken = (
-  editor: monacoApi.editor.ICodeEditor,
-  scopes: string[]
-) => {
-  let scopeName = "";
+export const textMateToMonacoToken = (editor: monacoApi.editor.ICodeEditor, scopes: string[]) => {
+  let scopeName = '';
   // get the scope name. Example: cpp , java, haskell
   for (let i = scopes[0].length - 1; i >= 0; i -= 1) {
     const char = scopes[0][i];
-    if (char === ".") {
+    if (char === '.') {
       break;
     }
     scopeName = char + scopeName;
@@ -37,12 +34,11 @@ export const textMateToMonacoToken = (
      */
     for (let i = scope.length - 1; i >= 0; i -= 1) {
       const char = scope[i];
-      if (char === ".") {
+      if (char === '.') {
         const token = scope.slice(0, i);
         if (
-          editor["_themeService"]
-            .getColorTheme()
-            ._tokenTheme._match(token + "." + scopeName)._foreground > 1
+          editor['_themeService'].getColorTheme()._tokenTheme._match(token + '.' + scopeName)
+            ._foreground > 1
         ) {
           return token;
         }
@@ -50,18 +46,15 @@ export const textMateToMonacoToken = (
     }
     for (let i = scope.length - 1; i >= 0; i -= 1) {
       const char = scope[i];
-      if (char === ".") {
+      if (char === '.') {
         const token = scope.slice(0, i);
 
-        if (
-          editor["_themeService"].getColorTheme()._tokenTheme._match(token)
-            ._foreground > 1
-        ) {
+        if (editor['_themeService'].getColorTheme()._tokenTheme._match(token)._foreground > 1) {
           return token;
         }
       }
     }
   }
 
-  return "unmatched";
+  return 'unmatched';
 };

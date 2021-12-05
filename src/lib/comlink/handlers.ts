@@ -219,7 +219,12 @@ transferHandlers.set('RESOURCE_TABLE', {
         let fileResource = value as FileResource;
         let file = fileResource.file as VirtualFile;
         if (file instanceof SharedFile) {
-          obj[key] = toWireValue(file);
+          const [value, transfers] = toWireValue(file);
+          obj[key] = {
+            type: 'file',
+            file: value,
+          };
+          transferables = transferables.concat(transfers);
         } else {
           const sharedFile = new SharedFile(file.getPath(), file.getFlag(), file.getStats(), file);
           const [value, transfers] = toWireValue(sharedFile);
@@ -232,7 +237,7 @@ transferHandlers.set('RESOURCE_TABLE', {
       }
     }
 
-    console.log(obj);
+    console.log(obj, transferables);
 
     return [obj, transferables];
   },
@@ -242,7 +247,7 @@ transferHandlers.set('RESOURCE_TABLE', {
     for (let [key, value] of Object.entries(obj)) {
       if (value.type === 'file') {
         let file = fromWireValue(value.file) as SharedFile;
-        resourceTable[key] = new FileResource(file, file.getPath());
+        resourceTable[key] = new FileResource(file);
       }
     }
     return resourceTable;

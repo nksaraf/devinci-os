@@ -4,7 +4,7 @@
   import { getContext } from 'svelte';
 
   import { selection } from '__/stores/fs.store';
-  import { createWindow } from '__/stores/window.store';
+  import { WebView } from '__/stores/window.store';
   import editor from '../editor/editor';
   import finder from './finder';
 
@@ -42,14 +42,21 @@
     console.log(finderPath, item.path);
 
     if (item.stats.isFile) {
-      createWindow(editor(), {
+      new WebView({
+        appID: 'editor',
+        title: 'Editor',
+        loadComponent: () => import('os/macos/apps/editor/Editor.svelte').then((m) => m.default),
         args: {
           path: item.path,
         },
+        trafficLights: false,
       }).open();
     } else {
       if (onDesktop) {
-        createWindow(finder(), {
+        new WebView({
+          title: item.name,
+          appID: 'finder',
+          loadComponent: async () => (await import('./Finder.svelte')).default,
           args: {
             path: item.path,
           },

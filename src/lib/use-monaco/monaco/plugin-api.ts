@@ -16,8 +16,8 @@ declare module 'monaco-editor' {
     export interface IRemotePlugin {
       dependencies?: string[];
       name?: string;
-      url?: string;
-      format?: 'url';
+      url: string;
+      format: 'url';
     }
 
     export function isInstalled(name: string): boolean;
@@ -191,38 +191,41 @@ export default (monaco: typeof monacoApi) => {
     return true;
   }
 
-  Object.assign(monaco, {
-    plugin: {
-      isInstalled: (name: string) => !!installed[name],
-      install: async (...plugins) => {
-        let disposables: any[] = [];
-        for (var i in plugins) {
-          let plugin = plugins[i];
+  // @ts-ignore
+  monaco.plugin = {
+    isInstalled: (name: string) => !!installed[name],
+    install: async (...plugins) => {
+      let disposables: any[] = [];
+      for (var i in plugins) {
+        let plugin = plugins[i];
 
-          plugin =
-            typeof plugin === 'function' ? plugin : plugin.url ? await fetchPlugin(plugin) : null;
+        plugin =
+          typeof plugin === 'function'
+            ? plugin
+            : plugin.url
+            ? await fetchPlugin(plugin as monacoApi.plugin.IRemotePlugin)
+            : null;
 
-          if (!plugin) {
-            throw new Error(`Couldn't resolve plugin, ${plugin}`);
-          }
-
-          plugin.label = plugin.label ?? plugin.name;
-
-          if (installed[plugin.label]) {
-            console.log(`[monaco] skipped installing ${plugin.label} (already installed)`);
-            return;
-          }
-
-          if (!(await checkDependencies(plugin))) {
-            continue;
-          }
-
-          disposables.push(await installPlugin(plugin));
+        if (!plugin) {
+          throw new Error(`Couldn't resolve plugin, ${plugin}`);
         }
 
-        return asDisposable(disposables.filter(Boolean));
-      },
+        plugin.label = plugin.label ?? plugin.name;
+
+        if (installed[plugin.label]) {
+          console.log(`[monaco] skipped installing ${plugin.label} (already installed)`);
+          return;
+        }
+
+        if (!(await checkDependencies(plugin))) {
+          continue;
+        }
+
+        disposables.push(await installPlugin(plugin));
+      }
+
+      return asDisposable(disposables.filter(Boolean));
     },
-  });
+  };
   return monaco;
 };

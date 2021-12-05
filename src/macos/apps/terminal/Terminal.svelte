@@ -1,46 +1,37 @@
 <script lang="ts">
   import { getContext, onMount } from 'svelte';
 
-  import type { WindowAPI } from '__/stores/window.store';
+  import type { WebViewAPI } from '__/stores/window.store';
   import TrafficLights from 'os/macos/ui/Window/TrafficLights.svelte';
   import ExpandSvg from '@ui/components/SVG/traffic-lights/ExpandSVG.svelte';
   import { Xterm } from '$lib/xterm';
-  import { proxy } from 'os/lib/comlink/mod';
-  import { createResourceTable } from 'os/lib/denix/types';
-  import { FileResource } from 'os/lib/denix/ops/fs.ops';
+  import { fs } from 'os/lib/fs';
   import type { TTY } from 'os/lib/tty/tty';
-  import { fs } from '$lib/fs';
 
   let divEl: HTMLDivElement = null;
 
   onMount(() => {
-    const terminal = new Xterm();
-
     (async () => {
-      debugger;
-      const tty = (await fs.open('/dev/tty1', 1, 0x666)) as TTY;
+      const tty = (await fs.open('/dev/tty1', 1, 0x666)).file as TTY;
+      console.log(tty);
+      const terminal = new Xterm();
+
       tty.connect(terminal);
 
-      const resourceTable = createResourceTable();
-      resourceTable[0] = new FileResource(tty, 'tty1');
-      resourceTable[1] = new FileResource(tty, 'tty1');
-      resourceTable[2] = new FileResource(tty, 'tty1');
-      navigator.process
-        .spawn({
-          tty: proxy(tty),
-          cmd: ['deno', 'run', '/src/lib/desh/src/crsh.js'],
-          cwd: '/lib/deno',
-          resourceTable,
-        })
-        .then(async (process) => {
-          terminal.open(divEl);
-        });
+      let process = Deno.run({
+        cmd: ['deno', 'run', '/bin/terminal.ts'],
+        cwd: '/lib/deno',
+        tty: '/dev/tty1',
+      });
+
+      console.log(await process.status());
+      terminal.open(divEl);
     })();
   });
 
   export let args;
 
-  const win = getContext('windowAPI') as WindowAPI;
+  const win = getContext('windowAPI') as WebViewAPI;
 </script>
 
 <div class="h-full flex flex-col overflow-hidden">

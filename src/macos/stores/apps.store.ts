@@ -1,13 +1,13 @@
 import { derived, writable } from 'svelte/store';
 import { openWindows } from './window.store';
-import type { WindowConfig } from './window.store';
+import type { WebViewConfig } from './window.store';
 
 export type AppID = string;
 
 export type AppConfig = {
   id: string;
   title: string;
-  window?: WindowConfig | (() => WindowConfig);
+  window?: WebViewConfig | (() => WebViewConfig);
   dock?: {
     icon?: string;
     onClick?: () => void;
@@ -16,7 +16,7 @@ export type AppConfig = {
 
 export const createAppConfig = (
   et: Partial<Omit<AppConfig, 'window'>> & {
-    window?: Partial<WindowConfig> | (() => Partial<WindowConfig>);
+    window?: Partial<WebViewConfig> | (() => Partial<WebViewConfig>);
   },
 ): AppConfig => et as AppConfig;
 

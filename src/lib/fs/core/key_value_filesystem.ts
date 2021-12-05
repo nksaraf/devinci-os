@@ -3,7 +3,7 @@ import { ApiError, ErrorCode } from '$lib/error';
 import { default as Stats, FileType } from './stats';
 import type { File } from './file';
 import type { FileFlagString } from './file_flag';
-import * as path from 'path';
+import * as path from 'path-browserify';
 import Inode from './inode';
 import InMemoryFile from './inmemory_file';
 import { emptyBuffer } from '../utils/util';

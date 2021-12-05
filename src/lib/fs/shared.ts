@@ -46,12 +46,26 @@ export class SharedFile extends VirtualFile {
     return num;
   }
 
+  public writeSync(buffer: Uint8Array, offset: number, length: number, position: number): number {
+    let num = this.file.writeSync(buffer, offset, length, position);
+    return num;
+  }
+
   public async close(): Promise<void> {
     this.unref();
     await this.file.sync();
 
     if (this.refs === 0) {
       await this.file.close();
+    }
+  }
+
+  public closeSync(): void {
+    this.unref();
+    this.file.syncSync();
+
+    if (this.refs === 0) {
+      this.file.closeSync();
     }
   }
 
@@ -88,6 +102,20 @@ export class SharedFileSystem extends VirtualFileSystem {
     }
 
     let file = (await super.open(...args)) as VirtualFile;
+
+    let sharedFile = new SharedFile(file.getPath(), file.getFlag(), file.getStats(), file);
+    sharedFile.ref();
+    this.openedFiles[args[0]] = sharedFile;
+    return sharedFile;
+  }
+
+  openSync(...args: Parameters<typeof VirtualFileSystem.prototype.open>) {
+    if (this.openedFiles[args[0]]) {
+      this.openedFiles[args[0]].ref();
+      return this.openedFiles[args[0]];
+    }
+
+    let file = super.openSync(...args) as VirtualFile;
 
     let sharedFile = new SharedFile(file.getPath(), file.getFlag(), file.getStats(), file);
     sharedFile.ref();

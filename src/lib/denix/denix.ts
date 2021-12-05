@@ -1,15 +1,16 @@
-import  type{ Remote } from 'comlink';
+import type { Remote } from 'comlink';
 import { Resource, type ResourceTable, op_sync, type Op, createResourceTable } from './types';
 import { fromBase64 } from '$lib/base64';
 import { ApiError, ErrorCodeToName, ERROR_KIND_TO_CODE } from '$lib/error';
-import type { RemoteFileSystem } from '$lib/fs/remote';
 import type { VirtualFileSystem } from '$lib/fs/virtual';
+import type { File } from '$lib/fs/core/file';
 import { builtIns } from './ops/builtIns.ops';
 import { FileResource, fsOps } from './ops/fs.ops';
 import { LocalNetwork, network } from './ops/network.ops';
 import { url } from './ops/url.ops';
-import { TTY } from '../tty/tty';
-import { fs as globalFS } from '$lib/fs'
+import { fs as globalFS } from '$lib/fs';
+import { test } from './ops/test.ops';
+import type { ProcessManager } from './proc_manager';
 
 function syncOpCallXhr(op_code: number, arg1: any, arg2: any) {
   const xhr = new XMLHttpRequest();
@@ -23,84 +24,13 @@ function syncOpCallXhr(op_code: number, arg1: any, arg2: any) {
   return result;
 }
 
-// export class DenoRemoteHost implements IDenoHost {
-//   async getBootstrapCore(): Promise<any> {
-//     return this.core;
-//   }
-
-//   setOpsResolve(cb: any) {
-//     this.proxy.setOpsResolve(proxy(cb));
-//   }
-
-//   proxy: Remote<Kernel>;
-
-//   getOpsMappings() {
-//     return this.proxy.getOpsMappings();
-//   }
-
-//   core: {
-//     opcallSync: (index: any, arg1: any, arg2: any) => any;
-//     opcallAsync: (index: any, promiseId: any, arg1: any, arg2: any) => any;
-//     callConsole: (oldLog: any, newLog: any, ...args: any[]) => void;
-//     setMacrotaskCallback: (cb: any) => void;
-//     setWasmStreamingCallback: (cb: any) => void;
-//     decode: (data: Uint8Array) => string;
-//     encode: (data: string) => Uint8Array;
-//   };
-
-//   overrideOps: Op[];
-
-//   constructor(endpoint: any) {
-//     this.proxy = wrap(endpoint);
-//     this.core = {
-//       opcallSync: (index, arg1, arg2) => {
-//         console.group('op sync', index, arg1, arg2);
-//         let result = syncOpCallXhr(index, arg1, arg2);
-//         console.log(result);
-//         console.groupEnd();
-
-//         return result;
-//       },
-//       opcallAsync: async (index, promiseId, arg1, arg2): Promise<any> => {
-//         console.group('op async', await this.proxy.ops[index].name, arg1, arg2);
-//         let result = await this.proxy.opcallAsync(index, promiseId, arg1, arg2);
-//         console.log(result);
-//         console.groupEnd();
-//         return result;
-//       },
-//       callConsole: (oldLog, newLog, ...args) => {
-//         oldLog(...args);
-//       },
-//       setMacrotaskCallback: (cb) => {
-//         console.log('macrostask callback');
-//       },
-//       setWasmStreamingCallback: (cb) => {
-//         console.log('wasm streaming callback');
-//       },
-
-//       decode: function (data: Uint8Array) {
-//         return new TextDecoder().decode(new Uint8Array(data));
-//       },
-
-//       encode: function (data: string) {
-//         return new TextEncoder().encode(data);
-//       },
-//     };
-//   }
-// }
-
-// Things you might have to do:
-// For main process:
-// setup the FS worker, connect the global fs of the main window as a remote of that
-
 export interface ProcessOptions {
   pid: number;
   resourceTable?: { [key: number]: Resource };
-  tty?: TTY;
+  tty?: string;
   fs?: VirtualFileSystem;
+  proc?: ProcessManager;
   net?: LocalNetwork;
-  fsRemote?: RemoteFileSystem;
-  fsWorker?: Worker;
   stdin?: number;
   stdout?: number;
   stderr?: number;
@@ -115,12 +45,10 @@ export class Process extends EventTarget {
   env: { [key: string]: any } = {};
   cwd: any = '/';
   fs: VirtualFileSystem;
-  fsRemote: RemoteFileSystem;
-  fsWorker?: Worker;
+  proc: ProcessManager;
   resourceTable: ResourceTable;
-
   private nextRid = 0;
-  public tty: TTY;
+  tty: string;
   stdin: number;
   stdout: number;
   stderr: number;
@@ -137,29 +65,29 @@ export class Process extends EventTarget {
     return `proc` + this.pid;
   }
 
-  async init({ 
-    pid, 
-    parentPid = undefined, 
-    resourceTable = createResourceTable(), 
-    tty = new TTY('/dev/tty' + pid), 
-    fs = globalFS, 
-    net = new LocalNetwork(), 
-    fsRemote, 
-    fsWorker, 
-    stdin = 0, 
-    stdout = 1, 
-    stderr = 2, 
-    env = {}, 
-    cwd = '/', 
-    cmd = ['/src/lib/desh/index.ts']
-   }: Partial<ProcessOptions>): Promise<void> {
+  async init({
+    pid,
+    parentPid = undefined,
+    resourceTable = createResourceTable(),
+    tty = '/dev/tty0',
+    fs = globalFS,
+    proc = undefined,
+    net = new LocalNetwork(),
+    stdin = 0,
+    stdout = 1,
+    stderr = 2,
+    env = {},
+    cwd = '/',
+    cmd = ['/src/lib/desh/index.ts'],
+  }: Partial<ProcessOptions>): Promise<void> {
     this.pid = pid;
     this.parentPid = parentPid;
     this.resourceTable = resourceTable;
     this.tty = tty;
     this.fs = fs;
-    this.fsRemote = fsRemote;
-    this.fsWorker = fsWorker;
+    this.proc = proc;
+    // this.fsRemote = fsRemote;
+    // this.fsWorker = fsWorker;
     this.stdin = stdin;
     this.stdout = stdout;
     this.stderr = stderr;
@@ -168,21 +96,40 @@ export class Process extends EventTarget {
     this.net = net;
     this.nextRid = Object.keys(this.resourceTable).length;
     this.cmd = cmd;
-    this.initStdio();
+    await this.initStdio();
     this.initOps();
   }
 
   async run() {
-    console.log(this.cmd)
-    await import(`/bin/${this.cmd[0]}.ts?script`)
+    console.log(this.cmd);
+    await import(`/bin/${this.cmd[0]}.ts?script`);
   }
 
   #_ops: Op[];
 
-  private initStdio() {
-    this.stdin = this.getResource(this.stdin) ? this.stdin : this.addResource(new FileResource(this.tty, '/dev/tty0'));
-    this.stdout =this.getResource(this.stdout) ? this.stderr : this.addResource(new FileResource(this.tty, '/dev/tty0'));
-    this.stderr =this.getResource(this.stderr) ? this.stderr : this.addResource(new FileResource(this.tty, '/dev/tty0'));
+  getFileResource(path: string | number) {
+    if (typeof path === 'number') {
+      return this.getResource(path);
+    } else {
+      this.addResource(new FileResource(this.fs.openSync(path, 1, 0o666)));
+    }
+  }
+
+  _tty: File;
+  private async initStdio() {
+    let _tty = await this.fs.open(this.tty, 1, 0o666);
+    this.stdin =
+      typeof this.stdin === 'number' && this.getResource(this.stdin)
+        ? this.stdin
+        : this.addResource(new FileResource(_tty));
+    this.stdout =
+      typeof this.stdout === 'number' && this.getResource(this.stdout)
+        ? this.stderr
+        : this.addResource(new FileResource(_tty));
+    this.stderr =
+      typeof this.stderr === 'number' && this.getResource(this.stderr)
+        ? this.stderr
+        : this.addResource(new FileResource(_tty));
   }
 
   private initOps() {
@@ -219,6 +166,7 @@ export class Process extends EventTarget {
       ...network,
       ...fsOps,
       ...url,
+      ...test,
 
       {
         name: 'op_encoding_normalize_label',
@@ -260,7 +208,7 @@ export class Process extends EventTarget {
         sync: (data) => {
           return fromBase64(data);
         },
-      }
+      },
     );
   }
 
@@ -268,8 +216,6 @@ export class Process extends EventTarget {
     return this.#_ops;
   }
 
-
-    
   get opsIndex() {
     return this.ops.map((o, index) => [o.name, index]).slice(1);
   }
@@ -309,7 +255,7 @@ export class Process extends EventTarget {
       console.log('opcall sync', this.ops[index].name, opResult);
       return opResult ?? null;
     } catch (e) {
-      console.log("SOME ERROR", e);
+      console.log('SOME ERROR', e);
       if (e instanceof ApiError) {
         console.log(e.code);
         let getCode = Object.entries(ERROR_KIND_TO_CODE).find(([k, v]) => v === e.errno);
@@ -319,24 +265,23 @@ export class Process extends EventTarget {
             $err_class_name: getCode[0],
             code: getCode[1],
             message: getCode[1],
-            stack: e.stack
+            stack: e.stack,
           };
-        } else  {
+        } else {
           return {
             $err_class_name: 'Error',
             code: e.code,
             message: e.message,
-            stack: e.stack
+            stack: e.stack,
           };
         }
-        
       } else if (e.$err_class_name) {
         return e;
       } else if (e instanceof Error) {
         return {
           $err_class_name: 'Error',
           message: e.message,
-          stack: e.stack
+          stack: e.stack,
         };
       }
       throw e;
@@ -358,15 +303,13 @@ export class Process extends EventTarget {
           $err_class_name: getCode[0],
           code: ErrorCodeToName[getCode[1]],
           message: ErrorCodeToName[getCode[1]],
-          stack: e.stack
+          stack: e.stack,
         };
       }
       throw e;
     }
   }
 }
-
-
 
 export class RemoteKernel extends Process {
   proxy: Remote<Process>;

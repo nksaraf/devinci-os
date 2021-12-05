@@ -2,7 +2,7 @@ import { constants } from '$lib/constants';
 import HTTPRequest from '$lib/fs/http';
 import { mkdirp } from '$lib/fs/utils/util';
 import type { VirtualFileSystem } from '$lib/fs/virtual';
-import * as path from 'path';
+import * as path from 'path-browserify';
 import { evalWithContext, getEvalAsyncFunction } from '../eval';
 import type { Context } from './isolate';
 
@@ -11,7 +11,7 @@ type DenoBootstrapCore = any;
 export async function loadDenoRuntime(core: DenoBootstrapCore, fs: VirtualFileSystem) {
   async function evalBootstrapModule(src: string, context) {
     let files = await fs.readdir(src);
-
+    files.sort();
     for (let path of files) {
       if (path.endsWith('.js') && !Number.isNaN(Number(path[0]))) {
         await evalScript(`${src}/${path}`, context);

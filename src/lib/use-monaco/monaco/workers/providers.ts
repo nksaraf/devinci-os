@@ -59,19 +59,12 @@ export const defaultProviderConfig = {
   documentRangeSemanticTokens: true,
 };
 
-export const getProvider = (
-  getWorker: monacoApi.worker.IWorkerAccessor<any>,
-  provider: string
-) => {
+export const getProvider = (getWorker: monacoApi.worker.IWorkerAccessor<any>, provider: string) => {
   return async (model: monacoApi.editor.IModel, ...args: any[]) => {
     let resource = model.uri;
     try {
       const worker = await getWorker(resource);
-      return await worker.provide(
-        provider,
-        resource.toString(),
-        ...args.slice(0, args.length - 1)
-      );
+      return await worker.provide(provider, resource.toString(), ...args.slice(0, args.length - 1));
     } catch (e) {
       console.error(e);
       return null;
@@ -79,24 +72,17 @@ export const getProvider = (
   };
 };
 
-export const getSignatureHelpProvider = (
-  getWorker: monacoApi.worker.IWorkerAccessor<any>
-) => {
+export const getSignatureHelpProvider = (getWorker: monacoApi.worker.IWorkerAccessor<any>) => {
   return async (
     model: monacoApi.editor.ITextModel,
     position: monacoApi.IPosition,
     token: monacoApi.CancellationToken,
-    context: monacoApi.languages.SignatureHelpContext
+    context: monacoApi.languages.SignatureHelpContext,
   ) => {
     let resource = model.uri;
     try {
       const worker = await getWorker(resource);
-      return await worker.provide(
-        'signatureHelp',
-        resource.toString(),
-        position,
-        context
-      );
+      return await worker.provide('signatureHelp', resource.toString(), position, context);
     } catch (e) {
       console.error(e);
       return null;
@@ -104,19 +90,12 @@ export const getSignatureHelpProvider = (
   };
 };
 
-export const getResolver = (
-  getWorker: monacoApi.worker.IWorkerAccessor<any>,
-  resolver: string
-) => {
+export const getResolver = (getWorker: monacoApi.worker.IWorkerAccessor<any>, resolver: string) => {
   return async (model: monacoApi.editor.IModel, ...args: any[]) => {
     let resource = model.uri;
     try {
       const worker = await getWorker(resource);
-      return await worker.resolve(
-        resolver,
-        resource.toString(),
-        ...args.slice(0, args.length - 1)
-      );
+      return await worker.resolve(resolver, resource.toString(), ...args.slice(0, args.length - 1));
     } catch (e) {
       console.error(e);
       return null;
@@ -124,13 +103,8 @@ export const getResolver = (
   };
 };
 
-export const getCompletionItemResolver = (
-  getWorker: monacoApi.worker.IWorkerAccessor<any>
-) => {
-  return async (
-    item: monacoApi.languages.CompletionItem,
-    token: monacoApi.CancellationToken
-  ) => {
+export const getCompletionItemResolver = (getWorker: monacoApi.worker.IWorkerAccessor<any>) => {
+  return async (item: monacoApi.languages.CompletionItem, token: monacoApi.CancellationToken) => {
     try {
       const worker = await getWorker();
       return await worker.resolve('completionItem', item, token);
@@ -143,19 +117,14 @@ export const getCompletionItemResolver = (
 
 export class DiagnosticsProvider {
   private _disposables: monacoApi.IDisposable[] = [];
-  private _listener: { [uri: string]: monacoApi.IDisposable } = Object.create(
-    null
-  );
+  private _listener: { [uri: string]: monacoApi.IDisposable } = Object.create(null);
   private _editor?: monacoApi.editor.ICodeEditor;
   private _client?: WorkerClient<any, any>;
   monaco: typeof monacoApi;
   isActiveModel(model: monacoApi.editor.ITextModel) {
     if (this._editor) {
       const currentModel = this._editor.getModel();
-      if (
-        currentModel &&
-        currentModel.uri.toString() === model.uri.toString()
-      ) {
+      if (currentModel && currentModel.uri.toString() === model.uri.toString()) {
         return true;
       }
     }
@@ -163,19 +132,16 @@ export class DiagnosticsProvider {
     return false;
   }
 
-  constructor(
-    private client: WorkerClient<any, any>,
-    monaco: typeof monacoApi
-  ) {
+  constructor(private client: WorkerClient<any, any>, monaco: typeof monacoApi) {
     this._client = client;
     this.monaco = monaco;
     this._disposables.push(
       monaco.editor.onDidCreateEditor((editor) => {
         this._editor = editor;
-      })
+      }),
     );
     const onModelAdd = (model: monacoApi.editor.IModel): void => {
-      const modeId = model.getModeId();
+      const modeId = model.getLanguageId();
       if (modeId !== client.config.languageId) {
         return;
       }
@@ -229,7 +195,7 @@ export class DiagnosticsProvider {
         //   client.config.languageId
         // );
         onModelRemoved(model);
-      })
+      }),
     );
 
     this._disposables.push(
@@ -241,18 +207,18 @@ export class DiagnosticsProvider {
         // );
         onModelRemoved(event.model);
         onModelAdd(event.model);
-      })
+      }),
     );
 
     this._disposables.push(
       client.onConfigDidChange((_: any) => {
         monaco.editor.getModels().forEach((model) => {
-          if (model.getModeId() === client.config.languageId) {
+          if (model.getLanguageId() === client.config.languageId) {
             onModelRemoved(model);
             onModelAdd(model);
           }
         });
-      })
+      }),
     );
 
     this._disposables.push({
@@ -278,7 +244,7 @@ export class DiagnosticsProvider {
       this.monaco.editor.setModelMarkers(
         this.monaco.editor.getModel(resource) as monacoApi.editor.ITextModel,
         languageId,
-        diagnostics
+        diagnostics,
       );
     } catch (e) {
       console.error(e);
@@ -289,11 +255,9 @@ export class DiagnosticsProvider {
 
 export const setupWorkerProviders = (
   languageId: string,
-  providers:
-    | monacoApi.worker.ILangProvidersOptions
-    | boolean = defaultProviderConfig,
+  providers: monacoApi.worker.ILangProvidersOptions | boolean = defaultProviderConfig,
   client: WorkerClient<any, any>,
-  monaco: typeof monacoApi
+  monaco: typeof monacoApi,
 ): monacoApi.IDisposable[] => {
   const disposables: monacoApi.IDisposable[] = [];
   if (!providers) {
@@ -317,7 +281,7 @@ export const setupWorkerProviders = (
     disposables.push(
       monaco.languages.registerReferenceProvider(languageId, {
         provideReferences: getProvider(getWorker, 'references'),
-      })
+      }),
     );
   }
   if (providers.rename) {
@@ -325,56 +289,56 @@ export const setupWorkerProviders = (
       monaco.languages.registerRenameProvider(languageId, {
         provideRenameEdits: getProvider(getWorker, 'renameEdits'),
         resolveRenameLocation: getResolver(getWorker, 'renameLocation'),
-      })
+      }),
     );
   }
   if (providers.signatureHelp) {
     disposables.push(
       monaco.languages.registerSignatureHelpProvider(languageId, {
         provideSignatureHelp: getSignatureHelpProvider(getWorker),
-      })
+      }),
     );
   }
   if (providers.hover) {
     disposables.push(
       monaco.languages.registerHoverProvider(languageId, {
         provideHover: getProvider(getWorker, 'hover'),
-      })
+      }),
     );
   }
   if (providers.documentSymbol) {
     disposables.push(
       monaco.languages.registerDocumentSymbolProvider(languageId, {
         provideDocumentSymbols: getProvider(getWorker, 'documentSymbols'),
-      })
+      }),
     );
   }
   if (providers.documentHighlight) {
     disposables.push(
       monaco.languages.registerDocumentHighlightProvider(languageId, {
         provideDocumentHighlights: getProvider(getWorker, 'documentHighlights'),
-      })
+      }),
     );
   }
   if (providers.definition) {
     disposables.push(
       monaco.languages.registerDefinitionProvider(languageId, {
         provideDefinition: getProvider(getWorker, 'definition'),
-      })
+      }),
     );
   }
   if (providers.implementation) {
     disposables.push(
       monaco.languages.registerImplementationProvider(languageId, {
         provideImplementation: getProvider(getWorker, 'implementation'),
-      })
+      }),
     );
   }
   if (providers.typeDefinition) {
     disposables.push(
       monaco.languages.registerTypeDefinitionProvider(languageId, {
         provideTypeDefinition: getProvider(getWorker, 'typeDefinition'),
-      })
+      }),
     );
   }
   if (providers.codeLens) {
@@ -382,34 +346,28 @@ export const setupWorkerProviders = (
       monaco.languages.registerCodeLensProvider(languageId, {
         provideCodeLenses: getProvider(getWorker, 'codeLenses'),
         resolveCodeLens: getResolver(getWorker, 'codeLens'),
-      })
+      }),
     );
   }
   if (providers.codeAction) {
     disposables.push(
       monaco.languages.registerCodeActionProvider(languageId, {
         provideCodeActions: getProvider(getWorker, 'codeActions'),
-      })
+      }),
     );
   }
   if (providers.documentFormattingEdit) {
     disposables.push(
       monaco.languages.registerDocumentFormattingEditProvider(languageId, {
-        provideDocumentFormattingEdits: getProvider(
-          getWorker,
-          'documentFormattingEdits'
-        ),
-      })
+        provideDocumentFormattingEdits: getProvider(getWorker, 'documentFormattingEdits'),
+      }),
     );
   }
   if (providers.documentRangeFormattingEdit) {
     disposables.push(
       monaco.languages.registerDocumentRangeFormattingEditProvider(languageId, {
-        provideDocumentRangeFormattingEdits: getProvider(
-          getWorker,
-          'documentRangeFormattingEdits'
-        ),
-      })
+        provideDocumentRangeFormattingEdits: getProvider(getWorker, 'documentRangeFormattingEdits'),
+      }),
     );
   }
   // if (providers.onTypeFormattingEdit) {
@@ -426,7 +384,7 @@ export const setupWorkerProviders = (
     disposables.push(
       monaco.languages.registerLinkProvider(languageId, {
         provideLinks: getProvider(getWorker, 'links'),
-      })
+      }),
     );
   }
   if (providers.completionItem) {
@@ -436,7 +394,7 @@ export const setupWorkerProviders = (
         provideCompletionItems: getProvider(getWorker, 'completionItems'),
         resolveCompletionItem: getCompletionItemResolver(getWorker),
         // resolveCompletionItem: getResolver(getWorker, 'completionItem'),
-      })
+      }),
     );
   }
   if (providers.color) {
@@ -444,28 +402,28 @@ export const setupWorkerProviders = (
       monaco.languages.registerColorProvider(languageId, {
         provideDocumentColors: getProvider(getWorker, 'documentColors'),
         provideColorPresentations: getProvider(getWorker, 'colorPresentations'),
-      })
+      }),
     );
   }
   if (providers.foldingRange) {
     disposables.push(
       monaco.languages.registerFoldingRangeProvider(languageId, {
         provideFoldingRanges: getProvider(getWorker, 'foldingRanges'),
-      })
+      }),
     );
   }
   if (providers.declaration) {
     disposables.push(
       monaco.languages.registerDeclarationProvider(languageId, {
         provideDeclaration: getProvider(getWorker, 'declaration'),
-      })
+      }),
     );
   }
   if (providers.selectionRange) {
     disposables.push(
       monaco.languages.registerSelectionRangeProvider(languageId, {
         provideSelectionRanges: getProvider(getWorker, 'selectionRanges'),
-      })
+      }),
     );
   }
 

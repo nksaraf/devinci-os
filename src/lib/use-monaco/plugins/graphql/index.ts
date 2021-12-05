@@ -1,5 +1,5 @@
 import { createPlugin } from '../../monaco';
-import { SchemaConfig } from './types';
+import type { SchemaConfig } from './types';
 
 export default (config: SchemaConfig) =>
   createPlugin(

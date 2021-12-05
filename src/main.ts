@@ -1,7 +1,7 @@
 import './lib/deno/deno';
 import 'uno.css';
 import '@ui/css/global.scss';
-import { render } from './macos';
+import { render } from './macos/boot_macos';
 
 console.log('🦕 Deno is ready', Deno.version);
 console.log('🍎 MacOS booting');

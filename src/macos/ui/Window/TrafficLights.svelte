@@ -2,12 +2,12 @@
   import { createEventDispatcher, getContext } from 'svelte';
   import CloseIcon from '@ui/components/SVG/traffic-lights/CloseSVG.svelte';
   import MinimizeSvg from '@ui/components/SVG/traffic-lights/MinimizeSVG.svelte';
-  import { activeWindow, IWindow } from '__/stores/window.store';
+  import { activeWindow, WebViewInstance } from '__/stores/window.store';
   import StretchSvg from '@ui/components/SVG/traffic-lights/StretchSVG.svelte';
 
   const dispatch = createEventDispatcher();
 
-  let window: IWindow = getContext('window');
+  let window: WebViewInstance = getContext('window');
 
   function redLightAction() {
     dispatch('red-light');

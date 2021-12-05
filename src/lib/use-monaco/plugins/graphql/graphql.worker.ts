@@ -1,7 +1,7 @@
 import { MonacoWorker, IWorkerContext } from '../../worker';
 import { printSchema } from 'graphql';
 
-import { FormattingOptions, ICreateData } from './types';
+import type { FormattingOptions, ICreateData } from './types';
 
 import type { worker, editor, Position, IRange } from 'monaco-editor';
 

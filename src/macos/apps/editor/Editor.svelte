@@ -1,73 +1,23 @@
 <script lang="ts">
-  import type * as monaco from 'monaco-editor';
-  import { getContext, onDestroy, onMount } from 'svelte';
-  import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
-  import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
-  import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker';
-  import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
-  import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
+  import { getContext } from 'svelte';
+
   // import fs from 'os/kernel/fs';
   import TrafficLights from 'os/macos/ui/Window/TrafficLights.svelte';
-  import type { WindowAPI } from '__/stores/window.store';
+  import type { WebViewAPI } from '__/stores/window.store';
   import ExpandSvg from '@ui/components/SVG/traffic-lights/ExpandSVG.svelte';
-  import { readAll } from 'https://deno.land/std@0.116.0/streams/conversion.ts';
-  let divEl: HTMLDivElement = null;
-  let editor: monaco.editor.IStandaloneCodeEditor;
-  let Monaco: typeof monaco;
+
+  import { initializeMonaco } from '$lib/use-monaco/monaco/monaco';
+  import MonacoEditor from '$lib/use-monaco/svelte/MonacoEditor.svelte';
   export let args;
 
-  let disposables = [];
+  const win = getContext('windowAPI') as WebViewAPI;
 
-  onMount(async () => {
-    // @ts-ignore
-    self.MonacoEnvironment = {
-      getWorker: function (_moduleId: any, label: string) {
-        if (label === 'json') {
-          return new jsonWorker();
-        }
-        if (label === 'css' || label === 'scss' || label === 'less') {
-          return new cssWorker();
-        }
-        if (label === 'html' || label === 'handlebars' || label === 'razor') {
-          return new htmlWorker();
-        }
-        if (label === 'typescript' || label === 'javascript') {
-          return new tsWorker();
-        }
-        return new editorWorker();
-      },
-    };
-
-    Monaco = await import('monaco-editor');
-
-    async function writeFile(e) {
-      await Deno.writeTextFile(args.path, editor.getValue());
-    }
-
-    let data = await Deno.open(args.path, { read: true });
-
-    let d = await readAll(data);
-    console.log(d);
-    editor = Monaco.editor.create(divEl, {
-      value: new TextDecoder().decode(d),
-      fontSize: 14,
-      theme: 'vs-light',
-      cursorStyle: 'line-thin',
-      automaticLayout: true,
-    });
-
-    disposables.push(editor.onDidChangeModelContent(writeFile));
-    disposables.push(editor);
-  });
-
-  onDestroy(() => {
-    disposables.forEach((d) => d.dispose());
-  });
-
-  const win = getContext('windowAPI') as WindowAPI;
+  async function writeFile(value) {
+    await Deno.writeTextFile(args.path, value);
+  }
 </script>
 
-<div class="h-full flex flex-col overflow-hidden">
+<div class="h-full flex flex-col overflow-visible">
   <div class="editor-header relative {win.dragHandleClass}">
     <div class="file-header flex flex-row items-center justify-center w-full">
       <div class="i-vscode-icons-file-type-vscode mr-3" />
@@ -87,21 +37,42 @@
     </div>
   </div>
   <div class="flex-1">
-    <div class="h-full bg-white"><div bind:this={divEl} class="h-full" /></div>
+    <div class="h-full bg-white">
+      {#await Promise.all( [initializeMonaco( { plugins: ['typings', 'prettier'] }, ).promise, Deno.readTextFile(args.path)], )}
+        <div>Loading monaco</div>
+      {:then [monaco, text]}
+        <MonacoEditor
+          {monaco}
+          options={{
+            formatOnSave: true, // a
+          }}
+          path={args.path}
+          value={text}
+          on:change={(e) => writeFile(e.detail)}
+        />
+      {:catch err}
+        <div class="error">
+          Failed to load monaco editor: {err.message}
+        </div>
+        <pre>
+        {err.stack}
+      </pre>
+      {/await}
+    </div>
   </div>
 </div>
 
 <style lang="scss">
   .editor-header {
-    background: #ffffff;
-    backdrop-filter: blur(10px);
     height: 32px;
   }
 
   .file-header {
-    background: #ffffff;
+    background-color: #ffffffaa;
     backdrop-filter: blur(10px);
     height: 32px;
+    border-top-left-radius: 0.75rem;
+    border-top-right-radius: 0.75rem;
   }
 
   .vscode-tl {

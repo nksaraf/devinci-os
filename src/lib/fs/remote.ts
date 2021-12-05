@@ -55,6 +55,11 @@ export class RemoteFile extends VirtualFile {
     ]) as number;
   }
 
+  public syncSync(): void {
+    console.log('heree');
+    return syncFileOpCallXhr(this.getPath(), 'syncSync', []);
+  }
+
   async write(
     buffer: Uint8Array,
     offset: number,
@@ -127,6 +132,10 @@ function syncFileOpCallXhr(path: string, op_code: string, args) {
 
   const value = fromWireValue(result[1][0]);
   return value;
+}
+
+export const expose = () => {
+  
 }
 
 /**

@@ -5,8 +5,14 @@ import languagesPlugin from './languages/register';
 import themes from './themes';
 import editors from './editors';
 import shortcuts from './shortcuts';
-import workers from './workers';
+import workers, { createBlobURL } from './workers';
 import { createPlugin } from './plugin-api';
+
+import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
+import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker';
+import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
+import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
 
 import version from './utils/version';
 
@@ -20,8 +26,6 @@ declare module 'monaco-editor' {
     monacoCorePkg: string;
     cdn: string;
     monacoVersion: string;
-    plugins: monacoApi.plugin.IPlugin[];
-    languages: monacoApi.plugin.IPlugin[];
   }
 
   export let loader: LoaderOptions;
@@ -45,14 +49,12 @@ function cdnPath(root, pkg, version, path) {
 
 export function loadMonaco(options: Partial<monacoApi.LoaderOptions>): CancellablePromise<Monaco> {
   const {
-    monacoVersion = '0.21.2',
-    monacoCorePkg = 'monaco-editor-core',
+    monacoVersion = '0.30.1',
+    monacoCorePkg = 'monaco-editor',
     cdn = 'https://cdn.jsdelivr.net/npm',
     monacoPath = endingSlash(cdnPath(cdn, monacoCorePkg, monacoVersion, '/')),
     workersPath = endingSlash(cdnPath(cdn, 'use-monaco', version, '/dist/workers/')),
     languagesPath = endingSlash(cdnPath(cdn, 'use-monaco', version, '/dist/languages/')),
-    plugins = [],
-    languages = [],
   } = options;
 
   const loaderPlugin = createPlugin({ name: 'core.loader' }, (monaco) => {
@@ -63,20 +65,35 @@ export function loadMonaco(options: Partial<monacoApi.LoaderOptions>): Cancellab
       monacoPath: endingSlash(monacoPath),
       workersPath: endingSlash(workersPath),
       languagesPath: endingSlash(languagesPath),
-      plugins,
-      languages,
     };
   });
 
   console.log('[monaco] loading monaco from', monacoPath, '...');
 
   const cancelable = monacoLoader.init({
-    paths: { vs: endingSlash(monacoPath) + 'min/vs' },
+    paths: { monaco: endingSlash(monacoPath), vs: endingSlash(monacoPath) + 'min/vs' },
+    mode: 'esm',
   });
+
   let disposable: monacoApi.IDisposable;
 
   const promise: CancellablePromise<Monaco> = cancelable
-    .then(async (monaco) => {
+    .then(async (monacoBase) => {
+      let newApi = {};
+
+      let monaco = new Proxy(monacoBase, {
+        get(target, p, receiver) {
+          // console.log('[monaco] get', p);
+          return newApi[p] || target[p];
+        },
+        set(target, p, value, receiver) {
+          // console.log('[monaco] set', p);
+
+          newApi[p] = value;
+          return true;
+        },
+      });
+
       console.log('[monaco] loaded monaco');
       monaco = withPlugins(monaco);
 
@@ -87,9 +104,39 @@ export function loadMonaco(options: Partial<monacoApi.LoaderOptions>): Cancellab
         editors,
         shortcuts,
         workers,
-        ...plugins,
-        ...languages,
       );
+
+      monaco.worker.setEnvironment({
+        getWorker: (label) => {
+          if (label === 'json') {
+            return new jsonWorker();
+          }
+          if (label === 'css' || label === 'scss' || label === 'less') {
+            return new cssWorker();
+          }
+          if (label === 'html' || label === 'handlebars' || label === 'razor') {
+            return new htmlWorker();
+          }
+          if (label === 'typescript' || label === 'javascript') {
+            return new tsWorker();
+          }
+          if (label === 'editorWorkerService') {
+            return new editorWorker();
+          }
+
+          const workerSrc = this.workerClients[label].src;
+          console.log(`[monaco] loading worker: ${label}`);
+          if (typeof workerSrc === 'string') {
+            var workerBlobURL = createBlobURL(`importScripts("${workerSrc}")`);
+            return new Worker(workerBlobURL, {
+              name: label,
+            });
+          } else {
+            return workerSrc();
+          }
+        },
+      });
+
       return monaco;
     })
     .catch((error) =>
@@ -118,22 +165,28 @@ const makeCancelable = function <T>(promise: Promise<T>): CancellablePromise<T> 
 
 export class MonacoLoader {
   config: any;
+
   constructor() {
     this.config = {};
   }
+
   resolve: any;
   reject: any;
+
   injectScripts(script: HTMLScriptElement) {
     document.body.appendChild(script);
   }
+
   handleMainScriptLoad = () => {
     document.removeEventListener('monaco_init', this.handleMainScriptLoad);
     this.resolve((window as any).monaco);
   };
+
   createScript(src?: string) {
     const script = document.createElement('script');
     return src && (script.src = src), script;
   }
+
   createMonacoLoaderScript(mainScript: HTMLScriptElement) {
     const loaderScript = this.createScript(`${noEndingSlash(this.config.paths.vs)}/loader.js`);
     loaderScript.onload = () => this.injectScripts(mainScript);
@@ -152,11 +205,14 @@ export class MonacoLoader {
     mainScript.onerror = this.reject;
     return mainScript;
   }
+
   isInitialized = false;
+
   wrapperPromise = new Promise<Monaco>((res, rej) => {
     this.resolve = res;
     this.reject = rej;
   });
+
   init(config: any): CancellablePromise<Monaco> {
     if (!this.isInitialized) {
       //@ts-ignore
@@ -165,13 +221,24 @@ export class MonacoLoader {
         return new Promise((res, rej) => res(window.monaco));
       }
       this.config = merge(this.config, config);
-      document.addEventListener('monaco_init', this.handleMainScriptLoad);
-      const mainScript = this.createMainScript();
-      const loaderScript = this.createMonacoLoaderScript(mainScript);
-      this.injectScripts(loaderScript);
+      this.loadAMDMonacoFromCDN();
+      // this.loadESM();
     }
+
     this.isInitialized = true;
     return makeCancelable(this.wrapperPromise);
+  }
+
+  async loadESM() {
+    const monaco = await import('monaco-editor-core');
+    this.resolve(monaco);
+  }
+
+  private loadAMDMonacoFromCDN() {
+    document.addEventListener('monaco_init', this.handleMainScriptLoad);
+    const mainScript = this.createMainScript();
+    const loaderScript = this.createMonacoLoaderScript(mainScript);
+    this.injectScripts(loaderScript);
   }
 }
 

@@ -1,8 +1,8 @@
 <script lang="ts">
-  import * as path from 'path';
+  import * as path from 'path-browserify';
 
   import { getContext, setContext } from 'svelte';
-  import type { WindowAPI } from '__/stores/window.store';
+  import type { WebViewAPI } from '__/stores/window.store';
 
   import FinderGrid from './FinderGrid.svelte';
   export let args;
@@ -15,7 +15,7 @@
     },
   });
 
-  let win = getContext('windowAPI') as WindowAPI;
+  let win = getContext('windowAPI') as WebViewAPI;
 </script>
 
 <div class="flex flex-row relative" h-full w-full>

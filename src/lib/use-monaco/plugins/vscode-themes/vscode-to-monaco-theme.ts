@@ -1,6 +1,6 @@
 import Color from 'color';
 import type * as monaco from 'monaco-editor';
-import polyfillTheme from './utils/polyfill-theme';
+import './utils/polyfill-theme';
 
 export interface IVSCodeTheme {
   $schema: 'vscode://schemas/color-theme';
@@ -25,14 +25,12 @@ function validateColor(color: string) {
   return c.hex();
 }
 
-export function convertTheme(
-  theme: IVSCodeTheme
-): monaco.editor.IStandaloneThemeData {
+export function convertTheme(theme: IVSCodeTheme): monaco.editor.IStandaloneThemeData {
   const colors = Object.fromEntries(
     Object.entries(theme.colors ?? {})
       .map(([k, v]) => {
         try {
-          if (k.split('.').length === 2) return [k, validateColor(v)];
+          if ((k as string).split('.').length === 2) return [k, validateColor(v)];
           else {
             return null;
           }
@@ -40,14 +38,13 @@ export function convertTheme(
           return null;
         }
       })
-      .filter(Boolean)
+      .filter(Boolean),
   );
 
   const monacoThemeRule: IMonacoThemeRule = [
     {
       token: 'unmatched',
-      foreground:
-        colors['editor.foreground'] ?? colors['foreground'] ?? '#bbbbbb',
+      foreground: colors['editor.foreground'] ?? colors['foreground'] ?? '#bbbbbb',
     },
   ];
 
@@ -76,13 +73,13 @@ export function convertTheme(
             Object.entries(color.settings).map(([k, v]) => [
               k,
               ['foreground', 'background'].includes(k) ? validateColor(v) : v,
-            ])
+            ]),
           ),
           {
             // token: color.scope.replace(/\s/g, '')
             token: color.scope,
-          }
-        )
+          },
+        ),
       );
       return;
     }
@@ -102,12 +99,12 @@ export function convertTheme(
               Object.entries(color.settings).map(([k, v]) => [
                 k,
                 ['foreground', 'background'].includes(k) ? validateColor(v) : v,
-              ])
+              ]),
             ),
             {
               token: scope,
-            }
-          )
+            },
+          ),
         );
       });
     }

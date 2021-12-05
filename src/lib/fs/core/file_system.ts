@@ -7,7 +7,7 @@ import {
   pathNotExistsAction as getActionTypeIfNotExists,
   ActionType,
 } from './file_flag';
-import * as path from 'path';
+import * as path from 'path-browserify';
 import { mkdirpSync } from '../utils/util';
 import { Buffer } from 'buffer';
 import { constants } from '$lib/constants';

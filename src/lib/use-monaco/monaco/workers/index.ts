@@ -217,7 +217,7 @@ export default createPlugin(
   },
 );
 
-function createBlobURL(workerSrc: string) {
+export function createBlobURL(workerSrc: string) {
   var workerSrcBlob, workerBlobURL;
   workerSrcBlob = new Blob([workerSrc], {
     type: 'text/javascript',

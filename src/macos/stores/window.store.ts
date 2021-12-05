@@ -1,12 +1,10 @@
-// export
-
 import type { SvelteComponentDev } from 'svelte/internal';
 import type { Writable } from 'svelte/store';
 import { derived, writable } from 'svelte/store';
-import type { AppConfig } from './apps.store';
 import { activeApp, installedApps } from './apps.store';
 
-export interface WindowConfig {
+export interface WebViewConfig {
+  appID: any;
   width: number;
   height: number;
   minWidth: number;
@@ -21,13 +19,15 @@ export interface WindowConfig {
   transparent: boolean;
   fullScreenable: boolean;
   minimizable: boolean;
+  overflow: boolean;
   maximizable: boolean;
   fullScreen: boolean;
   trafficLights: boolean;
+  url?: string;
   loadComponent?: () => Promise<SvelteComponentDev | typeof SvelteComponentDev>;
 }
 
-export const createWindowConfig = (win: Partial<WindowConfig>): WindowConfig => ({
+export const createWebViewConfig = (win: Partial<WebViewConfig>): WebViewConfig => ({
   width: 600,
   height: 500,
   minWidth: 300,
@@ -44,22 +44,24 @@ export const createWindowConfig = (win: Partial<WindowConfig>): WindowConfig => 
   trafficLights: true,
   frame: true,
   title: '',
+  appID: undefined,
+  overflow: false,
   ...win,
 });
 
-export interface IWindow extends WindowConfig {
+export interface WebViewInstance extends WebViewConfig {
   id: number;
-  app: AppConfig;
+  appID: string;
   zIndex: number;
 }
 
-export interface WindowAPI extends Writable<IWindow> {
+export interface WebViewAPI extends Writable<WebViewInstance> {
+  appID: string;
   close: () => void;
   open: () => void;
   focus: () => void;
   maximize?: () => void;
   dragHandleClass?: string;
-  app: AppConfig;
   // minimize: () => void;
   // maximize: () => void;
   // restore: () => void;
@@ -70,59 +72,69 @@ export interface WindowAPI extends Writable<IWindow> {
   // isMaximized: () => boolean;
 }
 
-export const openWindows = writable<Array<[number, WindowAPI]>>([]);
+export const openWindows = writable<Array<[number, WebViewAPI]>>([]);
 export const activeWindow = writable<number>(-1);
 
-export let WINDOW_ID = 0;
+export let WEBVIEW_ID = 0;
 
 export let lastFocusedIndex = writable(0);
 
-export function createWindow(
-  appConfig: AppConfig,
-  windowConfig?: Partial<WindowConfig>,
-): WindowAPI {
-  let windowID = WINDOW_ID++;
-  let winConfig = createWindowConfig({
-    title: appConfig.title,
-    ...(typeof appConfig.window === 'function' ? (appConfig.window as any)() : appConfig.window),
-    ...(windowConfig ?? {}),
-  });
-  console.log('createWindow', windowConfig, windowID, winConfig);
+export class WebView extends EventTarget {
+  id: number;
+  store: WebViewAPI;
+  config: WebViewConfig;
+  constructor(config: Partial<WebViewConfig>) {
+    super();
+    let windowID = WEBVIEW_ID++;
+    let winConfig = createWebViewConfig({
+      // title: appConfig.title,
+      // ...(typeof appConfig.window === 'function' ? (appConfig.window as any)() : appConfig.window),
+      ...(config ?? {}),
+    });
+    this.config = winConfig;
+    this.id = windowID;
+    this.store = Object.assign(
+      writable({
+        ...winConfig,
+        id: windowID,
+        zIndex: 0,
+      }),
+      {
+        appID: winConfig.appID,
+        focus: this.focus.bind(this),
+        close: this.close.bind(this),
+      },
+    ) as WebViewAPI;
+  }
 
-  let winData = writable({
-    ...winConfig,
-    id: windowID,
-    app: appConfig,
-    zIndex: 0,
-  }) as WindowAPI;
+  open() {
+    console.log('opening window', this.id);
+    openWindows.update((windows) => [...windows, [this.id, this.store]]);
+    activeWindow.set(this.id);
+  }
 
-  return Object.assign(winData, {
-    open: function () {
-      console.log('opening window', windowID);
-      openWindows.update((windows) => [...windows, [windowID, winData]]);
-      activeWindow.set(windowID);
-    },
-    app: appConfig,
-    focus: function () {
-      console.log('focusing window', windowID);
-      activeWindow.set(windowID);
-      activeApp.set(appConfig.id);
-    },
-    close: function () {
-      console.log('closing window', windowID);
-      openWindows.update((windows) => {
-        console.log(
-          windowID,
-          windows,
-          windows.filter(([id]) => id !== windowID),
-        );
-        return windows.filter(([id]) => id !== windowID);
-      });
-    },
-  });
+  close() {
+    console.log('closing window', this.id);
+    openWindows.update((windows) => {
+      console.log(
+        this.id,
+        windows,
+        windows.filter(([id]) => id !== this.id),
+      );
+      return windows.filter(([id]) => id !== this.id);
+    });
+  }
+
+  focus() {
+    console.log('focusing window', this.id);
+    activeWindow.set(this.id);
+    if (this.store.appID) {
+      activeApp.set(this.store.appID);
+    }
+  }
 }
 
 export const windowsByApp = (app: string) =>
   derived([installedApps, openWindows], ([apps, windows]) =>
-    windows.filter(([id, win]) => win.app.id === app),
+    windows.filter(([id, win]) => win.appID === app),
   );

@@ -1,7 +1,6 @@
 <script lang="ts">
   import DockItem from './DockItem.svelte';
-  import { installedApps } from 'os/macos/stores/apps.store';
-  import { createWindow, openWindows } from 'os/macos/stores/window.store';
+  import { dockItems } from '__/stores/dock.store';
 
   let mouseX: number | null = null;
 </script>
@@ -12,30 +11,16 @@
     on:mousemove={(event) => (mouseX = event.x)}
     on:mouseleave={() => (mouseX = null)}
   >
-    {#each Object.entries($installedApps) as [appID, appConfig]}
-      {#if appConfig.dock}
-        <DockItem
-          {mouseX}
-          title={appConfig.title}
-          isOpen={Boolean($openWindows.find(([id, w]) => w.app.id === appConfig.id))}
-          onClick={() => {
-            if (appConfig.dock.onClick) {
-              appConfig.dock.onClick();
-            }
-            if (appConfig.window) {
-              createWindow(appConfig).open();
-            }
-          }}
-        >
-          <img
-            slot="icon"
-            alt="{appConfig.title} app"
-            style="width: 100%; height: 100%"
-            draggable="false"
-            src={appConfig.dock?.icon ?? `/assets/app-icons/${appConfig.id}/256.webp`}
-          />
-        </DockItem>
-      {/if}
+    {#each $dockItems as dockItem}
+      <DockItem {mouseX} {dockItem}>
+        <img
+          slot="icon"
+          alt="{dockItem.title} app"
+          style="width: 100%; height: 100%"
+          draggable="false"
+          src={dockItem.icon ?? `/assets/app-icons/${dockItem.appID}/256.webp`}
+        />
+      </DockItem>
     {/each}
     <div class="divider" aria-hidden="true" />
   </div>

@@ -4,7 +4,7 @@
   import { sineInOut } from 'svelte/easing';
   import { randint } from '__/helpers/random';
   import { waitFor } from '__/helpers/wait-for';
-  import { lastFocusedIndex, WindowAPI } from '__/stores/window.store';
+  import { lastFocusedIndex, WebViewAPI } from '__/stores/window.store';
   import { prefersReducedMotion } from '__/stores/prefers-motion.store';
   import { theme } from '__/stores/theme.store';
   import ExpandSvg from '@ui/components/SVG/traffic-lights/ExpandSVG.svelte';
@@ -12,7 +12,7 @@
   import TrafficLights from './TrafficLights.svelte';
   import Placeholder from '@ui/components/apps/Placeholder/Placeholder.svelte';
 
-  export let window: WindowAPI;
+  export let window: WebViewAPI;
   export let id: number;
 
   let isBeingDragged = false;
@@ -28,7 +28,6 @@
   let {
     height,
     width,
-    app,
     fullScreenable,
     title,
     frame,
@@ -38,10 +37,13 @@
     maxWidth,
     minHeight,
     maxHeight,
+    overflow,
     resizable,
     trafficLights,
     transparent,
+    appID,
     fullScreen,
+    url,
     loadComponent,
     args: componentArgs,
     zIndex,
@@ -55,7 +57,7 @@
     y: (100 + randY) / 2,
   };
 
-  function focusApp() {
+  function focusWebView() {
     zIndex = $lastFocusedIndex + 1;
     lastFocusedIndex.set(zIndex);
     window.focus();
@@ -124,7 +126,7 @@
   }
 
   onMount(() => {
-    focusApp();
+    focusWebView();
   });
 
   let dragHandleClass = `window-${id}-drag-handle`;
@@ -137,7 +139,7 @@
   <section
     class="window"
     data-window-id={id}
-    data-app-id={app.id}
+    data-app-id={appID}
     class:dark={$theme.scheme === 'dark'}
     class:background={!transparent}
     class:transparent
@@ -156,8 +158,8 @@
         w-full
         p-2
         h-8
-        class="full-screen-app-header grid {app.id}"
-        on:click={focusApp}
+        class="full-screen-app-header grid {appID}"
+        on:click={focusWebView}
       >
         <TrafficLights
           on:green-light={maximize}
@@ -188,7 +190,7 @@
           </div>
         {/await}
       {:else}
-        <Placeholder appID={app.id} />
+        <Placeholder {appID} />
       {/if}
     </div>
   </section>
@@ -198,7 +200,7 @@
     h-full
     class="window"
     data-window-id={id}
-    data-app-id={app.id}
+    data-app-id={appID}
     class:bg-gray-100={!transparent}
     class:transparent
     class:window-shadow={frame}
@@ -214,15 +216,15 @@
       gpuAcceleration: false,
     }}
     on:svelte-drag:start={() => {
-      focusApp();
+      focusWebView();
       isBeingDragged = true;
     }}
     on:svelte-drag:end={() => (isBeingDragged = false)}
-    on:click={focusApp}
+    on:click={focusWebView}
     out:windowCloseTransition
   >
     {#if trafficLights}
-      <div class="tl-container {app.id}">
+      <div class="tl-container {appID}">
         <TrafficLights
           on:green-light={maximize}
           on:red-light={(e) => {
@@ -238,13 +240,13 @@
       </div>
     {/if}
 
-    <div style="height: 100%; width: 100%; overflow: scroll; border-radius: inherit;">
+    <div style="height: 100%; width: 100%; overflow: {overflow ? 'visible' : 'scroll'};">
       {#if loadComponent}
         {#await loadComponent() then Component}
           <svelte:component this={Component} args={componentArgs} />
         {/await}
       {:else}
-        <Placeholder appID={app.id} />
+        <Placeholder {appID} />
       {/if}
     </div>
   </section>

@@ -1,6 +1,8 @@
 import { op_async, op_sync, Resource } from '../types';
 import type { Process } from '../denix';
-import type { FileResource } from './fs.ops';
+import { FileResource } from './fs.ops';
+import type { TTY } from 'os/lib/tty/tty';
+import { newPromise } from 'os/lib/promise';
 
 export const builtIns = [
   op_sync('op_close', function (this: Process, rid) {
@@ -59,22 +61,30 @@ export const builtIns = [
       this: Process,
       args: { cwd; cmd; stdin; stdout; stderr; stdinRid; stdoutRid; stderrRid },
     ) {
-      let { cwd, cmd, stdin, stdout, stderr } = args;
+      let { cwd, cmd, stdin, stdout, stderr, stdinRid, stdoutRid, stderrRid } = args;
 
-      // const process = navigator.process.spawn({
-      //   cmd,
-      //   cwd,
-      //   stdin,
-      // });
+      if (stdin) {
+        if (stdin === 'pipe') {
+          let path = `/pipe/proc${this.pid}`;
+          stdinRid = this.addResource(new FileResource(this.fs.openSync(path, 0, 0x666)));
 
-      let rid = this.addResource(
-        new ChildWorkerResource(
-          navigator.isolate.run(`/bin/${cmd[0]}.ts`, {
-            args: cmd,
-            mode: 'module',
-          }),
-        ),
-      );
+          stdin = path;
+        } else if (stdin === 'inherit') {
+          stdin = (this.getResource(this.stdin) as FileResource).file.getPath();
+        }
+      }
+      const pid = this.proc.spawnSync({
+        cmd,
+        cwd,
+        parentPid: this.pid,
+        env: this.env,
+        tty: this.tty,
+        stdin,
+        stdout,
+        stderr,
+      });
+
+      let rid = this.addResource(new ChildProcessResource(pid));
 
       // if (stdin === 'inherit') {
       //   process.addResource();
@@ -85,25 +95,31 @@ export const builtIns = [
       // let rid = this.addResource(new ChildProcessResource());
       return {
         rid,
+        pid,
+        // stdinRid: 0,
+        // stdin
       };
     },
   ),
   op_async('op_run_status', async function (this: Process, rid: number) {
-    const resource = this.getResource(rid) as ChildWorkerResource;
+    const resource = this.getResource(rid) as ChildProcessResource;
 
-    try {
-      let result = await resource.promise;
-      return {
-        statusCode: result,
-        gotSignal: false,
-      };
-    } catch (e) {
-      await this.getResource(this.stderr).write(new TextEncoder().encode(e.message + '\r\n'));
-      return {
-        statusCode: -1,
-        gotSignal: false,
-      };
-    }
+    const promise = newPromise();
+
+    return await promise.promise;
+    // try {
+    //   let result = await resource.promise;
+    //   return {
+    //     statusCode: result,
+    //     gotSignal: false,
+    //   };
+    // } catch (e) {
+    //   await this.getResource(this.stderr).write(new TextEncoder().encode(e.message + '\r\n'));
+    //   return {
+    //     statusCode: -1,
+    //     gotSignal: false,
+    //   };
+    // }
   }),
 ];
 
@@ -115,17 +131,10 @@ class ChildWorkerResource extends Resource {
   close() {}
 }
 
-let PROCESS_ID = 0;
-// class Process extends EventTarget {
-//   pid: number;
-//   resourceTable: Map<number, Resource> = new Map();
-//   constructor({ cmd, cwd, env, stdin, stdout, stderr, permissions }) {
-//     super();
-//     this.pid = PROCESS_ID++;
-//   }
-// }
-
 class ChildProcessResource extends Resource {
   type = 'child_process';
-  pid: number;
+
+  constructor(public pid: number) {
+    super();
+  }
 }

@@ -19,20 +19,14 @@ export interface IMirrorModel {
   getLinesContent(): string[];
   getLineCount(): number;
   getLineContent(lineNumber: number): string;
-  getLineWords(
-    lineNumber: number,
-    wordDefinition: RegExp
-  ): monaco.editor.IWordAtPosition[];
+  getLineWords(lineNumber: number, wordDefinition: RegExp): monaco.editor.IWordAtPosition[];
   createWordIterator(wordDefinition: RegExp): Iterator<string>;
   getWordUntilPosition(
     position: monaco.IPosition,
-    wordDefinition: RegExp
+    wordDefinition: RegExp,
   ): monaco.editor.IWordAtPosition;
   getValueInRange(range: monaco.IRange): string;
-  getWordAtPosition(
-    position: monaco.IPosition,
-    wordDefinition: RegExp
-  ): monaco.Range | null;
+  getWordAtPosition(position: monaco.IPosition, wordDefinition: RegExp): monaco.Range | null;
   offsetAt(position: monaco.IPosition): number;
   positionAt(offset: number): monaco.IPosition;
   getValue(): string;
@@ -54,40 +48,36 @@ export interface LanguageWorker {
   provideReferences?(
     model: IMirrorModel,
     position: monaco.Position,
-    context: monaco.languages.ReferenceContext
+    context: monaco.languages.ReferenceContext,
   ): monaco.languages.ProviderResult<monaco.languages.Location[]>;
   provideRenameEdits?(
     model: IMirrorModel,
     position: monaco.Position,
-    newName: string
-  ): monaco.languages.ProviderResult<
-    monaco.languages.WorkspaceEdit & monaco.languages.Rejection
-  >;
+    newName: string,
+  ): monaco.languages.ProviderResult<monaco.languages.WorkspaceEdit & monaco.languages.Rejection>;
   resolveRenameLocation?(
     model: IMirrorModel,
-    position: monaco.Position
-  ): monaco.languages.ProviderResult<
-    monaco.languages.RenameLocation & monaco.languages.Rejection
-  >;
+    position: monaco.Position,
+  ): monaco.languages.ProviderResult<monaco.languages.RenameLocation & monaco.languages.Rejection>;
   provideSignatureHelp?(
     model: IMirrorModel,
     position: monaco.Position,
-    context: monaco.languages.SignatureHelpContext
+    context: monaco.languages.SignatureHelpContext,
   ): monaco.languages.ProviderResult<monaco.languages.SignatureHelpResult>;
   provideHover?(
     model: IMirrorModel,
-    position: monaco.Position
+    position: monaco.Position,
   ): monaco.languages.ProviderResult<monaco.languages.Hover>;
   provideDocumentSymbols?(
-    model: IMirrorModel
+    model: IMirrorModel,
   ): monaco.languages.ProviderResult<monaco.languages.DocumentSymbol[]>;
   provideDocumentHighlights?(
     model: IMirrorModel,
-    position: monaco.Position
+    position: monaco.Position,
   ): monaco.languages.ProviderResult<monaco.languages.DocumentHighlight[]>;
   provideDefinition?(
     model: IMirrorModel,
-    position: monaco.Position
+    position: monaco.Position,
   ): monaco.languages.ProviderResult<
     | monaco.languages.Location
     | monaco.languages.Location[]
@@ -96,7 +86,7 @@ export interface LanguageWorker {
   >;
   provideImplementation?(
     model: IMirrorModel,
-    position: monaco.Position
+    position: monaco.Position,
   ): monaco.languages.ProviderResult<
     | monaco.languages.Location
     | monaco.languages.Location[]
@@ -105,7 +95,7 @@ export interface LanguageWorker {
   >;
   provideTypeDefinition?(
     model: IMirrorModel,
-    position: monaco.Position
+    position: monaco.Position,
   ): monaco.languages.ProviderResult<
     | monaco.languages.Location
     | monaco.languages.Location[]
@@ -113,58 +103,56 @@ export interface LanguageWorker {
     | monaco.languages.LocationLink[]
   >;
   provideCodeLenses?(
-    model: IMirrorModel
+    model: IMirrorModel,
   ): monaco.languages.ProviderResult<monaco.languages.CodeLensList>;
   resolveCodeLens?(
     model: IMirrorModel,
-    codeLens: monaco.languages.CodeLens
+    codeLens: monaco.languages.CodeLens,
   ): monaco.languages.ProviderResult<monaco.languages.CodeLens>;
   provideCodeActions?(
     model: IMirrorModel,
     range: monaco.Range,
-    context: monaco.languages.CodeActionContext
+    context: monaco.languages.CodeActionContext,
   ): monaco.languages.ProviderResult<monaco.languages.CodeActionList>;
   provideDocumentFormattingEdits?(
     model: IMirrorModel,
-    options: monaco.languages.FormattingOptions
+    options: monaco.languages.FormattingOptions,
   ): monaco.languages.ProviderResult<monaco.languages.TextEdit[]>;
   provideDocumentRangeFormattingEdits?(
     model: IMirrorModel,
     range: monaco.Range,
-    options: monaco.languages.FormattingOptions
+    options: monaco.languages.FormattingOptions,
   ): monaco.languages.ProviderResult<monaco.languages.TextEdit[]>;
   provideOnTypeFormattingEdits?(
     model: IMirrorModel,
     position: monaco.Position,
     ch: string,
-    options: monaco.languages.FormattingOptions
+    options: monaco.languages.FormattingOptions,
   ): monaco.languages.ProviderResult<monaco.languages.TextEdit[]>;
-  provideLinks?(
-    model: IMirrorModel
-  ): monaco.languages.ProviderResult<monaco.languages.ILinksList>;
+  provideLinks?(model: IMirrorModel): monaco.languages.ProviderResult<monaco.languages.ILinksList>;
   provideCompletionItems?(
     model: IMirrorModel,
     position: monaco.Position,
-    context: monaco.languages.CompletionContext
+    context: monaco.languages.CompletionContext,
   ): monaco.languages.ProviderResult<monaco.languages.CompletionList>;
   resolveCompletionItem?(
-    item: monaco.languages.CompletionItem
+    item: monaco.languages.CompletionItem,
   ): monaco.languages.ProviderResult<monaco.languages.CompletionItem>;
   completionTriggerCharacters?: string[];
   provideDocumentColors?(
-    model: IMirrorModel
+    model: IMirrorModel,
   ): monaco.languages.ProviderResult<monaco.languages.IColorInformation[]>;
   provideColorPresentations?(
     model: IMirrorModel,
-    colorInfo: monaco.languages.IColorInformation
+    colorInfo: monaco.languages.IColorInformation,
   ): monaco.languages.ProviderResult<monaco.languages.IColorPresentation[]>;
   provideFoldingRanges?(
     model: IMirrorModel,
-    context: monaco.languages.FoldingContext
+    context: monaco.languages.FoldingContext,
   ): monaco.languages.ProviderResult<monaco.languages.FoldingRange[]>;
   provideDeclaration?(
     model: IMirrorModel,
-    position: monaco.Position
+    position: monaco.Position,
   ): monaco.languages.ProviderResult<
     | monaco.languages.Location
     | monaco.languages.Location[]
@@ -173,33 +161,31 @@ export interface LanguageWorker {
   >;
   provideSelectionRanges?(
     model: IMirrorModel,
-    positions: monaco.Position[]
+    positions: monaco.Position[],
   ): monaco.languages.ProviderResult<monaco.languages.SelectionRange[][]>;
   provideDocumentSemanticTokens?(
     model: IMirrorModel,
-    lastResultId: string
+    lastResultId: string,
   ): monaco.languages.ProviderResult<
     monaco.languages.SemanticTokens | monaco.languages.SemanticTokensEdits
   >;
   provideDocumentRangeSemanticTokens?(
     model: IMirrorModel,
-    range: monaco.Range
+    range: monaco.Range,
   ): monaco.languages.ProviderResult<monaco.languages.SemanticTokens>;
-  doValidation?(
-    uri: string
-  ): monaco.languages.ProviderResult<monaco.editor.IMarkerData[]>;
+  doValidation?(uri: string): monaco.languages.ProviderResult<monaco.editor.IMarkerData[]>;
 }
 
-export interface MonacoWorker extends LanguageWorker {
+export interface MonacoWorker<TOptions = any> extends LanguageWorker {
   // constructor()
   getModels(): IMirrorModel[];
   getModel(uri: string): IMirrorModel;
   getText(uri: string): string;
 }
 
-export class MonacoWorker {
+export class MonacoWorker<TOptions> {
   ctx: IWorkerContext;
-  options: any;
+  options: TOptions;
   constructor(_ctx: IWorkerContext, _options: any) {
     this.ctx = _ctx;
     this.options = _options;
@@ -233,13 +219,8 @@ export class MonacoWorker {
   }
 
   // proxy function used by the client to delegate different kind of providers
-  provide<T>(
-    provider: string,
-    uri: string,
-    ...args: any[]
-  ): monaco.languages.ProviderResult<T> {
-    const providerFunc =
-      'provide' + provider.charAt(0).toUpperCase() + provider.slice(1);
+  provide<T>(provider: string, uri: string, ...args: any[]): monaco.languages.ProviderResult<T> {
+    const providerFunc = 'provide' + provider.charAt(0).toUpperCase() + provider.slice(1);
     if ((this as any)[providerFunc]) {
       return (this as any)[providerFunc](this.getModel(uri), ...args);
     } else {
@@ -249,13 +230,8 @@ export class MonacoWorker {
   }
 
   // proxy function used by the client to delegate different kind of resolvers
-  resolve<T>(
-    resolver: string,
-    uri: string,
-    ...args: any[]
-  ): monaco.languages.ProviderResult<T> {
-    const resolverFunc =
-      'resolve' + resolver.charAt(0).toUpperCase() + resolver.slice(1);
+  resolve<T>(resolver: string, uri: string, ...args: any[]): monaco.languages.ProviderResult<T> {
+    const resolverFunc = 'resolve' + resolver.charAt(0).toUpperCase() + resolver.slice(1);
     if ((this as any)[resolverFunc]) {
       return (this as any)[resolverFunc](this.getModel(uri), ...args);
     } else {

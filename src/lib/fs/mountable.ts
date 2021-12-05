@@ -1,7 +1,7 @@
 import { BaseFileSystem } from './core/file_system';
 import type { IFileSystem, FileSystemOptions } from './core/file_system';
 import { ApiError, ErrorCode } from '../error';
-import * as path from 'path';
+import * as path from 'path-browserify';
 import { mkdirp, mkdirpSync } from './utils/util';
 import { constants } from '../constants';
 

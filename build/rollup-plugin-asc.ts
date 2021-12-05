@@ -14,7 +14,6 @@
 import asCompiler from 'assemblyscript/cli/asc';
 import { basename, join } from 'path';
 import { tmpdir } from 'os';
-import fsp from 'fs/promises';
 
 const MARKER = 'asc:';
 const PREFIX_MATCHER = /^asc:(.+)$/;

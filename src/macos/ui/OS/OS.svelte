@@ -2,25 +2,23 @@
   import TopBar from '@ui/components/TopBar/TopBar.svelte';
   import Wallpaper from '@ui/components/apps/WallpaperApp/Wallpaper.svelte';
   import Dock from '../Dock/Dock.svelte';
-  import { onMount, setContext } from 'svelte';
-  import { createWindow } from 'os/macos/stores/window.store';
+  import { onMount } from 'svelte';
+  import { WebView } from 'os/macos/stores/window.store';
   import WindowsArea from './WindowsArea.svelte';
-  import finder from 'os/macos/apps/finder/finder';
   import BootupScreen from '@ui/components/Desktop/BootupScreen.svelte';
   import GitCloner from './GitCloner.svelte';
   import Toaster from '$lib/toasts';
-  import type { Kernel } from 'os/denix/denix';
 
   export let url = '';
-  export let kernel: Kernel;
-
-  setContext('kernel', kernel);
 
   onMount(() => {
-    createWindow(finder(), {
+    new WebView({
+      appID: 'finder',
+      title: 'Finder',
       fullScreen: true,
       frame: false,
       transparent: true,
+      args: { path: '/' },
       loadComponent: async () => (await import('os/macos/apps/finder/Desktop.svelte')).default,
     }).open();
   });

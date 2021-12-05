@@ -1,5 +1,5 @@
 import { inflate } from 'pako';
-import * as path from 'path';
+import * as path from 'path-browserify';
 import { constants } from './constants';
 import type { IFileSystem } from './fs/core/file_system';
 

@@ -76,7 +76,7 @@
     "packages/macos-ui/src/**/*",
     "packages/vscode/src/vs/**/*",
     "packages/vscode/src/typings/**/*"
-  ],
+, "bin/terminal.ts"  ],
   "exclude": [
     "node_modules/**/*",
     "packages/node",

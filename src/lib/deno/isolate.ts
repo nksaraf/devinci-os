@@ -2,6 +2,7 @@ import { ApiError } from '../error';
 import type { Process } from '../denix/denix';
 import { loadDenoRuntime } from './runtime';
 import type { ResourceTable } from '../denix/types';
+import { join } from 'path-browserify';
 
 export type Context = typeof globalThis;
 
@@ -152,10 +153,18 @@ export class DenoIsolate extends EventTarget {
       return await this.runWASM(path, options);
     }
 
+    if (path.startsWith('.')) {
+      console.log(path);
+      path = new URL(join('/_', this.process.cwd, path), new URL(import.meta.url).origin).href;
+      console.log(path);
+    }
+
     if (options.mode === 'script') {
-      let result = await new Function(`return async () => {
-        return await import("${path}?script")
-      }`)()();
+      let result = await new Function(`return async (context) => {
+        with (context) {
+          return await import("${path}?script")
+        }
+      }`)()(this.window);
 
       return result;
     } else {

@@ -29,11 +29,22 @@
   import { spring, tweened } from 'svelte/motion';
   import { prefersReducedMotion } from 'os/macos/stores/prefers-motion.store';
   import { theme } from 'os/macos/stores/theme.store';
+  import type { DockItemConfig } from '__/stores/dock.store';
+  import { openWindows } from '__/stores/window.store';
 
   export let mouseX: number | null;
-  export let isOpen: boolean = false;
-  export let onClick: (e: MouseEvent) => void = () => {};
-  export let title: string = 'Dock item';
+  export let dockItem: DockItemConfig;
+
+  // dockItem = title={...dockItem}
+  //         isOpen={}
+  //         onClick={() => {
+  //           dockItem.onClick();
+  //         }}
+
+  $: isOpen = Boolean($openWindows.find(([id, w]) => w.appID === dockItem.appID));
+
+  let onClick: (e: MouseEvent) => void = dockItem.onClick;
+  let title: string = dockItem.title;
   export let badge: string | undefined = undefined;
 
   let imageEl: HTMLDivElement;
@@ -68,6 +79,7 @@
 
   $: {
     mouseX;
+
     if (!$prefersReducedMotion) {
       raf = requestAnimationFrame(animate);
     }

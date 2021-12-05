@@ -1,8 +1,8 @@
 import type * as monacoApi from 'monaco-editor';
 import { createPlugin } from '../../monaco';
 import polyfillTheme from './utils/polyfill-theme';
-import { convertTheme, IVSCodeTheme } from './vscode-to-monaco-theme';
-
+import { convertTheme } from './vscode-to-monaco-theme';
+import type { IVSCodeTheme } from './vscode-to-monaco-theme';
 declare module 'monaco-editor' {
   namespace editor {
     export function defineTheme(

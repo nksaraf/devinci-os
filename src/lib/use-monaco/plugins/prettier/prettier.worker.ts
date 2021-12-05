@@ -1,7 +1,6 @@
 import { MonacoWorker, initialize, IWorkerContext, importScript } from '../../worker';
 
-export class PrettierWorker extends MonacoWorker {
-  options: { parser: string; plugins: string[] };
+export class PrettierWorker extends MonacoWorker<{ parser: string; plugins: string[] }> {
   loader: Promise<any>;
   plugins: any[] = [];
   prettier: any = {};

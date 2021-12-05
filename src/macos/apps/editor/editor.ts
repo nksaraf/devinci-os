@@ -1,5 +1,5 @@
 import { createAppConfig } from '__/stores/apps.store';
-import { createWindowConfig } from '__/stores/window.store';
+import { createWebViewConfig } from '__/stores/window.store';
 
 export default () =>
   createAppConfig({
@@ -7,7 +7,7 @@ export default () =>
     title: 'Editor',
 
     window: () => {
-      return createWindowConfig({
+      return createWebViewConfig({
         trafficLights: false,
         title: '/home',
         args: {

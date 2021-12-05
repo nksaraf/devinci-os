@@ -7,6 +7,7 @@ import { path } from '$lib/path';
 import { Buffer } from 'buffer';
 import type { TTY } from 'os/lib/tty/tty';
 import { ApiError } from 'os/lib/error';
+import type VirtualFile from 'os/lib/fs/core/virtual_file';
 
 export interface DirEntry {
   name: string;
@@ -57,7 +58,7 @@ export const fsOps = [
         arg.mode,
       );
 
-      return this.addResource(new FileResource(file, arg.path));
+      return this.addResource(new FileResource(file));
     },
   },
   {
@@ -69,7 +70,7 @@ export const fsOps = [
         arg.mode,
       );
       console.log('opened file');
-      return this.addResource(new FileResource(file, arg.path));
+      return this.addResource(new FileResource(file));
     },
   },
   {
@@ -223,7 +224,7 @@ class ConsoleLogResource extends Resource {
 
 export class FileResource extends Resource {
   type = 'file';
-  constructor(public file: File, public name: string) {
+  constructor(public file: VirtualFile) {
     super();
   }
 

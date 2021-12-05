@@ -1,5 +1,5 @@
 import type { VirtualFileSystem } from '../../tmp/fs/create-fs';
-import * as path from 'path';
+import * as path from 'path-browserify';
 import { wrap } from 'comlink';
 import EsbuildWorker from './esbuild-worker?worker';
 import { syncDownloadFile } from 'os/tmp/fs/generic/xhr';
