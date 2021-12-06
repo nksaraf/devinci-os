@@ -162,7 +162,7 @@ export class WorkerClient<TOptions, TWorker> implements monacoApi.IDisposable {
         //   {},
         //   {
         //     get: function (target, prop, receiver) {
-        //       console.log(prop);
+        //       console.debug(prop);
         //       if (prop === 'getModel') {
         //         return _this._monaco.editor.getModel;
         //       }

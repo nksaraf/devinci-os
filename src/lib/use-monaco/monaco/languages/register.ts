@@ -42,9 +42,7 @@ class LazyLanguageLoader {
   private _loadingTriggered: boolean;
 
   private _lazyLoadPromise: Promise<monacoApi.languages.ILangImpl>;
-  private _lazyLoadPromiseResolve!: (
-    value: monacoApi.languages.ILangImpl
-  ) => void;
+  private _lazyLoadPromiseResolve!: (value: monacoApi.languages.ILangImpl) => void;
   private _lazyLoadPromiseReject!: (err: any) => void;
 
   constructor(languageId: string) {
@@ -65,7 +63,7 @@ class LazyLanguageLoader {
       this._loadingTriggered = true;
       languageDefinitions[this._languageId]?.loader?.().then(
         (mod) => this._lazyLoadPromiseResolve(mod),
-        (err) => this._lazyLoadPromiseReject(err)
+        (err) => this._lazyLoadPromiseReject(err),
       );
     }
     return this._lazyLoadPromise;
@@ -81,19 +79,17 @@ export default createPlugin(
     let monacoLanguageRegister = monaco.languages.register;
 
     monaco.languages.register = (
-      languageDefintion: monacoApi.languages.ILanguageExtensionPoint
+      languageDefintion: monacoApi.languages.ILanguageExtensionPoint,
     ) => {
       const languageId = languageDefintion.id;
-      const lang = monaco.languages
-        .getLanguages()
-        .find((l) => l.id === languageId);
+      const lang = monaco.languages.getLanguages().find((l) => l.id === languageId);
       if (lang) {
-        console.log('[monaco] replacing language:', languageId);
+        console.debug('[monaco] replacing language:', languageId);
         Object.assign(lang, languageDefintion);
         languageDefinitions[languageId] = languageDefintion;
       } else {
         languageDefinitions[languageId] = languageDefintion;
-        console.log('[monaco] registering language:', languageId);
+        console.debug('[monaco] registering language:', languageId);
       }
 
       monacoLanguageRegister(languageDefintion);
@@ -108,7 +104,7 @@ export default createPlugin(
             .catch((e) => {
               console.error(e);
               return;
-            })
+            }),
         );
 
         monaco.languages.onLanguage(languageId, () => {
@@ -127,15 +123,10 @@ export default createPlugin(
       }
 
       if (languageDefintion.worker) {
-        const config =
-          typeof languageDefintion.worker === 'object'
-            ? languageDefintion.worker
-            : {};
+        const config = typeof languageDefintion.worker === 'object' ? languageDefintion.worker : {};
 
         monaco.worker.register({ languageId, ...config });
       }
     };
-  }
+  },
 );
-
-

@@ -145,16 +145,16 @@ export async function mountDenoLib(fs: VirtualFileSystem) {
     index: 'http://localhost:8999/index.json',
     preferXHR: true,
   });
-  console.log('heree');
+  console.debug('heree');
 
   if (!(await fs.exists('/lib'))) {
     await mkdirp('/lib', 0x644, fs);
   }
-  console.log('heree');
+  console.debug('heree');
 
   await fs.mount('/lib/deno', testFS);
 
-  console.log('heree done', await fs.readdir('/lib/deno'));
+  console.debug('heree done', await fs.readdir('/lib/deno'));
 }
 
 export function getModuleFn(

@@ -1,3 +1,4 @@
-import { SharedFileSystem } from './shared';
+import InMemoryFileSystem from './inmemory';
+import { VirtualFileSystem } from './virtual';
 
-export let fs = new SharedFileSystem();
+export let fs = new VirtualFileSystem(new InMemoryFileSystem());

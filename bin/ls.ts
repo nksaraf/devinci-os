@@ -1,3 +1,4 @@
+#! /bin/deno run
 import { parse } from 'https://deno.land/std@0.116.0/flags/mod.ts';
 import { println } from './utils.ts';
 
@@ -6,6 +7,8 @@ export async function main(args: string[]) {
   for await (let entry of Deno.readDir((parsed._[1] as string) ?? '.')) {
     println(entry.name);
   }
+
+  Deno.exit();
 }
 
 if (import.meta.main) {

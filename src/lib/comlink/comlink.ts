@@ -233,7 +233,7 @@ const throwTransferHandler: TransferHandler<ThrownValue, SerializedThrownValue> 
   serialize({ value }) {
     let serialized: SerializedThrownValue;
     if (value instanceof ApiError) {
-      console.log('hereee');
+      console.debug('hereee');
       serialized = {
         isError: true,
         type: 'ApiError',

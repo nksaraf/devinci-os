@@ -21,6 +21,22 @@ addDockItem({
 });
 
 addDockItem({
+  title: 'Safari',
+  appID: 'safari',
+  onClick: () => {
+    new WebView({
+      appID: 'safari',
+      title: 'Safari',
+      loadComponent: () => import('os/macos/apps/Demo.svelte').then((m) => m.default),
+      frame: true,
+      args: {
+        port: 8080,
+      },
+    }).open();
+  },
+});
+
+addDockItem({
   title: 'Editor',
   appID: 'editor',
   icon: '/assets/app-icons/editor/256.png',

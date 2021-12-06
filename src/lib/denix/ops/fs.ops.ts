@@ -1,6 +1,6 @@
 import { constants } from '$lib/constants';
 import { mkdirpSync, mkdirp } from '$lib/fs/utils/util';
-import type { Process } from '../denix';
+import type { Process } from '../kernel';
 import { op_sync, op_async, Resource } from '../types';
 import type { File } from '$lib/fs/core/file';
 import { path } from '$lib/path';
@@ -8,6 +8,7 @@ import { Buffer } from 'buffer';
 import type { TTY } from 'os/lib/tty/tty';
 import { ApiError } from 'os/lib/error';
 import type VirtualFile from 'os/lib/fs/core/virtual_file';
+import type { SharedFile } from 'os/lib/fs/shared';
 
 export interface DirEntry {
   name: string;
@@ -69,8 +70,28 @@ export const fsOps = [
         getFlagFromOptions(arg.options),
         arg.mode,
       );
-      console.log('opened file');
+      console.debug('opened file');
       return this.addResource(new FileResource(file));
+    },
+  },
+  op_sync('op_fs_events_open', function (this: Process, arg) {
+    return this.addResource(new Resource());
+  }),
+
+  op_async('op_fs_events_poll', async function (this: Process, arg) {
+    this.fs.addEventListener(arg.rid, arg.event);
+    console.debug(arg);
+  }),
+  {
+    name: 'op_open_pty',
+    async: async function (this: Process) {
+      let file1 = await this.fs.open('/dev/pty1', 1, 0x666);
+      let file2 = await this.fs.open('/dev/tty1', 1, 0x666);
+      console.debug('opened file');
+      return {
+        masterRid: this.addResource(new FileResource(file1)),
+        slaveRid: this.addResource(new FileResource(file2)),
+      };
     },
   },
   {
@@ -110,13 +131,13 @@ export const fsOps = [
   }),
 
   op_sync('op_seek_sync', function (this: Process, { rid, offset, whence }) {
-    console.log(rid, offset, whence);
+    console.debug(rid, offset, whence);
     (this.getResource(rid) as FileResource).seekSync(offset, whence);
   }),
 
   op_sync('op_stat_sync', function (this: Process, { path, lstat }) {
     let stat = this.fs.statSync(getAbsolutePath(path, this), lstat);
-    console.log(stat);
+    console.debug(stat);
     return stat;
   }),
   op_sync('op_remove_sync', function (this: Process, { path }) {
@@ -157,11 +178,12 @@ export const fsOps = [
     let stdin = this.getResource(args.rid) as FileResource;
 
     if (this.opSync(this.opCode('op_isatty'), args.rid)) {
-      console.log(stdin);
-      let tty = stdin.file as TTY;
-      console.log(tty);
-      this.tty.setRawMode(args.mode);
+      console.debug(stdin);
+      let tty = stdin.file as SharedFile;
+      console.debug(tty);
+      console.debug(tty.proxy.file.setRawMode(args.mode).then);
     }
+
     // this.env[key] = val;
   }),
 
@@ -210,8 +232,8 @@ class ConsoleLogResource extends Resource {
   }
   async write(data: Uint8Array) {
     let str = new TextDecoder().decode(data);
-    // console.log(str);
-    console.log(str);
+    // console.debug(str);
+    console.debug(str);
     return data.length;
   }
   close() {
@@ -224,7 +246,7 @@ class ConsoleLogResource extends Resource {
 
 export class FileResource extends Resource {
   type = 'file';
-  constructor(public file: VirtualFile) {
+  constructor(public file: File) {
     super();
   }
 
@@ -252,7 +274,7 @@ export class FileResource extends Resource {
     let container = new Uint8Array(new SharedArrayBuffer(data.length));
     let nread = await this.file.read(container, this.position, data.byteLength, 0);
 
-    console.log(container);
+    console.debug(container);
 
     data.set(container, 0);
 
@@ -285,7 +307,7 @@ export class FileResource extends Resource {
     let container = Buffer.from(data);
     let nwritten = await this.file.write(container, 0, data.byteLength, this.position);
 
-    console.log(nwritten);
+    console.debug(nwritten);
     this.position += nwritten;
 
     return nwritten;

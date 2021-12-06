@@ -1,11 +1,11 @@
-import type { Process } from '../denix';
+import type { Process } from '../kernel';
 import { op_async, op_sync, Resource } from '../types';
 
 export const network = [
   op_sync('op_net_listen', function (this: Process, args): OpConn {
     switch (args.transport) {
       case 'tcp': {
-        console.log('tcp listener', args);
+        console.debug('tcp listener', args);
 
         let socket = new Socket(this);
 
@@ -28,12 +28,12 @@ export const network = [
     }
   }),
   op_async('op_net_accept', async function (this: Process, args): Promise<OpConn> {
-    console.log('starting to accept', args);
+    console.debug('starting to accept', args);
 
     let listener = this.getResource<TcpListenerResource>(args.rid);
 
     let clientSocket = await listener.socket.accept();
-    console.log('accepted', args);
+    console.debug('accepted', args);
 
     let streamRid = this.addResource(new TcpStreamResource(clientSocket));
 
@@ -46,7 +46,7 @@ export const network = [
   op_async('op_net_connect', async function (this: Process, args): Promise<OpConn> {
     switch (args.transport) {
       case 'tcp': {
-        console.log('tcp listener', args);
+        console.debug('tcp listener', args);
 
         let socket = new Socket(this);
         let listenerRid = this.addResource(new TcpListenerResource(socket));
@@ -88,7 +88,7 @@ export const network = [
     'op_http_write_headers',
     async function (this: Process, [rid, status, headers], respBody): Promise<void> {
       let httpConn = this.getResource<HttpConnResource>(rid);
-      console.log('written response', console.log(httpConn));
+      console.debug('written response', console.debug(httpConn));
 
       await httpConn.sendResponse({
         body: respBody,
@@ -178,17 +178,17 @@ export class LocalNetwork extends EventTarget {
     this.channel.addEventListener('message', (event) => {
       if (event.data.type === 'HTTP_REQUEST') {
         const { url, requestId, port, ...props } = event.data;
-        console.log('REQUESTED data on port', port, typeof window === 'undefined');
-        console.log(this.listeners, props);
+        console.debug('REQUESTED data on port', port, typeof window === 'undefined');
+        console.debug(this.listeners, props);
 
         if (this.listeners[port] && this.listeners[port].isListening) {
-          console.log('getting response');
+          console.debug('getting response');
           let tcpStream = this.listeners[port].doAccept({
             hostname: new URL(props.referrer).hostname,
             port: 9000,
           });
 
-          console.log(tcpStream);
+          console.debug(tcpStream);
 
           tcpStream;
 
@@ -197,14 +197,14 @@ export class LocalNetwork extends EventTarget {
           }, 1);
 
           tcpStream.addEventListener('send', (event) => {
-            console.log('SENDING', event);
+            console.debug('SENDING', event);
             this.channel.postMessage({
               type: 'RESPONSE',
               requestId,
               response: event.detail,
             });
           });
-          console.log('posted message');
+          console.debug('posted message');
         }
       }
     });
@@ -216,7 +216,7 @@ export class LocalNetwork extends EventTarget {
       port: socket.port,
     });
 
-    console.log('listening');
+    console.debug('listening');
   }
   listeners: { [key: number]: Socket } = {};
   bind(addr, socket) {
@@ -257,7 +257,7 @@ export class Socket extends EventTarget {
   constructor(public kernel: Process) {
     super();
     this.addEventListener('packet', (event) => {
-      console.log('packet', event.detail);
+      console.debug('packet', event.detail);
     });
   }
 
@@ -268,7 +268,7 @@ export class Socket extends EventTarget {
     return new ReadableStream({
       start: (con) => {
         function handleData(event) {
-          console.log('heree', new TextEncoder().encode(JSON.stringify(event.detail)));
+          console.debug('heree', new TextEncoder().encode(JSON.stringify(event.detail)));
           con.enqueue(new TextEncoder().encode(JSON.stringify(event.detail)));
         }
 
@@ -289,7 +289,7 @@ export class Socket extends EventTarget {
   getWritable() {
     return new WritableStream({
       write: (chunk) => {
-        console.log('written');
+        console.debug('written');
         this.dispatchEvent(new CustomEvent('send', { detail: chunk }));
       },
     });
@@ -375,7 +375,7 @@ class HttpConnResource extends Resource {
   }
 
   close() {
-    console.log('closing');
+    console.debug('closing');
   }
 }
 
@@ -409,7 +409,7 @@ class Reader extends Resource {
     }
 
     let remainingData = this.currentChunk.length - this.currentChunkOffset;
-    console.log({ remainingData, chunk: this.currentChunk, offset: this.currentChunkOffset });
+    console.debug({ remainingData, chunk: this.currentChunk, offset: this.currentChunkOffset });
     if (remainingData > data.length) {
       data.set(
         this.currentChunk.slice(this.currentChunkOffset, this.currentChunkOffset + data.length),

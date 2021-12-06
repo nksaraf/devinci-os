@@ -7,7 +7,7 @@ expose({
   transpile: async function (code, options) {
     await init;
     if (code instanceof Uint8Array) {
-      console.log(code);
+      console.debug(code);
       return suc.transform(new TextDecoder().decode(code), {
         transforms: ['typescript', 'jsx'],
         disableESTransforms: true,
@@ -25,9 +25,10 @@ expose({
       let o = suc.transform(response, {
         transforms: ['typescript', 'jsx'],
         disableESTransforms: true,
+        jsxPragma: 'h',
       });
 
-      console.log(parse(o.code));
+      console.debug(parse(o.code));
 
       return o.code;
     }

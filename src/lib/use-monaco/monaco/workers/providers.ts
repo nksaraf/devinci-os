@@ -146,7 +146,7 @@ export class DiagnosticsProvider {
         return;
       }
 
-      // console.log(
+      // console.debug(
       //   'model added',
       //   model.uri.toString(),
       //   client.config.languageId,
@@ -154,7 +154,7 @@ export class DiagnosticsProvider {
       // );
 
       let handle: number;
-      // console.log(handle, this._listener, this._client, model);
+      // console.debug(handle, this._listener, this._client, model);
       this._listener[model.uri.toString()] = model.onDidChangeContent(() => {
         clearTimeout(handle);
         // @ts-ignore
@@ -171,7 +171,7 @@ export class DiagnosticsProvider {
     };
 
     const onModelRemoved = (model: monacoApi.editor.IModel): void => {
-      // console.log(
+      // console.debug(
       //   'model removed',
       //   model.uri.toString(),
       //   client.config.languageId
@@ -189,7 +189,7 @@ export class DiagnosticsProvider {
 
     this._disposables.push(
       monaco.editor.onWillDisposeModel((model) => {
-        // console.log(
+        // console.debug(
         //   'model disposed',
         //   model.uri.toString(),
         //   client.config.languageId
@@ -200,7 +200,7 @@ export class DiagnosticsProvider {
 
     this._disposables.push(
       monaco.editor.onDidChangeModelLanguage((event) => {
-        // console.log(
+        // console.debug(
         //   'model changed language',
         //   event.model.uri.toString(),
         //   client.config.languageId

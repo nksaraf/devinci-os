@@ -1,4 +1,4 @@
-import type { Process } from '$lib/denix/denix';
+import type { Process } from 'os/lib/denix/kernel';
 import type { Remote } from '../comlink/mod';
 import { fromWireValue, toWireValue } from '../comlink/http.handlers';
 import { ProcessManager } from './proc_manager';
@@ -14,9 +14,9 @@ function syncOpCall(op_code: string, args) {
   xhr.open('POST', '/~proc/' + op_code, false);
   xhr.send(JSON.stringify([op_code, args.map(toWireValue)]));
   // look ma, i'm synchronous (•‿•)
-  console.log('json response', xhr.responseText);
+  console.debug('json response', xhr.responseText);
   let result = JSON.parse(xhr.responseText.length > 0 ? xhr.responseText : 'null') ?? [null, null];
-  console.log(result);
+  console.debug(result);
 
   if (result[0]) {
     throw result[0];
@@ -34,7 +34,11 @@ function syncOpCall(op_code: string, args) {
 export class RemoteProcessManager extends ProcessManager {
   proxy: Remote<ProcessManager>;
   spawnSync() {
-    console.log('hereee');
+    console.debug('hereee', arguments);
     return syncOpCall('spawnSync', [...arguments]);
+  }
+
+  async waitFor(pid: number): Promise<{ statusCode: number; gotSignal: boolean }> {
+    return await this.proxy.waitFor(pid);
   }
 }

@@ -57,7 +57,7 @@ export const extractContents = async (
   //   stream.on('end', function () {
   //     if (header.type === 'file') {
   //       let contents = Buffer.concat(chunks);
-  //       // console.log(fullname, contents);
+  //       // console.debug(fullname, contents);
   //       try {
   //         fs.writeFileSync(fullname, contents, 'utf-8', 'w', 0o777);
   //       } catch (e) {

@@ -1,5 +1,5 @@
-import { StringReader } from 'https://deno.land/std@0.115.0/io/readers.ts';
-import { StringWriter } from 'https://deno.land/std@0.115.0/io/writers.ts';
+import { StringReader } from 'https://deno.land/std@0.116.0/io/readers.ts';
+import { StringWriter } from 'https://deno.land/std@0.116.0/io/writers.ts';
 
 import { builtins, defaultExtraUnixArgs } from './builtins.js';
 import {
@@ -26,7 +26,7 @@ export const run = (userInput, isTTY) => {
     if (userInput.endsWith(';')) {
       try {
         const result = Function(`return ${userInput}`)();
-        console.log(result);
+        console.debug(result);
         resolve(result);
       } catch (err) {
         console.error(err.toString());
@@ -149,7 +149,7 @@ export const run = (userInput, isTTY) => {
 
       const expanded = await expandCommand(withEnvVarsReplaced);
 
-      console.log(expanded);
+      console.debug(expanded);
       let withInterpolatedJS;
       try {
         withInterpolatedJS = evalAndInterpolateJS(expanded);

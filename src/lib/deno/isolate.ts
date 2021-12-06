@@ -1,5 +1,5 @@
 import { ApiError } from '../error';
-import type { Process } from '../denix/denix';
+import type { Process } from '../denix/kernel';
 import { loadDenoRuntime } from './runtime';
 import type { ResourceTable } from '../denix/types';
 import { join } from 'path-browserify';
@@ -53,10 +53,10 @@ export class DenoIsolate extends EventTarget {
 
         newLog(...args);
 
-        this.process.dispatchEvent(new CustomEvent('console', { detail: args.toString() }));
+        // this.process.dispatchEvent(new CustomEvent('console', { detail: args.toString() }));
       },
       setMacrotaskCallback: (cb) => {
-        console.log('macrostask callback');
+        console.debug('macrostask callback');
       },
       setWasmStreamingCallback: (cb) => {
         // we dont do anything with this callback right now
@@ -64,7 +64,7 @@ export class DenoIsolate extends EventTarget {
         this.wasmStreamingCallback = cb;
       },
       decode: function (data: Uint8Array) {
-        console.log(data);
+        console.debug(data);
         return new TextDecoder().decode(new Uint8Array(data));
       },
       encode: function (data: string) {
@@ -104,7 +104,7 @@ export class DenoIsolate extends EventTarget {
 
     await context.bootstrap.mainRuntime({
       target: 'aarch64-devinci-darwin-dev',
-      debugFlag: true,
+      debugFlag: false,
       noColor: false,
       unstableFlag: true,
       args: kernel.cmd,
@@ -154,23 +154,27 @@ export class DenoIsolate extends EventTarget {
     }
 
     if (path.startsWith('.')) {
-      console.log(path);
+      console.debug(path);
       path = new URL(join('/_', this.process.cwd, path), new URL(import.meta.url).origin).href;
-      console.log(path);
+      console.debug(path);
     }
 
     if (options.mode === 'script') {
       let result = await new Function(`return async (context) => {
         with (context) {
-          return await import("${path}?script")
+          await import("${path}?script")
         }
       }`)()(this.window);
 
-      return result;
+      queueMicrotask(() => {
+        console.log('PROCESS', this.process.resourceTable, this.process.runningOps);
+      });
+
+      return await result;
     } else {
       let result = await new Function(`return async () => {
         const { main } = await import("${path}")
-        console.log(main);
+        console.debug(main);
         return await main(${JSON.stringify(options.args)})
       }`)()();
 
@@ -180,12 +184,13 @@ export class DenoIsolate extends EventTarget {
 
   async runWASM(path: string, options: { args?: string[] }) {
     const { default: Context } = await import(
-      'https://deno.land/std@0.115.1/wasi/snapshot_preview1.ts'
+      'https://deno.land/std@0.116.0/wasi/snapshot_preview1.ts'
     );
 
     const context = new Context({
-      args: [path, ...(options.args ?? [])],
+      args: Deno.args,
       env: Deno.env.toObject(),
+
       exitOnReturn: false,
       preopens: {
         '/lib': '/lib',

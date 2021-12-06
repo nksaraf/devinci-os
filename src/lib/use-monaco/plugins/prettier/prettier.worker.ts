@@ -27,7 +27,7 @@ export class PrettierWorker extends MonacoWorker<{ parser: string; plugins: stri
     model,
   ) => {
     const { plugins, ...options } = this.options;
-    console.log(`[prettier] formatting`);
+    console.debug(`[prettier] formatting`);
 
     const text = this.prettier.format(model.getValue(), {
       plugins: this.plugins,

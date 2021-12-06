@@ -92,7 +92,7 @@ async function fetchPlugin({ url, fetchOptions = {} }) {
         },
       );
     } catch (e) {
-      console.log('[monaco] Error installing plugin from', url);
+      console.debug('[monaco] Error installing plugin from', url);
     }
 
     return {
@@ -120,7 +120,7 @@ export const createRemotePlugin = ({
       dependencies,
     },
     async (monaco) => {
-      console.log('[monaco] fetching plugin from', url);
+      console.debug('[monaco] fetching plugin from', url);
       const remotePlugin = await fetchPlugin({ url, fetchOptions });
       return remotePlugin(monaco);
     },
@@ -157,7 +157,7 @@ export default (monaco: typeof monacoApi) => {
   }
 
   async function installPlugin(plugin: monacoApi.plugin.IPlugin) {
-    console.log(`[monaco] installing plugin: ${plugin.label ?? plugin.name}`);
+    console.debug(`[monaco] installing plugin: ${plugin.label ?? plugin.name}`);
     let d1 = await plugin(monaco);
 
     installed[plugin.label ?? plugin.name] = plugin;
@@ -213,7 +213,7 @@ export default (monaco: typeof monacoApi) => {
         plugin.label = plugin.label ?? plugin.name;
 
         if (installed[plugin.label]) {
-          console.log(`[monaco] skipped installing ${plugin.label} (already installed)`);
+          console.debug(`[monaco] skipped installing ${plugin.label} (already installed)`);
           return;
         }
 

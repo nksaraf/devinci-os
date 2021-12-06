@@ -1,3 +1,4 @@
+#! /bin/deno run
 import { sqlite } from '../src/lib/sqlite/sqlite.ts';
 import { red } from 'https://deno.land/std@0.116.0/fmt/colors.ts';
 import { println, print, decoder } from './utils.ts';

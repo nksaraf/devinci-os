@@ -240,7 +240,11 @@
       </div>
     {/if}
 
-    <div style="height: 100%; width: 100%; overflow: {overflow ? 'visible' : 'scroll'};">
+    <div
+      style="height: 100%; width: 100%; overflow: {overflow
+        ? 'visible'
+        : 'scroll'}; border-radius: inherit;"
+    >
       {#if loadComponent}
         {#await loadComponent() then Component}
           <svelte:component this={Component} args={componentArgs} />

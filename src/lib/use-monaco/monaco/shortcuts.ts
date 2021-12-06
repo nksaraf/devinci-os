@@ -7,10 +7,10 @@ export default createPlugin(
   },
   (monaco) => {
     return monaco.editor.onDidCreateEditor((editor) => {
-      console.log('EDITOR CREATED', editor, editor.getRawOptions());
+      console.debug('EDITOR CREATED', editor, editor.getRawOptions());
       if (editor.getRawOptions()?.formatOnSave) {
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-          console.log('FORMAT ON SAVE');
+          console.debug('FORMAT ON SAVE');
           editor?.trigger('ctrl-s', 'editor.action.formatDocument', null);
         });
       }

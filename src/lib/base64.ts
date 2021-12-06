@@ -39,7 +39,7 @@ const _tidyB64 = (s: string) => s.replace(/[^A-Za-z0-9\+\/]/g, '');
  * polyfill version of `btoa`
  */
 const btoaPolyfill = (bin: string) => {
-  // console.log('polyfilled');
+  // console.debug('polyfilled');
   let u32: number,
     c0: number,
     c1: number,
@@ -175,7 +175,7 @@ const btou = (b: string): string => b.replace(re_btou, cb_btou);
  * polyfill version of `atob`
  */
 const atobPolyfill = (asc: string) => {
-  // console.log('polyfilled');
+  // console.debug('polyfilled');
   asc = asc.replace(/\s+/g, '');
   let size = base64DecodedSize(asc);
 

@@ -7,9 +7,8 @@ import type {
   RestRequest,
 } from 'msw';
 import TranspileWorker from './transpiler.worker.ts?worker';
-import { wrap } from './comlink/mod';
+import { releaseProxy, wrap } from './comlink/mod';
 
-import { fs } from './fs';
 import { newPromise } from './promise';
 import { ApiError, ERROR_KIND_TO_CODE } from './error';
 import { fromWireValue, toWireValue } from './comlink/http.handlers';
@@ -40,14 +39,30 @@ async function createLocalNetwork() {
       return res(ctx.status(orig.status, orig.statusText));
     }
 
-    let data = await transpiler.transpile(orig.body);
+    let contentType = orig.headers.get('content-type');
+    let data;
+    if (
+      !contentType.includes('octet-stream') &&
+      !contentType.includes('wasm') &&
+      !contentType.includes('html')
+    ) {
+      data = await transpiler.transpile(orig.body);
+      if (req.url.search.includes('script')) {
+        if (data.startsWith('#!')) {
+          let line = data.indexOf('\n');
+          data =
+            `import.meta.shebang = '${data.slice(
+              2,
+              line,
+            )}'\nimport 'http://localhost:3000/src/lib/deno/deno.ts'\n` + data.substring(line);
+        }
 
-    if (req.url.search.includes('script')) {
-      data =
-        'import.meta.main = true\n' +
-        (data.startsWith('#!') ? data.substring(data.indexOf('\n')) : data);
+        data = 'import.meta.main = true\n' + data;
+      }
+      return res(ctx.body(data), ctx.set('Content-Type', 'application/javascript'));
+    } else {
+      return res(ctx.body(await orig.arrayBuffer()), ctx.set('Content-Type', contentType));
     }
-    return res(ctx.body(data), ctx.set('Content-Type', 'application/javascript'));
   };
 
   let worker = setupWorker(
@@ -83,18 +98,24 @@ async function createLocalNetwork() {
       let [fnName, args] = JSON.parse(req.body as string) as [string, any[]];
 
       let argList = args.map((a) => fromWireValue(a[0]));
-      console.log(fnName, argList);
+      console.debug(fnName, argList);
 
       if (fnName.endsWith('Sync')) {
         try {
-          let result = await fs[fnName.substring(0, fnName.length - 4)](...argList);
-          console.log(result, toWireValue(result));
-          return res(ctx.json([null, toWireValue(result)] ?? [null]));
+          let result = await processManager.fs[fnName.substring(0, fnName.length - 4)](...argList);
+          console.debug(result, toWireValue(result));
+          return res(
+            ctx.json(
+              [null, fnName === 'openSync' ? toWireValue(undefined) : toWireValue(result)] ?? [
+                null,
+              ],
+            ),
+          );
         } catch (e) {
           if (e instanceof ApiError) {
-            console.log(e.code);
+            console.debug(e.code);
             let getCode = Object.entries(ERROR_KIND_TO_CODE).find(([k, v]) => v === e.errno);
-            console.log('error code', getCode);
+            console.debug('error code', getCode);
             return res(
               ctx.json([
                 {
@@ -118,18 +139,18 @@ async function createLocalNetwork() {
       let [fnName, args] = JSON.parse(req.body as string) as [string, any[]];
 
       let argList = args.map((a) => fromWireValue(a[0]));
-      console.log(fnName, argList);
+      console.debug(fnName, argList);
 
       if (fnName.endsWith('Sync')) {
         try {
           let result = await processManager[fnName.substring(0, fnName.length - 4)](...argList);
-          console.log(result, toWireValue(result));
+          console.debug(result, toWireValue(result));
           return res(ctx.json([null, toWireValue(result)] ?? [null]));
         } catch (e) {
           if (e instanceof ApiError) {
-            console.log(e.code);
+            console.debug(e.code);
             let getCode = Object.entries(ERROR_KIND_TO_CODE).find(([k, v]) => v === e.errno);
-            console.log('error code', getCode);
+            console.debug('error code', getCode);
             return res(
               ctx.json([
                 {
@@ -147,27 +168,48 @@ async function createLocalNetwork() {
         throw new Error('For async operations use the comlink connection');
       }
     }),
+    rest.post('/~deno/op/sync/op_exit', async (req, res, ctx) => {
+      // HANDING SYNCHRONOUS FILE SYSTEM OPERATIONS
+      let [fnName, ...args] = JSON.parse(req.body as string) as [string, any[]];
+
+      let argList = args.map((a) => fromWireValue(a[0]));
+      console.debug(fnName, argList);
+      let process = processManager.processes.get(argList[0]);
+
+      process.send('EXIT', argList[1]);
+      const promise = newPromise();
+      let d = process.onUpdate((s) => {
+        if (s.isInAny('disposed')) {
+          promise.resolve(true);
+        }
+      });
+
+      await promise.promise;
+
+      d();
+      return res();
+    }),
 
     rest.post('/~file*', async (req, res, ctx) => {
       // HANDING SYNCHRONOUS FILE SYSTEM OPERATIONS
       let [path, fnName, args] = JSON.parse(req.body as string) as [string, string, any[]];
 
       let argList = args.map((a) => fromWireValue(a[0]));
-      console.log(fnName, argList);
+      console.debug(fnName, argList);
 
-      let file = await fs.open(path, constants.fs.O_RDWR, 0o777);
+      let file = await processManager.fs.open(path, constants.fs.O_RDWR, 0o777);
 
-      console.log(file);
+      console.debug(file);
       if (fnName.endsWith('Sync')) {
         try {
           let result = await file[fnName.substring(0, fnName.length - 4)](...argList);
-          console.log(result, toWireValue(result));
+          console.debug(result, toWireValue(result));
           return res(ctx.json([null, toWireValue(result)] ?? [null]));
         } catch (e) {
           if (e instanceof ApiError) {
-            console.log(e.code);
+            console.debug(e.code);
             let getCode = Object.entries(ERROR_KIND_TO_CODE).find(([k, v]) => v === e.errno);
-            console.log('error code', getCode);
+            console.debug('error code', getCode);
             return res(
               ctx.json([
                 {
@@ -185,8 +227,8 @@ async function createLocalNetwork() {
       }
     }),
     rest.get('/~p/:port/*', async (req, res, ctx) => {
-      console.log(req);
-      console.log('/~p/:port/*', req.url.href);
+      console.debug(req);
+      console.debug('/~p/:port/*', req.url.href);
       // somebody made some kind of request to my server
 
       requests[req.id] = newPromise<{ body: any; status: number; headers: [string, string][] }>();
@@ -197,7 +239,7 @@ async function createLocalNetwork() {
       }, 10000);
 
       let url = new URL('http://localhost:' + req.params.port + req.url.pathname.slice(8)).href;
-      console.log(url);
+      console.debug(url);
 
       broadcastChannel.postMessage({
         type: 'HTTP_REQUEST',
@@ -211,7 +253,7 @@ async function createLocalNetwork() {
 
       try {
         let { body, status, headers } = await requests[req.id].promise;
-        console.log('result', { body, status, headers });
+        console.debug('result', { body, status, headers });
         return res(
           ctx.set(Object.fromEntries(headers)),
           ctx.body(body),

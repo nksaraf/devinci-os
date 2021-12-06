@@ -158,7 +158,7 @@ export default class HTTPRequest extends BaseFileSystem implements IFileSystem {
     }
 
     if (xhrIsAvailable) {
-      console.log('XHR IS AVAILABLE');
+      console.debug('XHR IS AVAILABLE');
       this._requestFileSyncInternal = syncDownloadFile;
       this._requestFileSizeSyncInternal = getFileSizeSync;
     } else {

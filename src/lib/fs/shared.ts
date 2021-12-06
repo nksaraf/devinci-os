@@ -31,7 +31,7 @@ export class SharedFile extends VirtualFile {
     length: number,
     position: number,
   ): Promise<number> {
-    console.log('read', this.getPath(), offset, length, position);
+    console.debug('read', this.getPath(), offset, length, position);
     let num = await this.file.read(buffer, offset, length, position);
     return num;
   }
@@ -82,9 +82,9 @@ export class SharedFileSystem extends VirtualFileSystem {
 
   readyPromise = newPromise();
   async ready() {
-    console.log('waitign for ready');
+    console.debug('waitign for ready');
     let res = await this.readyPromise.promise;
-    console.log('ready');
+    console.debug('ready');
     return res;
   }
 
@@ -109,7 +109,7 @@ export class SharedFileSystem extends VirtualFileSystem {
     return sharedFile;
   }
 
-  openSync(...args: Parameters<typeof VirtualFileSystem.prototype.open>) {
+  openSync(...args: Parameters<typeof VirtualFileSystem.prototype.openSync>) {
     if (this.openedFiles[args[0]]) {
       this.openedFiles[args[0]].ref();
       return this.openedFiles[args[0]];

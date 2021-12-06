@@ -109,7 +109,7 @@ export const getTokenUnderCursor = ({ text, cursorPosition }) => {
     const tokenIndex = matchResult.index;
 
     if (tokenIndex <= cursorPosition && tokenIndex + token.length >= cursorPosition) {
-      // console.log("token is ", token, tokenIndex);
+      // console.debug("token is ", token, tokenIndex);
       return {
         token,
         tokenIndex,
@@ -228,9 +228,9 @@ export const readHistory = () => {
     const historyBytes = Deno.readFileSync(getHistoryFileLocation());
     return JSON.parse(new TextDecoder().decode(historyBytes));
   } catch (e) {
-    console.log('what the', e);
+    console.debug('what the', e);
     if (e instanceof Deno.errors.NotFound) {
-      console.log('here');
+      console.debug('here');
       healHistoryFile();
 
       return [];

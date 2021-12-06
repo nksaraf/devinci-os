@@ -156,7 +156,7 @@ export const readCommand = async () => {
     while (running) {
       const buf = new Uint8Array(256);
       const numberOfBytesRead = await Deno.stdin.read(buf);
-      console.log(numberOfBytesRead);
+      console.debug(numberOfBytesRead);
       const relevantBuf = buf.slice(0, numberOfBytesRead);
 
       console.debug('got ', buf.slice(0, numberOfBytesRead));
@@ -298,7 +298,7 @@ export const readCommand = async () => {
 
           await rewriteLineAfterCursor(currentBuffer);
 
-          console.log('HEEETY');
+          console.debug('HEEETY');
 
           for (var i = 0; i < decodedString.length; i++) {
             await Deno.stdout.write(Uint8Array.from(reverseControlCharactersBytesMap.cursorRight));

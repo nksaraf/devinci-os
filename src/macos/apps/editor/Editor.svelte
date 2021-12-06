@@ -13,7 +13,7 @@
   const win = getContext('windowAPI') as WebViewAPI;
 
   async function writeFile(value) {
-    await Deno.writeTextFile(args.path, value);
+    await Deno.writeTextFile(args.path, value.value);
   }
 </script>
 

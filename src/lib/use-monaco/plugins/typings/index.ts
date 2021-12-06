@@ -76,14 +76,14 @@ export default (compilerOptions: monacoApi.languages.typescript.CompilerOptions 
             ${_globalExports.join('\n')}
           }`;
 
-        console.log('[typings] setting global.d.ts', { code });
+        console.debug('[typings] setting global.d.ts', { code });
 
         let extraLib = extraLibs.get('global.d.ts');
 
         extraLib && extraLib.dispose();
 
         // const currentLib = api.languages.typescript.javascriptDefaults.getExtraLibs();
-        // console.log(currentLib);
+        // console.debug(currentLib);
         let lib1 = monaco.languages.typescript.typescriptDefaults.addExtraLib(
           code,
           'file:///global.d.ts',
@@ -142,7 +142,7 @@ export default (compilerOptions: monacoApi.languages.typescript.CompilerOptions 
         //     .replace('@', '')
         //     .replace('/', '');
 
-        //   console.log(
+        //   console.debug(
         //     `[typings] exposing global: ${imported} from ${pkg} as ${exported}`
         //   );
 

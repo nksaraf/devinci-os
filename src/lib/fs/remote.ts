@@ -4,7 +4,7 @@ import { fromWireValue, toWireValue } from '../comlink/http.handlers';
 import type { VirtualFileSystem } from './virtual';
 import type { SharedFileSystem } from './shared';
 import VirtualFile from './core/virtual_file';
-import type Stats from './core/stats';
+import Stats, { FileType } from './core/stats';
 import type { FileFlagString } from './core/file_flag';
 
 export class RemoteFile extends VirtualFile {
@@ -16,7 +16,7 @@ export class RemoteFile extends VirtualFile {
   }
 
   closeSync() {
-    console.log('heree');
+    console.debug('heree');
     syncFileOpCallXhr(this.getPath(), 'closeSync', []);
   }
 
@@ -25,7 +25,7 @@ export class RemoteFile extends VirtualFile {
   }
 
   public writeSync(buffer: Uint8Array, offset: number, length: number, position: number): number {
-    console.log('heree');
+    console.debug('heree');
     return syncFileOpCallXhr(this.getPath(), 'writeSync', [
       buffer,
       offset,
@@ -35,7 +35,7 @@ export class RemoteFile extends VirtualFile {
   }
 
   async read(buffer: Uint8Array, offset: number, length: number, position: number) {
-    console.log('readingggg', buffer, offset, length, position);
+    console.debug('readingggg', buffer, offset, length, position);
     const sharedBuffer = new SharedArrayBuffer(buffer.byteLength);
     let nread = await this.proxy.read(new Uint8Array(sharedBuffer), offset, length, position);
     if (nread > 0) {
@@ -46,7 +46,7 @@ export class RemoteFile extends VirtualFile {
   }
 
   public readSync(buffer: Uint8Array, offset: number, length: number, position: number): number {
-    console.log('heree');
+    console.debug('heree');
     return syncFileOpCallXhr(this.getPath(), 'readSync', [
       buffer,
       offset,
@@ -56,7 +56,7 @@ export class RemoteFile extends VirtualFile {
   }
 
   public syncSync(): void {
-    console.log('heree');
+    console.debug('heree');
     return syncFileOpCallXhr(this.getPath(), 'syncSync', []);
   }
 
@@ -66,7 +66,7 @@ export class RemoteFile extends VirtualFile {
     length: number,
     position: number,
   ): Promise<number> {
-    console.log('writingggg');
+    console.debug('writingggg');
     return await this.proxy.write(buffer, offset, length, position);
   }
 
@@ -96,19 +96,19 @@ export class RemoteFileSystem {
 
 function syncOpCallXhr(op_code: string, args) {
   const xhr = new XMLHttpRequest();
-  console.log('fs', op_code, ...args);
+  console.debug('fs', op_code, ...args);
   xhr.open('POST', '/~fs/' + op_code, false);
   xhr.send(JSON.stringify([op_code, args.map(toWireValue)]));
   // look ma, i'm synchronous (•‿•)
-  console.log('json response', xhr.responseText);
+  console.debug('json response', xhr.responseText);
   let result = JSON.parse(xhr.responseText.length > 0 ? xhr.responseText : 'null');
-  console.log(result);
+  console.debug(result);
 
   if (result[0]) {
     throw result[0];
   }
 
-  const value = fromWireValue(result[1][0]);
+  const value = fromWireValue(result[1]?.[0]);
   return value;
 }
 
@@ -117,9 +117,9 @@ function syncFileOpCallXhr(path: string, op_code: string, args) {
   xhr.open('POST', '/~file/' + op_code, false);
   xhr.send(JSON.stringify([path, op_code, args.map(toWireValue)]));
   // look ma, i'm synchronous (•‿•)
-  console.log('json response', xhr.responseText);
+  console.debug('json response', xhr.responseText);
   let result = JSON.parse(xhr.responseText.length > 0 ? xhr.responseText : 'null') ?? [null, null];
-  console.log(result);
+  console.debug(result);
 
   if (result[0]) {
     throw result[0];
@@ -134,9 +134,7 @@ function syncFileOpCallXhr(path: string, op_code: string, args) {
   return value;
 }
 
-export const expose = () => {
-  
-}
+export const expose = () => {};
 
 /**
  * Tricky: Define all of the functions that merely forward arguments to the
@@ -188,7 +186,6 @@ RemoteFileSystem.prototype.openSync = function (
   flag: FileFlagString,
   mode: number,
 ) {
-  let remoteFile = syncOpCallXhr('openSync', [path, flag, mode]) as RemoteFile;
-  remoteFile.fsRemote = this;
-  return remoteFile;
+  syncOpCallXhr('openSync', [path, flag, mode]) as RemoteFile;
+  return new RemoteFile(path, flag, new Stats(FileType.FILE, 10));
 };

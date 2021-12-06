@@ -53,5 +53,5 @@ if (process.argv.length === 3) {
   }
   fs.writeFileSync(fname, fsListing, { encoding: 'utf8' });
 } else {
-  console.log(fsListing);
+  console.debug(fsListing);
 }

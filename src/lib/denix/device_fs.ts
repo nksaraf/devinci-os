@@ -28,13 +28,21 @@ export class DeviceFileSystem extends InMemoryFileSystem {
   }
 
   public async createFile(p: string, flag: number, mode: number): Promise<File> {
-    let tty = new TTY('/dev' + p);
-    this.openedFiles.set(p, tty);
-    return tty;
+    if (p.slice(1).startsWith('tty')) {
+      let tty = new TTY('/dev' + p);
+
+      this.openedFiles.set(p, tty);
+      return tty;
+    } else if (p.slice(1).startsWith('pty')) {
+      let tty = new TTY('/dev' + p);
+
+      this.openedFiles.set(p, tty);
+      return tty;
+    }
   }
 
   public async open(p: string, flag: number, mode: number): Promise<File> {
-    console.log('open', p, flag, mode);
+    console.debug('open', p, flag, mode);
     if (this.openedFiles.has(p)) {
       return this.openedFiles.get(p);
     }

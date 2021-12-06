@@ -1,19 +1,14 @@
-import { startup } from '../startup.js';
 import { run } from './run.js';
 import { readCommand } from './tty.js';
 
-await startup();
-
-const runMain = async () => {
+export const runShell = async () => {
   // Catch SIGINT.
   Deno.addSignalListener('SIGINT', (_) => {
-    console.log('interrupted!');
     Deno.exit();
   });
 
   while (true) {
     const userInput = await readCommand();
-    console.log(userInput);
 
     try {
       await run(userInput, true);
@@ -22,5 +17,3 @@ const runMain = async () => {
     }
   }
 };
-
-await runMain();

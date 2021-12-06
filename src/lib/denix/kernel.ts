@@ -11,15 +11,18 @@ import { url } from './ops/url.ops';
 import { fs as globalFS } from '$lib/fs';
 import { test } from './ops/test.ops';
 import type { ProcessManager } from './proc_manager';
+import type VirtualFile from '../fs/core/virtual_file';
+import { toWireValue } from '../comlink/http.handlers';
+import { newPromise } from '../promise';
 
-function syncOpCallXhr(op_code: number, arg1: any, arg2: any) {
+function syncOpCallXhr(op_code: string, arg1: any, arg2: any) {
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/~deno/op/sync/' + op_code, false);
-  xhr.send(JSON.stringify([op_code, arg1, arg2]));
+  xhr.send(JSON.stringify([op_code, toWireValue(arg1), toWireValue(arg2)]));
   // look ma, i'm synchronous (•‿•)
-  console.log('json response', xhr.responseText);
+  console.debug('json response', xhr.responseText);
   let result = JSON.parse(xhr.responseText.length > 0 ? xhr.responseText : 'null');
-  console.log(result);
+  console.debug(result);
 
   return result;
 }
@@ -31,9 +34,9 @@ export interface ProcessOptions {
   fs?: VirtualFileSystem;
   proc?: ProcessManager;
   net?: LocalNetwork;
-  stdin?: number;
-  stdout?: number;
-  stderr?: number;
+  stdin?: string;
+  stdout?: string;
+  stderr?: string;
   env?: {};
   cwd?: string;
   parentPid?: number;
@@ -45,7 +48,7 @@ export class Process extends EventTarget {
   env: { [key: string]: any } = {};
   cwd: any = '/';
   fs: VirtualFileSystem;
-  proc: ProcessManager;
+  processManager: ProcessManager;
   resourceTable: ResourceTable;
   private nextRid = 0;
   tty: string;
@@ -69,13 +72,12 @@ export class Process extends EventTarget {
     pid,
     parentPid = undefined,
     resourceTable = createResourceTable(),
-    tty = '/dev/tty0',
     fs = globalFS,
     proc = undefined,
     net = new LocalNetwork(),
-    stdin = 0,
-    stdout = 1,
-    stderr = 2,
+    stdin = '/dev/null',
+    stdout = '/dev/null',
+    stderr = '/dev/null',
     env = {},
     cwd = '/',
     cmd = ['/src/lib/desh/index.ts'],
@@ -83,53 +85,69 @@ export class Process extends EventTarget {
     this.pid = pid;
     this.parentPid = parentPid;
     this.resourceTable = resourceTable;
-    this.tty = tty;
+    this.tty = stdin;
     this.fs = fs;
-    this.proc = proc;
-    // this.fsRemote = fsRemote;
-    // this.fsWorker = fsWorker;
-    this.stdin = stdin;
-    this.stdout = stdout;
-    this.stderr = stderr;
+    this.processManager = proc;
     this.env = env;
     this.cwd = cwd;
     this.net = net;
     this.nextRid = Object.keys(this.resourceTable).length;
     this.cmd = cmd;
-    await this.initStdio();
+    await this.initStdio(stdin, stdout, stderr);
     this.initOps();
   }
 
+  // run the process's command
   async run() {
-    console.log(this.cmd);
-    await import(`/bin/${this.cmd[0]}.ts?script`);
+    this.dispatchEvent(new CustomEvent('start', { detail: this.pid }));
+    console.debug(this.cmd);
+    try {
+      let result = await import(`/bin/${this.cmd[0]}.ts?script`);
+
+      // this is a hack to call the below line after the async imports have actually happened and
+      // the import have been resolved
+      queueMicrotask(async () => {
+        console.debug('RESULT', result, this.resourceTable, this.runningOps);
+        if (Object.values(this.runningOps).length > 0) {
+          console.debug('WATINNGGG');
+          this.waitingForExit = newPromise();
+
+          await this.waitingForExit.promise;
+        }
+
+        this.mightDie(0);
+      });
+      // this.dispatchEvent(new CustomEvent('success', { detail: this.pid }));
+    } catch (e) {
+      if (e.message.includes('Code not reachable')) {
+        // console.error(e);
+        // return this.exit();
+        return;
+      }
+      this.exit(-1);
+    }
   }
+  mightDie(arg0: number) {
+    this.dispatchEvent(new CustomEvent('might_exit', { detail: { pid: this.pid, code: arg0 } }));
+  }
+
+  waitingForExit;
 
   #_ops: Op[];
 
-  getFileResource(path: string | number) {
-    if (typeof path === 'number') {
-      return this.getResource(path);
-    } else {
-      this.addResource(new FileResource(this.fs.openSync(path, 1, 0o666)));
-    }
+  _tty: File;
+  private async initStdio(stdin: string, stdout: string, stderr: string) {
+    let file = await this.fs.open(stdin, 1, 0o666);
+    this.stdin = this.addResource(new FileResource(file as VirtualFile));
+    this.stdout = this.addResource(new FileResource(file as VirtualFile));
+    this.stderr = this.addResource(new FileResource(file as VirtualFile));
   }
 
-  _tty: File;
-  private async initStdio() {
-    let _tty = await this.fs.open(this.tty, 1, 0o666);
-    this.stdin =
-      typeof this.stdin === 'number' && this.getResource(this.stdin)
-        ? this.stdin
-        : this.addResource(new FileResource(_tty));
-    this.stdout =
-      typeof this.stdout === 'number' && this.getResource(this.stdout)
-        ? this.stderr
-        : this.addResource(new FileResource(_tty));
-    this.stderr =
-      typeof this.stderr === 'number' && this.getResource(this.stderr)
-        ? this.stderr
-        : this.addResource(new FileResource(_tty));
+  exit(code: any) {
+    console.debug('EXITING', code);
+    this.dispatchEvent(new CustomEvent('exit', { detail: { pid: this.pid, code } }));
+
+    syncOpCallXhr('op_exit', this.pid, code);
   }
 
   private initOps() {
@@ -242,6 +260,29 @@ export class Process extends EventTarget {
     delete this.resourceTable[rid];
   }
 
+  syncOpsCount = -1;
+
+  trackOp(i, op) {
+    this.dispatchEvent(new CustomEvent('alive', { detail: { pid: this.pid } }));
+    this.runningOps[i] = op;
+  }
+
+  resolveOp(i) {
+    delete this.runningOps[i];
+    console.debug('RESOLVING', Object.values(this.runningOps), this.resourceTable);
+
+    queueMicrotask(() => {
+      if (this.waitingForExit) {
+        if (
+          Object.values(this.runningOps).length === 0 &&
+          Object.keys(this.resourceTable).length <= 3
+        ) {
+          this.dispatchEvent(new CustomEvent('might_exit', { detail: { pid: this.pid, code: 0 } }));
+        }
+      }
+    });
+  }
+
   opSync(index, arg1 = undefined, arg2 = undefined) {
     if (!this.ops[index]) {
       throw new Error(`op ${index} not found`);
@@ -249,17 +290,28 @@ export class Process extends EventTarget {
       throw new Error(`op ${index} not sync`);
     }
 
+    let i = this.syncOpsCount--;
+    this.trackOp(i, { index, arg1, arg2 });
+
+    queueMicrotask(() => {
+      this.resolveOp(i);
+    });
     // @ts-ignore
     try {
       let opResult = this.ops[index].sync.bind(this)(arg1, arg2);
-      console.log('opcall sync', this.ops[index].name, opResult);
+      console.debug('opcall sync', this.ops[index].name, opResult);
       return opResult ?? null;
     } catch (e) {
-      console.log('SOME ERROR', e);
+      console.debug('SOME ERROR', e);
+      if (index === this.opCode('op_exit')) {
+        return null;
+      }
+
       if (e instanceof ApiError) {
-        console.log(e.code);
+        console.debug(e.code);
         let getCode = Object.entries(ERROR_KIND_TO_CODE).find(([k, v]) => v === e.errno);
-        console.log('error code', getCode);
+        console.debug('error code', getCode);
+
         if (getCode) {
           return {
             $err_class_name: getCode[0],
@@ -284,21 +336,28 @@ export class Process extends EventTarget {
           stack: e.stack,
         };
       }
-      throw e;
+      // throw e;
     }
   }
 
+  runningOps = {};
+
   async opAsync(op_code: number, promiseId: number, arg1: any, arg2: any) {
+    this.trackOp(promiseId, { index: op_code, arg1, arg2 });
     try {
       const result = await this.ops[op_code].async.bind(this)(arg1, arg2);
-      console.log(result);
+      console.debug(result);
+      queueMicrotask(() => this.resolveOp(promiseId));
+
       return result ?? null;
     } catch (e) {
-      console.log(e, e.prototype);
+      console.debug(e, e.prototype);
+      queueMicrotask(() => this.resolveOp(promiseId));
+
       if (e instanceof ApiError) {
-        console.log(e.code);
+        console.debug(e.code);
         let getCode = Object.entries(ERROR_KIND_TO_CODE).find(([k, v]) => v === e.errno);
-        console.log('error code', getCode);
+        console.debug('error code', getCode);
         return {
           $err_class_name: getCode[0],
           code: ErrorCodeToName[getCode[1]],
@@ -317,7 +376,7 @@ export class RemoteKernel extends Process {
   opSync(op_code, arg1, arg2) {
     console.group('op sync', op_code, arg1, arg2);
     let result = syncOpCallXhr(op_code, arg1, arg2);
-    console.log(result);
+    console.debug(result);
     console.groupEnd();
 
     return result;
@@ -325,7 +384,7 @@ export class RemoteKernel extends Process {
 
   async opAsync(op_code, promiseId, arg1, arg2) {
     let result = await this.proxy.opAsync(op_code, promiseId, arg1, arg2);
-    console.log(result);
+    console.debug(result);
     console.groupEnd();
     return result;
   }

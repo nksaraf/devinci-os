@@ -14,7 +14,7 @@ import { constants } from '$lib/constants';
 // import wasmUrl from 'asc:./fs.asm';
 
 // WebAssembly.instantiateStreaming(fetch(wasmUrl), {}).then(({ instance }) =>
-//   console.log(instance.exports.add(40, 2)),
+//   console.debug(instance.exports.add(40, 2)),
 // );
 
 /**
@@ -423,7 +423,7 @@ export interface FileSystemConstructor {
  * Basic filesystem class. Most filesystems should extend this class, as it
  * provides default implementations for a handful of methods.
  */
-export class BaseFileSystem implements IFileSystem {
+export class BaseFileSystem extends EventTarget implements IFileSystem {
   getName(): string {
     throw new Error('Method not implemented.');
   }

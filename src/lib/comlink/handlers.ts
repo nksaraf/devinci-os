@@ -105,7 +105,7 @@ const StatsHandler = {
     [],
   ],
   deserialize: (value: any): Stats => {
-    console.log('deserializing statts', value);
+    console.debug('deserializing statts', value);
     return new Stats(value.itemType, value.size, value.mode, value.atime, value.mtime);
   },
 };
@@ -214,7 +214,7 @@ transferHandlers.set('RESOURCE_TABLE', {
     let obj = {};
     let transferables = [];
     for (let [key, value] of Object.entries(request)) {
-      console.log(key, value);
+      console.debug(key, value);
       if (value.type === 'file') {
         let fileResource = value as FileResource;
         let file = fileResource.file as VirtualFile;
@@ -237,12 +237,12 @@ transferHandlers.set('RESOURCE_TABLE', {
       }
     }
 
-    console.log(obj, transferables);
+    console.debug(obj, transferables);
 
     return [obj, transferables];
   },
   deserialize: (obj: MockedResponse) => {
-    console.log(obj);
+    console.debug(obj);
     let resourceTable = createResourceTable();
     for (let [key, value] of Object.entries(obj)) {
       if (value.type === 'file') {
@@ -258,7 +258,7 @@ transferHandlers.set('SHARED_FILE', {
   canHandle: (obj): obj is SharedFile => obj instanceof SharedFile,
   serialize: (obj: SharedFile) => {
     let port = obj.getConnection();
-    console.log('serialize', StatsHandler.serialize(obj.getStats()));
+    console.debug('serialize', StatsHandler.serialize(obj.getStats()));
     return [
       {
         path: obj.getPath(),

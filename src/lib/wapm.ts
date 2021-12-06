@@ -15,21 +15,21 @@ const WAPM_GRAPHQL_QUERY = `query shellGetCommandQuery($command: String!) {
   }
 }`;
 
-const getWAPMUrlForCommandName = async (commandName: string) => {
-  const fetchResponse = await fetch("https://registry.wapm.io/graphql", {
-    method: "POST",
-    mode: "cors",
+export const getWAPMUrlForCommandName = async (commandName: string) => {
+  const fetchResponse = await fetch('https://registry.wapm.io/graphql', {
+    method: 'POST',
+    mode: 'cors',
     headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json"
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      operationName: "shellGetCommandQuery",
+      operationName: 'shellGetCommandQuery',
       query: WAPM_GRAPHQL_QUERY,
       variables: {
-        command: commandName
-      }
-    })
+        command: commandName,
+      },
+    }),
   });
   const response = await fetchResponse.json();
 
@@ -46,12 +46,12 @@ const getWAPMUrlForCommandName = async (commandName: string) => {
     return false;
   };
 
-  if (optionalChaining(response, ["data", "command", "module", "publicUrl"])) {
+  if (optionalChaining(response, ['data', 'command', 'module', 'publicUrl'])) {
     const wapmModule = response.data.command.module;
 
-    if (wapmModule.abi !== "wasi") {
+    if (wapmModule.abi !== 'wasi') {
       throw new Error(
-        `${commandName} does not use the wasi abi. Currently, only the wasi abi is supported on the wapm shell.`
+        `${commandName} does not use the wasi abi. Currently, only the wasi abi is supported on the wapm shell.`,
       );
     }
 
@@ -67,9 +67,12 @@ const getWasmBinaryFromUrl = async (url: string) => {
   return new Uint8Array(buffer);
 };
 
-export const fetchCommandFromWAPM = async ({args,  env}: {
-  args: Array<string>,
-  env?: {[key: string]: string},
+export const fetchCommandFromWAPM = async ({
+  args,
+  env,
+}: {
+  args: Array<string>;
+  env?: { [key: string]: string };
 }) => {
   let commandName = args[0];
   const commandUrl = await getWAPMUrlForCommandName(commandName);

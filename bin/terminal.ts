@@ -1,10 +1,6 @@
-// import { createAppConfig } from 'os/macos/stores/apps.store';
-
-console.log('TERMINALLL', import.meta.main);
+#! /bin/deno run
 export async function main() {
-  console.log('TERMINALLL');
-  console.log('here', Deno);
-
+  Deno.env.set('DENO_DEPLOYMENT_ID', '123');
   let p = Deno.run({
     cmd: ['deno', 'run', '/bin/desh.ts'],
     cwd: Deno.cwd(),
@@ -14,7 +10,7 @@ export async function main() {
 }
 
 if (import.meta.main) {
-  main();
+  await main();
 }
 
 // export default () =>

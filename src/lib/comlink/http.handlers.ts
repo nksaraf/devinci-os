@@ -77,7 +77,7 @@ export function fromWireValue(val: WireValue) {
   }
 
   if (val.type === WireValueType.HANDLER) {
-    console.log(transferHandlers);
+    console.debug(transferHandlers);
     return transferHandlers.get(val.name)?.deserialize(val.value);
   }
 }

@@ -77,7 +77,7 @@ Javascript can be directly evalated by terminating a command with a semi-colon:
 ```js
 $ a = 10 * 5;
 50
-$ console.log(a);
+$ console.debug(a);
 50
 ```
 

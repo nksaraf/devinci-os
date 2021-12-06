@@ -377,15 +377,6 @@ function defineFcn(name: string, isSync: boolean, numArgs: number): (...args: an
       const path = args[0];
       const rv = this._getFs(path);
       args[0] = rv.path;
-      if (typeof args[args.length - 1] === 'function') {
-        const cb = args[args.length - 1];
-        args[args.length - 1] = (...args: any[]) => {
-          if (args.length > 0 && args[0] instanceof ApiError) {
-            this.standardizeError(args[0], rv.path, path);
-          }
-          cb.apply(null, args);
-        };
-      }
       return (<any>rv.fs)[name].apply(rv.fs, args);
     };
   }

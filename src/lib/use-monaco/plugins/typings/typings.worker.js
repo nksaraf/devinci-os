@@ -11,9 +11,7 @@ import path from 'path-browserify';
 import { Store, set as setItem, get as getItem } from 'idb-keyval';
 import { MonacoWorker } from '../../worker';
 
-self.importScripts(
-  'https://cdnjs.cloudflare.com/ajax/libs/typescript/3.8.3/typescript.min.js'
-);
+self.importScripts('https://cdnjs.cloudflare.com/ajax/libs/typescript/3.8.3/typescript.min.js');
 
 const ROOT_URL = `https://cdn.jsdelivr.net/`;
 
@@ -46,9 +44,7 @@ const doFetch = (url) => {
 
 const fetchFromDefinitelyTyped = (dependency, version, fetchedPaths) =>
   doFetch(
-    `${ROOT_URL}npm/@types/${dependency
-      .replace('@', '')
-      .replace(/\//g, '__')}/index.d.ts`
+    `${ROOT_URL}npm/@types/${dependency.replace('@', '').replace(/\//g, '__')}/index.d.ts`,
   ).then((typings) => {
     fetchedPaths[`node_modules/${dependency}/index.d.ts`] = typings;
   });
@@ -61,7 +57,7 @@ const getRequireStatements = (title, code) => {
     code,
     self.ts.ScriptTarget.Latest,
     true,
-    self.ts.ScriptKind.TS
+    self.ts.ScriptKind.TS,
   );
 
   self.ts.forEachChild(sourceFile, (node) => {
@@ -108,13 +104,9 @@ const transformFiles = (dir) =>
     : {};
 
 const getFileMetaData = (dependency, version, depPath) =>
-  doFetch(
-    `https://data.jsdelivr.com/v1/package/npm/${dependency}@${version}/flat`
-  )
+  doFetch(`https://data.jsdelivr.com/v1/package/npm/${dependency}@${version}/flat`)
     .then((response) => JSON.parse(response))
-    .then((response) =>
-      response.files.filter((f) => f.name.startsWith(depPath))
-    )
+    .then((response) => response.files.filter((f) => f.name.startsWith(depPath)))
     .then(tempTransformFiles);
 
 const resolveAppropiateFile = (fileMetaData, relativePath) => {
@@ -123,19 +115,12 @@ const resolveAppropiateFile = (fileMetaData, relativePath) => {
   if (fileMetaData[`${absolutePath}.d.ts`]) return `${relativePath}.d.ts`;
   if (fileMetaData[`${absolutePath}.ts`]) return `${relativePath}.ts`;
   if (fileMetaData[absolutePath]) return relativePath;
-  if (fileMetaData[`${absolutePath}/index.d.ts`])
-    return `${relativePath}/index.d.ts`;
+  if (fileMetaData[`${absolutePath}/index.d.ts`]) return `${relativePath}/index.d.ts`;
 
   return relativePath;
 };
 
-const getFileTypes = (
-  depUrl,
-  dependency,
-  depPath,
-  fetchedPaths,
-  fileMetaData
-) => {
+const getFileTypes = (depUrl, dependency, depPath, fetchedPaths, fileMetaData) => {
   const virtualPath = path.join('node_modules', dependency, depPath);
 
   if (fetchedPaths[virtualPath]) return null;
@@ -150,21 +135,13 @@ const getFileTypes = (
       getRequireStatements(depPath, typings)
         .filter(
           // Don't add global deps
-          (dep) => dep.startsWith('.')
+          (dep) => dep.startsWith('.'),
         )
         .map((relativePath) => path.join(path.dirname(depPath), relativePath))
-        .map((relativePath) =>
-          resolveAppropiateFile(fileMetaData, relativePath)
-        )
+        .map((relativePath) => resolveAppropiateFile(fileMetaData, relativePath))
         .map((nextDepPath) =>
-          getFileTypes(
-            depUrl,
-            dependency,
-            nextDepPath,
-            fetchedPaths,
-            fileMetaData
-          )
-        )
+          getFileTypes(depUrl, dependency, nextDepPath, fetchedPaths, fileMetaData),
+        ),
     );
   });
 };
@@ -212,29 +189,22 @@ function fetchFromTypings(dependency, version, fetchedPaths) {
       const types = packageJSON.typings || packageJSON.types;
       if (types) {
         // Add package.json, since this defines where all types lie
-        fetchedPaths[
-          `node_modules/${dependency}/package.json`
-        ] = JSON.stringify(packageJSON);
+        fetchedPaths[`node_modules/${dependency}/package.json`] = JSON.stringify(packageJSON);
 
         // get all files in the specified directory
-        return getFileMetaData(
-          dependency,
-          version,
-          path.join('/', path.dirname(types))
-        ).then((fileData) =>
-          getFileTypes(
-            depUrl,
-            dependency,
-            resolveAppropiateFile(fileData, types),
-            fetchedPaths,
-            fileData
-          )
+        return getFileMetaData(dependency, version, path.join('/', path.dirname(types))).then(
+          (fileData) =>
+            getFileTypes(
+              depUrl,
+              dependency,
+              resolveAppropiateFile(fileData, types),
+              fetchedPaths,
+              fileData,
+            ),
         );
       }
 
-      throw new Error(
-        `No typings field in package.json for ${dependency}@${version}`
-      );
+      throw new Error(`No typings field in package.json for ${dependency}@${version}`);
     });
 }
 
@@ -261,11 +231,11 @@ function fetchDefinitions(name, version) {
       return fetchFromTypings(name, version, fetchedPaths)
         .catch(() =>
           // not available in package.json, try checking meta for inline .d.ts files
-          fetchFromMeta(name, version, fetchedPaths)
+          fetchFromMeta(name, version, fetchedPaths),
         )
         .catch(() =>
           // Not available in package.json or inline from meta, try checking in @types/
-          fetchFromDefinitelyTyped(name, version, fetchedPaths)
+          fetchFromDefinitelyTyped(name, version, fetchedPaths),
         )
         .then(() => {
           if (Object.keys(fetchedPaths).length) {
@@ -283,9 +253,9 @@ function fetchDefinitions(name, version) {
 
 export class TypingsWorker extends MonacoWorker {
   async fetchTypings(name, version) {
-    console.log(`[typings] fetching typings: ${name}@${version} ...`);
+    console.debug(`[typings] fetching typings: ${name}@${version} ...`);
     const typings = await fetchDefinitions(name, version);
-    console.log(`[typings] fetched typings: ${name}@${version} ...`, typings);
+    console.debug(`[typings] fetched typings: ${name}@${version} ...`, typings);
     return { name, version, typings };
   }
 }

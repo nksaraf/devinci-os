@@ -50,7 +50,7 @@ export function getMonacoModel(
       );
     }
   } else {
-    console.log(`[monaco] creating model:`, modelPath, { value, language });
+    console.debug(`[monaco] creating model:`, modelPath, { value, language });
 
     model = monaco.editor.createModel(value || '', language, monaco?.Uri.file(modelPath));
 
@@ -109,7 +109,7 @@ export function getMonacoModel(
 //     }
 
 //     if (model) {
-//       console.log(`[monaco] setting language for ${model.uri.path}: ${language}`);
+//       console.debug(`[monaco] setting language for ${model.uri.path}: ${language}`);
 //       monaco.editor.setModelLanguage(model, language);
 //     }
 //   }, [monaco, model, language]);

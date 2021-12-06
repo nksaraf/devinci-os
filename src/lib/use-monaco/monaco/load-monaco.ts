@@ -68,7 +68,7 @@ export function loadMonaco(options: Partial<monacoApi.LoaderOptions>): Cancellab
     };
   });
 
-  console.log('[monaco] loading monaco from', monacoPath, '...');
+  console.debug('[monaco] loading monaco from', monacoPath, '...');
 
   const cancelable = monacoLoader.init({
     paths: { monaco: endingSlash(monacoPath), vs: endingSlash(monacoPath) + 'min/vs' },
@@ -83,18 +83,18 @@ export function loadMonaco(options: Partial<monacoApi.LoaderOptions>): Cancellab
 
       let monaco = new Proxy(monacoBase, {
         get(target, p, receiver) {
-          // console.log('[monaco] get', p);
+          // console.debug('[monaco] get', p);
           return newApi[p] || target[p];
         },
         set(target, p, value, receiver) {
-          // console.log('[monaco] set', p);
+          // console.debug('[monaco] set', p);
 
           newApi[p] = value;
           return true;
         },
       });
 
-      console.log('[monaco] loaded monaco');
+      console.debug('[monaco] loaded monaco');
       monaco = withPlugins(monaco);
 
       disposable = await monaco.plugin.install(
@@ -125,7 +125,7 @@ export function loadMonaco(options: Partial<monacoApi.LoaderOptions>): Cancellab
           }
 
           const workerSrc = this.workerClients[label].src;
-          console.log(`[monaco] loading worker: ${label}`);
+          console.debug(`[monaco] loading worker: ${label}`);
           if (typeof workerSrc === 'string') {
             var workerBlobURL = createBlobURL(`importScripts("${workerSrc}")`);
             return new Worker(workerBlobURL, {

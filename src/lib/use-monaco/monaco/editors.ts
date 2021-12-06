@@ -13,7 +13,7 @@ declare module 'monaco-editor' {
     // ): void;
 
     export function onDidCreateEditor(
-      listener: (editor: monacoApi.editor.IStandaloneCodeEditor) => void
+      listener: (editor: monacoApi.editor.IStandaloneCodeEditor) => void,
     ): monacoApi.IDisposable;
 
     export function getFocusedEditor(): monacoApi.editor.IStandaloneCodeEditor;
@@ -32,9 +32,7 @@ export default createPlugin(
   },
   (monaco) => {
     const createMonacoEditor = monaco.editor.create;
-    const _onCreatedEditor = new monaco.Emitter<
-      monacoApi.editor.IStandaloneCodeEditor
-    >();
+    const _onCreatedEditor = new monaco.Emitter<monacoApi.editor.IStandaloneCodeEditor>();
 
     // const onDidCreateEditor = monaco.editor.onDidCreateEditor;
 
@@ -44,12 +42,12 @@ export default createPlugin(
 
     // monaco.editor.getDefaultEditorOptions = () => {
     //   let editorOptions = _defaultEditorOptions;
-    //   console.log(editorOptions);
+    //   console.debug(editorOptions);
     //   return editorOptions;
     // };
 
     // monaco.editor.setDefaultEditorOptions = (opts) => {
-    //   console.log(opts);
+    //   console.debug(opts);
     //   Object.keys(opts).forEach((k) => {
     //     _defaultEditorOptions[k] = opts[k];
     //   });
@@ -57,10 +55,8 @@ export default createPlugin(
 
     monaco.editor.create = (
       domElement: HTMLElement,
-      options?:
-        | monacoApi.editor.IStandaloneEditorConstructionOptions
-        | undefined,
-      override?: monacoApi.editor.IEditorOverrideServices | undefined
+      options?: monacoApi.editor.IStandaloneEditorConstructionOptions | undefined,
+      override?: monacoApi.editor.IEditorOverrideServices | undefined,
     ) => {
       const editor = createMonacoEditor(domElement, options, override);
 
@@ -93,7 +89,7 @@ export default createPlugin(
         editors = editors.filter((ed) => ed !== editor);
       });
     });
-  }
+  },
 );
 
 // editor.addSelectAction = function (descriptor) {

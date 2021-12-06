@@ -1,9 +1,9 @@
 import { expose, proxy, wrap } from '$lib/comlink/mod';
-import { fs as globalFS } from '$lib/fs';
 import { RemoteFileSystem } from '$lib/fs/remote';
-import { Process } from '$lib/denix/denix';
-import type { ProcessOptions } from '$lib/denix/denix';
+import { Process } from 'os/lib/denix/kernel';
+import type { ProcessOptions } from 'os/lib/denix/kernel';
 import { RemoteProcessManager } from './remote_proc_manager';
+import { VirtualFileSystem } from '../fs/virtual';
 
 export type RemoteProcessOptions = Partial<ProcessOptions> & {
   fsPort: MessagePort;
@@ -18,18 +18,17 @@ export class RemoteProcess extends Process {
   fsRemote: RemoteFileSystem;
 
   async start(options: RemoteProcessOptions) {
-    console.log('here', options);
-    this.fsRemote = new RemoteFileSystem(undefined, true);
-    globalFS.rootFs = this.fsRemote;
-    this.fsRemote.proxy = wrap(await options.fsPort);
-
+    console.debug('here', options);
     let proc = new RemoteProcessManager();
-
     proc.proxy = wrap(await options.procPort);
-
+    this.fsRemote = new RemoteFileSystem(undefined, true);
+    this.fsRemote.proxy = wrap(await options.fsPort);
     await this.fsRemote.proxy.ready();
+
+    this.fs = new VirtualFileSystem(this.fsRemote);
+
     await super.init({
-      fs: globalFS,
+      fs: this.fs,
       proc: proc,
       // fsRemote: fsRemote,
       pid: await options.pid,
@@ -53,9 +52,11 @@ export class RemoteProcess extends Process {
   }
 }
 
+let process = new RemoteProcess();
+
 expose({
+  addEventListener: process.addEventListener.bind(process),
   spawn: async (options: RemoteProcessOptions) => {
-    let process = new RemoteProcess();
     await process.start(options);
 
     Reflect.defineProperty(navigator, 'process', {

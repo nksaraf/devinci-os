@@ -166,8 +166,8 @@ export class Xterm extends Terminal implements TerminalDevice {
     this.tty.setInput(this.tty.getInput(), true);
   };
 
-  write(data: Uint8Array, cb) {
-    // console.log(new TextDecoder().decode(data));
+  print(data: Uint8Array, cb) {
+    // console.debug(new TextDecoder().decode(data));
     super.write(data, cb);
   }
 }

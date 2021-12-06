@@ -11,5 +11,5 @@ export async function main(args: string[]) {
 }
 
 if (import.meta.main) {
-  main(Deno.args);
+  await main(Deno.args);
 }

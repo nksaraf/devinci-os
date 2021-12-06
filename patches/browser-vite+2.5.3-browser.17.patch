@@ -1,0 +1,26 @@
+diff --git a/node_modules/browser-vite/dist/browser/index.js b/node_modules/browser-vite/dist/browser/index.js
+index 63938b4..b3cd311 100644
+--- a/node_modules/browser-vite/dist/browser/index.js
++++ b/node_modules/browser-vite/dist/browser/index.js
+@@ -4678,7 +4678,7 @@ function clientInjectionsPlugin(config) {
+                     .replace(`__HMR_TIMEOUT__`, JSON.stringify(timeout))
+                     .replace(`__HMR_ENABLE_OVERLAY__`, JSON.stringify(overlay));
+             }
+-            else if (code.includes('process.env.NODE_ENV')) {
++            else if (code.includes('process.env\u200b.NODE_ENV')) {
+                 // replace process.env.NODE_ENV
+                 return code.replace(/\bprocess\.env\.NODE_ENV\b/g, JSON.stringify(config.mode));
+             }
+@@ -4756,9 +4756,9 @@ function definePlugin(config) {
+         });
+     }
+     const replacements = {
+-        'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || config.mode),
+-        'global.process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || config.mode),
+-        'globalThis.process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || config.mode),
++        'process.env\u200b.NODE_ENV': JSON.stringify(config.mode),
++        'global.process.env\u200b.NODE_ENV': JSON.stringify(config.mode),
++        'globalThis.process.env\u200b.NODE_ENV': JSON.stringify(config.mode),
+         ...userDefine,
+         ...importMetaKeys,
+         'process.env.': `({}).`,

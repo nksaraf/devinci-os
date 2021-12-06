@@ -5,27 +5,30 @@
   import TrafficLights from 'os/macos/ui/Window/TrafficLights.svelte';
   import ExpandSvg from '@ui/components/SVG/traffic-lights/ExpandSVG.svelte';
   import { Xterm } from '$lib/xterm';
-  import { fs } from 'os/lib/fs';
+  import type { SharedFile } from '$lib/fs/shared';
   import type { TTY } from 'os/lib/tty/tty';
 
   let divEl: HTMLDivElement = null;
 
   onMount(() => {
     (async () => {
-      const tty = (await fs.open('/dev/tty1', 1, 0x666)).file as TTY;
-      console.log(tty);
-      const terminal = new Xterm();
+      const tty = ((await navigator.process.fs.open('/dev/tty1', 1, 0o666)) as SharedFile)
+        .file as TTY;
+      const f = await Deno.open('/dev/tty1', { write: true });
 
-      tty.connect(terminal);
+      const xterm = new Xterm();
+      tty.connect(xterm);
+      xterm.open(divEl);
 
       let process = Deno.run({
         cmd: ['deno', 'run', '/bin/terminal.ts'],
         cwd: '/lib/deno',
-        tty: '/dev/tty1',
+        stdin: f.rid,
+        stdout: f.rid,
+        stderr: f.rid,
       });
 
       console.log(await process.status());
-      terminal.open(divEl);
     })();
   });
 

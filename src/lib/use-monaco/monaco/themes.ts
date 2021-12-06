@@ -52,7 +52,7 @@ export default createPlugin({ name: 'core.themes', dependencies: ['core.editors'
           monaco.editor.setTheme(resolvedTheme);
           return;
         } else {
-          console.log('[monaco] setting theme:', theme);
+          console.debug('[monaco] setting theme:', theme);
           setTheme(theme);
           _onDidChangeTheme.fire({
             name: theme,
@@ -60,7 +60,7 @@ export default createPlugin({ name: 'core.themes', dependencies: ['core.editors'
           });
         }
       } catch (e) {
-        console.log('[monaco] setting theme:', theme);
+        console.debug('[monaco] setting theme:', theme);
         setTheme(theme);
         _onDidChangeTheme.fire({
           name: theme,
@@ -70,7 +70,7 @@ export default createPlugin({ name: 'core.themes', dependencies: ['core.editors'
     } else if (typeof theme === 'object') {
       try {
         monaco.editor.defineTheme('custom', theme);
-        console.log('[monaco] setting theme:', theme);
+        console.debug('[monaco] setting theme:', theme);
         setTheme('custom');
         _onDidChangeTheme.fire({ name: 'custom', theme });
       } catch (e) {
@@ -123,7 +123,7 @@ export default createPlugin({ name: 'core.themes', dependencies: ['core.editors'
 //   //   runAction: function (editor: any, api: any) {
 //   //     const _this: any = this;
 //   //     const currentTheme = editor._themeService._theme.themeName;
-//   //     console.log(currentTheme);
+//   //     console.debug(currentTheme);
 //   //     const controller = _this.getController(editor);
 //   //     const oldDestroy = controller.widget.quickOpenWidget.callbacks.onCancel;
 //   //     controller.widget.quickOpenWidget.callbacks.onCancel = function () {
@@ -131,7 +131,7 @@ export default createPlugin({ name: 'core.themes', dependencies: ['core.editors'
 //   //       monaco.editor.setTheme(currentTheme);
 //   //       oldDestroy();
 //   //     };
-//   //     console.log(
+//   //     console.debug(
 //   //       controller,
 //   //       controller.widget.quickOpenWidget.callbacks.onCancel,
 //   //       this

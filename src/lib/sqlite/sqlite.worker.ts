@@ -20,7 +20,7 @@ let sql = String.raw;
 
 //   stmt = db.prepare(`SELECT * FROM kv`);
 //   stmt.step();
-//   console.log('Result:', stmt.getAsObject());
+//   console.debug('Result:', stmt.getAsObject());
 //   stmt.free();
 // }
 let SQL;

@@ -31,7 +31,7 @@ export class InMemoryPipe {
       return b.length;
     } else {
       if (this.writeWaiter) {
-        console.log('ERROR: expected no other write waiter');
+        console.debug('ERROR: expected no other write waiter');
       }
 
       let promise = newPromise<number>();
@@ -149,7 +149,7 @@ export class InMemoryPipe {
 //       cb(undefined, b.length);
 //     } else {
 //       if (this.writeWaiter) {
-//         console.log('ERROR: expected no other write waiter');
+//         console.debug('ERROR: expected no other write waiter');
 //       }
 //       this.writeWaiter = () => {
 //         cb(undefined, b.length);
@@ -192,7 +192,7 @@ enum PipeMode {
 
 //   addEventListener(evName: string): Promise<string> {
 //     if (evName !== 'write') {
-//       console.log('eventListener only available on PipeFile for write');
+//       console.debug('eventListener only available on PipeFile for write');
 //       return;
 //     }
 
@@ -201,7 +201,7 @@ enum PipeMode {
 
 //   readBuffer(buf: Buffer, off: number, len: number, pos: number): Promise<void> {
 //     if (this.mode !== PipeMode.Read) {
-//       console.log('ERROR: PipeFile.read called on non-read pipe');
+//       console.debug('ERROR: PipeFile.read called on non-read pipe');
 //     }
 
 //     if (pos !== -1) {
@@ -213,7 +213,7 @@ enum PipeMode {
 
 //   writeBuffer(buf: Buffer, offset: number, len: number, pos: number): void {
 //     if (this.mode !== PipeMode.Write) {
-//       console.log('ERROR: PipeFile.read called on non-read pipe');
+//       console.debug('ERROR: PipeFile.read called on non-read pipe');
 //     }
 
 //     await this.pipe.writeBuffer(buf, offset, len, pos);

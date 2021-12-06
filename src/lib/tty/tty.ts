@@ -72,8 +72,15 @@ export interface TerminalDevice extends EventTarget {
   tty: TTY;
 }
 
-//
+export class TTYMaster extends VirtualFile implements File {
+  _termSize: {
+    columns: number;
+    rows: number;
+  };
+}
+
 export class TTY extends VirtualFile implements File {
+  type = 'tty';
   _termSize: {
     columns: number;
     rows: number;
@@ -88,6 +95,7 @@ export class TTY extends VirtualFile implements File {
   _continuationPromptPrefix: string;
 
   _eventTarget = new EventTarget();
+  master: TerminalDevice;
 
   // _active: boolean = true;
   // _activePrompt;
@@ -97,10 +105,10 @@ export class TTY extends VirtualFile implements File {
 
   // inputStartCursor: number;
 
-  public device: TerminalDevice;
+  // public master: TerminalDevice;
 
   constructor(path) {
-    super(path,);
+    super(path);
     this._flag = constants.fs.O_RDWR;
 
     this._termSize = {
@@ -118,32 +126,44 @@ export class TTY extends VirtualFile implements File {
   }
 
   connect(device: TerminalDevice) {
-    this.device = device;
+    this.master = device;
     this._termSize = {
-      columns: this.device.cols,
-      rows: this.device.rows,
+      columns: this.master.cols,
+      rows: this.master.rows,
     };
 
     device.tty = this;
 
-    this.device.addEventListener('data', (dat: CustomEvent) => {
-      console.log(this.rawMode);
+    this.master.addEventListener('data', (dat: CustomEvent) => {
+      console.debug(this.rawMode);
       if (this.rawMode) {
         let buf = Buffer.from(dat.detail, 'utf-8');
-        this.pipe.writeBuffer(buf, 0, buf.length, null).then(() => {
-          console.log('wrritten line', dat.detail);
+        this.readerPipe.writeBuffer(buf, 0, buf.length, null).then(() => {
+          console.debug('wrritten line', dat.detail);
         });
       } else {
-        console.log(dat);
+        console.debug(dat);
         this.lineDiscipline.handleTermData(dat.detail);
       }
     });
   }
 
+  printRaw(arg0: string, cb?: () => void) {
+    if (this.master) {
+      console.debug(arg0);
+
+      this.master.write(arg0, cb);
+    } else {
+      console.debug(arg0);
+
+      cb();
+    }
+  }
+
   lineDiscipline: LineDiscipline;
 
   setRawMode(rawMode: boolean) {
-    console.log('setting raw mode');
+    console.debug('setting raw mode');
     this.rawMode = rawMode;
   }
 
@@ -152,8 +172,8 @@ export class TTY extends VirtualFile implements File {
    */
   handleLineComplete = (line) => {
     let buf = Buffer.from(line, 'utf-8');
-    this.pipe.writeBuffer(buf, 0, buf.length, null).then(() => {
-      console.log('wrritten line', line);
+    this.readerPipe.writeBuffer(buf, 0, buf.length, null).then(() => {
+      console.debug('wrritten line', line);
     });
 
     this.setInput('');
@@ -182,12 +202,8 @@ export class TTY extends VirtualFile implements File {
    * Prints a message and properly handles new-lines
    */
   print(message: string, cb?: () => void) {
-    const normInput = message.replace(/[\r\n]+/g, '\n').replace(/\n/g, '\r\n');
-
-    if (this.device) {
-      this.device.write(normInput, cb);
-    }
-    console.log(normInput);
+    let msg = message.replace(/(\r\n)|(\n)/g, '\n').replace(/\n/g, '\r\n');
+    this.printRaw(msg, cb);
   }
 
   /**
@@ -329,11 +345,11 @@ export class TTY extends VirtualFile implements File {
 
     // First move on the last line
     const moveRows = allRows - row - 1;
-    for (let i = 0; i < moveRows; ++i) this.device.write('\x1B[E');
+    for (let i = 0; i < moveRows; ++i) this.printRaw('\x1B[E');
 
     // Clear current input line(s)
-    this.device.write('\r\x1B[K');
-    for (let i = 1; i < allRows; ++i) this.device.write('\x1B[F\x1B[K');
+    this.printRaw('\r\x1B[K');
+    for (let i = 1; i < allRows; ++i) this.printRaw('\x1B[F\x1B[K');
   }
 
   /**
@@ -344,9 +360,9 @@ export class TTY extends VirtualFile implements File {
    */
   clearTty() {
     // Clear the screen
-    this.device.write('\u001b[2J');
+    this.printRaw('\u001b[2J');
     // Set the cursor to 0, 0
-    this.device.write('\u001b[0;0H');
+    this.printRaw('\u001b[0;0H');
     this._cursor = 0;
   }
 
@@ -442,9 +458,9 @@ export class TTY extends VirtualFile implements File {
     const { col, row } = offsetToColRow(newPrompt, newCursor, this._termSize.columns);
     const moveUpRows = newLines - row - 1;
 
-    this.device.write('\r');
-    for (let i = 0; i < moveUpRows; ++i) this.device.write('\x1B[F');
-    for (let i = 0; i < col; ++i) this.device.write('\x1B[C');
+    this.printRaw('\r');
+    for (let i = 0; i < moveUpRows; ++i) this.printRaw('\x1B[F');
+    for (let i = 0; i < col; ++i) this.printRaw('\x1B[C');
 
     // Replace input
     this._input = newInput;
@@ -539,17 +555,19 @@ export class TTY extends VirtualFile implements File {
       promise.resolve(buffer.length);
     });
 
-    return buffer.length;
+    console.debug('heree');
+
+    return await promise.promise;
   }
 
   async readBuffer(buffer: Buffer, offset: number, length: number, position: number) {
-    console.log('readBuffer', buffer, offset, length, position);
+    console.debug('readBuffer', buffer, offset, length, position);
     if (!this.rawMode && !this.lineDiscipline._active) {
       this.lineDiscipline.prompt(this._promptPrefix, this._continuationPromptPrefix);
     }
 
-    return await this.pipe.readBuffer(buffer, offset, buffer.byteLength, position);
+    return await this.readerPipe.readBuffer(buffer, offset, buffer.byteLength, position);
   }
 
-  pipe = new InMemoryPipe();
+  readerPipe = new InMemoryPipe();
 }

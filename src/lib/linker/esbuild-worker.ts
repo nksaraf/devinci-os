@@ -4,8 +4,8 @@ import esbuildWasmUrl from 'esbuild-wasm/esbuild.wasm?url';
 // import acorn from 'acorn';
 // import magicString from 'magic-string';
 
-let log = console.log;
-console.log = function () {
+let log = console.debug;
+console.debug = function () {
   log('esbuild', ...arguments);
 };
 
@@ -22,13 +22,13 @@ expose({
   ) => {
     console.groupCollapsed('transpiling', url);
     let length = Atomics.load(new Int32Array(sab, 4, 8), 0);
-    console.log('step 1');
+    console.debug('step 1');
 
     let text = new TextDecoder('utf-8').decode(new Uint8Array(new Uint8Array(sab, 8, length)));
-    console.log('step 2', { text });
+    console.debug('step 2', { text });
 
     if (text.startsWith('#')) {
-      console.log();
+      console.debug();
       text = text.substr(text.indexOf('\n') + 1);
     }
 
@@ -38,7 +38,7 @@ expose({
 
     // const magicString = await import('magic-string');
 
-    // console.log(acorn);
+    // console.debug(acorn);
 
     // text
 
@@ -51,7 +51,7 @@ expose({
     //     allowReturnOutsideFunction: true,
     //     allowSuperOutsideMethod: true,
     //   });
-    //   console.log(ast);
+    //   console.debug(ast);
     // } catch (e) {
     //   console.error(e);
     // }
@@ -66,7 +66,7 @@ expose({
         },
       });
 
-      console.log('step 3', { result });
+      console.debug('step 3', { result });
       console.groupEnd();
 
       let data = new TextEncoder().encode(result.code);
@@ -98,7 +98,7 @@ expose({
     },
   ) => {
     if (text.startsWith('#')) {
-      console.log();
+      console.debug();
       text = text.substr(text.indexOf('\n') + 1);
     }
     // }
@@ -113,7 +113,7 @@ expose({
         },
       });
 
-      console.log('step 3', { result });
+      console.debug('step 3', { result });
       console.groupEnd();
 
       let data = new TextEncoder().encode(result.code);
@@ -124,7 +124,7 @@ expose({
     }
   },
   async init() {
-    console.log('heree');
+    console.debug('heree');
     await esbuild.initialize({
       wasmURL: esbuildWasmUrl,
       worker: false,

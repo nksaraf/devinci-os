@@ -1,4 +1,4 @@
-import type { Process } from '../denix';
+import type { Process } from '../kernel';
 import { op_async, op_sync, Resource } from '../types';
 
 export const test = [
@@ -6,6 +6,6 @@ export const test = [
     return location.origin;
   }),
   op_sync('op_dispatch_test_event', function (this: Process, data) {
-    console.log(data);
+    console.debug(data);
   }),
 ];

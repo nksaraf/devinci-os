@@ -291,7 +291,7 @@ export class LineDiscipline {
       return;
     }
     if (this.tty.getFirstInit() && this._activeLine) {
-      let buf = (this.tty.device as Xterm).buffer.normal;
+      let buf = (this.tty.master as Xterm).buffer.normal;
 
       let line = buf.getLine(buf.cursorY + buf.baseY);
       let promptRead = (line as IBufferLine).translateToString(false, 0, buf.cursorX);

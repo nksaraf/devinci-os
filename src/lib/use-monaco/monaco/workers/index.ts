@@ -62,7 +62,7 @@ declare module 'monaco-editor' {
 export default createPlugin(
   { name: 'core.workers', dependencies: ['core.editors', 'core.loader'] },
   (monaco) => {
-    console.log('[monaco] base worker path:', monaco.loader.workersPath);
+    console.debug('[monaco] base worker path:', monaco.loader.workersPath);
     const javascriptClient: WorkerClient<
       monacoApi.languages.typescript.LanguageServiceDefaults,
       monacoApi.languages.typescript.TypeScriptWorker
@@ -124,7 +124,7 @@ export default createPlugin(
         this.setEnvironment({
           getWorker: (label) => {
             const workerSrc = this.workerClients[label].src;
-            console.log(`[monaco] loading worker: ${label}`);
+            console.debug(`[monaco] loading worker: ${label}`);
             if (typeof workerSrc === 'string') {
               var workerBlobURL = createBlobURL(`importScripts("${workerSrc}")`);
               return new Worker(workerBlobURL, {
@@ -146,7 +146,7 @@ export default createPlugin(
         ...config
       }: monacoApi.worker.IWorkerRegistrationOptions<TOptions>) {
         ``;
-        console.log(`[monaco] registering worker: ${config.label}`, config);
+        console.debug(`[monaco] registering worker: ${config.label}`, config);
         const client = new WorkerClient(config, monaco);
         this.workerClients[config.label ?? ''] = client;
         if (onRegister) {

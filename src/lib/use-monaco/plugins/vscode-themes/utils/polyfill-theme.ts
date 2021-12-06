@@ -158,7 +158,7 @@ const polyfillTheme = (vsCodeTheme) => {
   // const main = Color(uiColors.editor.background).hsl();
   // const shade = shades(uiColors.editor.background);
 
-  // console.log(uiColors.editor.background);
+  // console.debug(uiColors.editor.background);
   // const inverse = (num) =>
   //   main.isLight()
   //     ? darken(uiColors.editor.background, num)
