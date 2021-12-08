@@ -328,7 +328,7 @@ function createProcessMachine(id) {
         states: {
           alive: {
             onEnter: {
-              wait: 5,
+              wait: 120,
               to: 'done',
             },
             on: {

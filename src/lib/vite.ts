@@ -42,7 +42,10 @@ expose({
       }
       return req(mod);
     };
+
     const vite = await import('browser-vite/dist/browser');
-    console.debug(vite);
+    // console.debug(vite.transformRequest('http://localhost:5000/index.html', {
+
+    // }));
   },
 });

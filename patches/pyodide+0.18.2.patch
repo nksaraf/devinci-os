@@ -1,0 +1,22 @@
+diff --git a/node_modules/pyodide/load-pyodide.js b/node_modules/pyodide/load-pyodide.js
+index 9f997c2..5747935 100644
+--- a/node_modules/pyodide/load-pyodide.js
++++ b/node_modules/pyodide/load-pyodide.js
+@@ -61,7 +61,7 @@ function _uri_to_package_name(package_uri) {
+ export let loadScript;
+ if (globalThis.document) {
+   // browser
+-  loadScript = (url) => import(url);
++  loadScript = (url) => import(/* @vite-ignore */ `${url}`);
+ } else if (globalThis.importScripts) {
+   // webworker
+   loadScript = async (url) => {
+@@ -82,7 +82,7 @@ if (globalThis.document) {
+       // Otherwise, hopefully it is a relative path we can load from the file
+       // system.
+       const path = await pathPromise;
+-      await import(path.resolve(url));
++      await import(/* @vite-ignore */ `${path.resolve(url)}`);
+     }
+   };
+ } else {

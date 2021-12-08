@@ -1,7 +1,8 @@
 export function evalWithContext(source, context) {
   return getEvalSyncFn(source, context)();
 }
-function getEvalSyncFn(source, context) {
+
+export function getEvalSyncFn(source, context) {
   const executor = Function(`
     return (context) => {
       try {

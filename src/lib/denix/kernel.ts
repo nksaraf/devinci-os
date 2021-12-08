@@ -43,6 +43,8 @@ export interface ProcessOptions {
   cmd?: string[];
 }
 
+class OpTable {}
+
 export class Process extends EventTarget {
   net: LocalNetwork = new LocalNetwork();
   env: { [key: string]: any } = {};
@@ -102,7 +104,7 @@ export class Process extends EventTarget {
     this.dispatchEvent(new CustomEvent('start', { detail: this.pid }));
     console.debug(this.cmd);
     try {
-      let result = await import(`/bin/${this.cmd[0]}.ts?script`);
+      let result = await import(/* @vite-ignore */ `/bin/${this.cmd[0]}.ts?script`);
 
       // this is a hack to call the below line after the async imports have actually happened and
       // the import have been resolved
@@ -124,6 +126,7 @@ export class Process extends EventTarget {
         // return this.exit();
         return;
       }
+      console.error(e);
       this.exit(-1);
     }
   }

@@ -8,7 +8,6 @@ import { dynamicImport } from 'vite-plugin-dynamic-import';
 import UnpluginIcons from 'unplugin-icons/vite';
 import path from 'path';
 import resolve from '@rollup/plugin-node-resolve';
-import deno from 'rollup-plugin-deno';
 let basePath = path.resolve(__dirname);
 console.log(basePath);
 import { asc } from './build/rollup-plugin-asc';
@@ -54,7 +53,7 @@ export default defineConfig({
     }),
     responseHeaders(),
     UnpluginIcons({ autoInstall: true, compiler: 'svelte' }),
-    dynamicImport(),
+    // dynamicImport(),
 
     svelte(),
     // prefetch(),
@@ -103,7 +102,7 @@ export default defineConfig({
       allow: ['./'],
     },
   },
-  assetsInclude: ['packages/macos-ui/public/**/*', ''],
+  assetsInclude: ['packages/macos-ui/public/**/*'],
   build: {
     minify: 'terser',
   },
