@@ -1,6 +1,6 @@
 #! /usr/bin/env deno run --allow-read --compat --unstable
 import * as fs from 'fs';
-import * as path from 'path-browserify';
+import * as path from 'path';
 
 const symLinks: { [dev: number]: { [ino: number]: boolean } } = {};
 const ignoreFiles = ['.git', 'node_modules', 'bower_components', 'build'];

@@ -1,7 +1,6 @@
 {
   "name": "macos-svelte",
   "version": "0.0.0",
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -10,6 +9,8 @@
     "postinstall": "patch-package"
   },
   "devDependencies": {
+    "@assemblyscript/loader": "^0.19.17",
+    "@cloudflare/wrangler": "^1.19.5",
     "@iconify/json": "^1.1.421",
     "@rollup/plugin-node-resolve": "^13.0.6",
     "@rollup/plugin-replace": "^3.0.0",
@@ -19,6 +20,9 @@
     "@types/tar-stream": "^2.2.2",
     "@types/wicg-file-system-access": "^2020.9.4",
     "@unocss/preset-icons": "^0.7.7",
+    "acorn-jsx": "^5.3.2",
+    "acorn-stage3": "^4.0.0",
+    "assemblyscript": "^0.19.18",
     "autoprefixer": "^10.3.6",
     "cross-env": "^7.0.3",
     "esbuild": "^0.13.12",
@@ -35,13 +39,12 @@
     "unplugin-icons": "^0.12.18",
     "vite": "^2.7.1",
     "vite-plugin-dynamic-import": "^0.1.1",
+    "vite-plugin-inspect": "^0.3.11",
     "vite-plugin-pwa": "^0.11.3",
     "workbox-window": "^6.3.0",
     "wrangler": "^0.0.0-fsw-beta.5"
   },
   "dependencies": {
-    "@assemblyscript/loader": "^0.19.17",
-    "@cloudflare/wrangler": "^1.19.5",
     "@isomorphic-git/lightning-fs": "^4.4.1",
     "@jlongster/sql.js": "^1.6.7",
     "@mdi/js": "^5.9.55",
@@ -54,14 +57,9 @@
     "@wasmer/wasm-transformer": "^0.12.0",
     "@xstate/fsm": "^1.6.2",
     "absurd-sql": "^0.0.53",
-    "acorn-jsx": "^5.3.2",
-    "acorn-stage3": "^4.0.0",
     "applicationinsights": "1.0.8",
-    "assemblyscript": "^0.19.18",
     "async": "~2.6.1",
     "async-lock": "^1.3.0",
-    "bfs-path": "^1.0.2",
-    "bfs-process": "^1.0.0",
     "browser-vite": "^2.5.3-browser.17",
     "buffer": "^6.0.3",
     "chokidar": "3.5.1",

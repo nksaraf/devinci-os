@@ -102,6 +102,7 @@ export class DenoIsolate extends EventTarget {
 
     this.core.syncOpsCache();
 
+    // if (typeof window !== 'undefined') {
     await context.bootstrap.mainRuntime({
       target: 'aarch64-devinci-darwin-dev',
       debugFlag: false,
@@ -111,6 +112,17 @@ export class DenoIsolate extends EventTarget {
       // location: window.location.href,
       // ...options,
     });
+    // } else {
+    //   await context.bootstrap.workerRuntime({
+    //     target: 'aarch64-devinci-darwin-dev',
+    //     debugFlag: false,
+    //     noColor: false,
+    //     unstableFlag: true,
+    //     args: kernel.cmd,
+    //     location: 'http://localhost:8000',
+    //     // ...options,
+    //   });
+    // }
 
     this.Deno = this.window.Deno;
 

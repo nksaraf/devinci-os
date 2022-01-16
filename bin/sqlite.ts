@@ -1,18 +1,13 @@
 #! /bin/deno run
 import { sqlite } from '../src/lib/sqlite/sqlite.ts';
-import { print } from './utils.ts';
-import { repl } from './repl';
-
-export async function prompt(data: string) {
-  await print(data);
-}
+import { repl } from './repl.ts';
 
 export async function main() {
   let sql = String.raw;
   //     db.exec(sql`CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT)`);
-  console.log(sqlite);
+  console.debug(sqlite);
   let db = await sqlite.open();
-  console.log(db);
+  console.debug(db);
 
   try {
     await db.exec(sql`CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT)`);
@@ -31,4 +26,8 @@ export async function main() {
     Deno.console.table(rows);
     return 0;
   });
+}
+
+if (import.meta.main) {
+  await main();
 }

@@ -12,16 +12,18 @@
 
   onMount(() => {
     (async () => {
-      const tty = ((await navigator.process.fs.open('/dev/tty1', 1, 0o666)) as SharedFile)
+      let i = Math.floor(Math.random() * 100);
+
+      const tty = ((await navigator.process.fs.open(`/dev/tty${i}`, 1, 0o666)) as SharedFile)
         .file as TTY;
-      const f = await Deno.open('/dev/tty1', { write: true });
+      const f = await Deno.open(`/dev/tty${i}`, { write: true });
 
       const xterm = new Xterm();
       tty.connect(xterm);
       xterm.open(divEl);
 
       let process = Deno.run({
-        cmd: ['deno', 'run', '/bin/terminal.ts'],
+        cmd: ['terminal'],
         cwd: '/lib/deno',
         stdin: f.rid,
         stdout: f.rid,

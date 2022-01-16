@@ -18,7 +18,7 @@ expose({
     });
 
     await mountDenoLib(process.fs);
-    const deno = await import('./deno/deno');
+    await import('./deno/deno');
 
     // @ts-expect-error
     const fs = await import('https://deno.land/std@0.116.0/node/fs.ts');
@@ -44,8 +44,6 @@ expose({
     };
 
     const vite = await import('browser-vite/dist/browser');
-    // console.debug(vite.transformRequest('http://localhost:5000/index.html', {
-
-    // }));
+    let r = await vite.transformRequest('http://localhost:5000/index.html', {});
   },
 });

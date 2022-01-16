@@ -7,8 +7,9 @@ import type {
   RestRequest,
 } from 'msw';
 import TranspileWorker from './transpiler.worker.ts?worker';
-import { releaseProxy, wrap } from './comlink/mod';
+import { wrap } from './comlink/mod';
 
+const transpiler = wrap(new TranspileWorker());
 import { newPromise } from './promise';
 import { ApiError, ERROR_KIND_TO_CODE } from './error';
 import { fromWireValue, toWireValue } from './comlink/http.handlers';
@@ -16,19 +17,18 @@ import { constants } from './constants';
 import { processManager } from '$lib/denix/bootup';
 
 export let broadcastChannel: BroadcastChannel = new BroadcastChannel('localhost');
+let requests = {};
+const handleResponse = (e) => {
+  if (e.data.type === 'RESPONSE' && requests[e.data.requestId]) {
+    requests[e.data.requestId].resolve(e.data.response);
+  }
+};
 
-async function createLocalNetwork() {
-  let requests = {};
-  const handleResponse = (e) => {
-    if (e.data.type === 'RESPONSE' && requests[e.data.requestId]) {
-      requests[e.data.requestId].resolve(e.data.response);
-    }
-  };
+broadcastChannel.addEventListener('message', (ev) => {
+  handleResponse(ev);
+});
 
-  broadcastChannel.addEventListener('message', (ev) => {
-    handleResponse(ev);
-  });
-
+export async function createLocalNetwork() {
   const transpileHandler: ResponseResolver<
     RestRequest<DefaultRequestBody, RequestParams>,
     RestContext,
@@ -273,9 +273,7 @@ async function createLocalNetwork() {
     },
   });
 
-  const transpiler = wrap<{ transpile(data: ArrayBuffer | ReadableStream): string }>(
-    new TranspileWorker(),
-  );
+  // const transpiler = wrap<{ transpile(data: ArrayBuffer | ReadableStream): string }>(
+  //   new Worker(new URL('./transpile.worker.ts?worker_file', import.meta.url).href),
+  // );
 }
-
-await createLocalNetwork();

@@ -2222,16 +2222,6 @@ bezier-easing@^2.1.0:
   resolved "https://registry.yarnpkg.com/bezier-easing/-/bezier-easing-2.1.0.tgz#c04dfe8b926d6ecaca1813d69ff179b7c2025d86"
   integrity sha1-wE3+i5JtbsrKGBPWn/F5t8ICXYY=
 
-bfs-path@^1.0.2:
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/bfs-path/-/bfs-path-1.0.2.tgz#9b5fa4b8c4ad226597fc4d2ee15398bdcc644a07"
-  integrity sha512-KTKx2JJtAAAT7C/rJYDXXWA2VLPycAS4kwFktKsxUo0hj4UTtw/Gm5PJuY7Uf3xSlIQNo7HRCSWei2ivncVwbQ==
-
-bfs-process@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/bfs-process/-/bfs-process-1.0.0.tgz#0812c3c7dfe78c3d49ccefb0f63285d6edf5170a"
-  integrity sha512-9uximmdTUpS4NtVXbAb/KwagohmQl6sbDMtad7f2XcMe5vNBn3iHzz98qW8qD4SAMhHvAR3Luc/Ivelhe1AxOQ==
-
 big.js@^5.2.2:
   version "5.2.2"
   resolved "https://registry.yarnpkg.com/big.js/-/big.js-5.2.2.tgz#65f0af382f578bcdc742bd9c281e9cb2d7768328"
@@ -6946,6 +6936,11 @@ typescript@^4.4.3:
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.4.4.tgz#2cd01a1a1f160704d3101fd5a58ff0f9fcb8030c"
   integrity sha512-DqGhF5IKoBl8WNf8C1gu8q0xZSInh9j1kJJMqT3a94w1JzVaBU4EXOSMrz9yDqMT0xt3selp83fuFMQ0uzv6qA==
 
+ufo@^0.7.9:
+  version "0.7.9"
+  resolved "https://registry.yarnpkg.com/ufo/-/ufo-0.7.9.tgz#0268e3734b413c9ed6f3510201f42372821b875c"
+  integrity sha512-6t9LrLk3FhqTS+GW3IqlITtfRB5JAVr5MMNjpBECfK827W+Vh5Ilw/LhTcHWrt6b3hkeBvcbjx4Ti7QVFzmcww==
+
 uglify-js@^3.0.28:
   version "3.14.2"
   resolved "https://registry.yarnpkg.com/uglify-js/-/uglify-js-3.14.2.tgz#d7dd6a46ca57214f54a2d0a43cad0f35db82ac99"
@@ -7105,6 +7100,15 @@ vite-plugin-dynamic-import@^0.1.1:
     acorn "^8.5.0"
     acorn-walk "^8.2.0"
     glob "^7.1.7"
+
+vite-plugin-inspect@^0.3.11:
+  version "0.3.11"
+  resolved "https://registry.yarnpkg.com/vite-plugin-inspect/-/vite-plugin-inspect-0.3.11.tgz#64ebe2d7777e59125c68e63e1a933d8c650cd450"
+  integrity sha512-YsaV4bhJ++EULZamWVudMsq0VTugR/0slgbSj/A9JI9KmsGsXBCN4zBx0ptd0TkKrRniLbqO7iQqdZaybuLGvQ==
+  dependencies:
+    debug "^4.3.2"
+    sirv "^1.0.17"
+    ufo "^0.7.9"
 
 vite-plugin-pwa@^0.11.3:
   version "0.11.3"

@@ -2,6 +2,22 @@ export function evalWithContext(source, context) {
   return getEvalSyncFn(source, context)();
 }
 
+export function importScripts(): (...urls: string[]) => void {
+  return (model) => {
+    console.debug('IMPORTING', model);
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', model, false);
+    xhr.send();
+    // look ma, i'm synchronous (•‿•)
+    console.debug('json response', xhr.responseText);
+    let result = xhr.responseText.length > 0 ? xhr.responseText : 'null';
+
+    evalWithContext(result, globalThis);
+
+    return result;
+  };
+}
+
 export function getEvalSyncFn(source, context) {
   const executor = Function(`
     return (context) => {

@@ -1,8 +1,9 @@
 import { red } from 'https://deno.land/std@0.116.0/fmt/colors.ts';
-import { println, decoder } from './utils.ts';
-import { prompt } from './sqlite';
+import { println, print, decoder } from './utils.ts';
 
-
+export async function prompt(data: string) {
+  await print(data);
+}
 export async function repl(onRun: (cmd: string) => Promise<number>) {
   let data = new Uint8Array(1024);
 

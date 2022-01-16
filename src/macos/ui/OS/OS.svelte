@@ -5,8 +5,8 @@
   import { onMount } from 'svelte';
   import { WebView } from 'os/macos/stores/window.store';
   import WindowsArea from './WindowsArea.svelte';
-  import BootupScreen from '@ui/components/Desktop/BootupScreen.svelte';
-  import GitCloner from './GitCloner.svelte';
+  // import BootupScreen from '@ui/components/Desktop/BootupScreen.svelte';
+  // import GitCloner from './GitCloner.svelte';
   import Toaster from '$lib/toasts';
 
   export let url = '';
@@ -24,7 +24,7 @@
   });
 </script>
 
-<GitCloner />
+<!-- <GitCloner /> -->
 
 <main>
   <!-- <BootupScreen /> -->

@@ -1,6 +1,12 @@
 import { DenoIsolate } from './isolate';
 import { Global } from '$lib/global';
 
+// Public API in Web Workers
+// navigator.isolate = DenoIsolate instance
+// navigator.process = Denix process instance
+// Deno = Deno Namespace
+// Some Global constructors like ReadableStream, WritableStream, etc use Deno's version to work with Deno scripts
+
 declare global {
   interface Navigator {
     deno: DenoIsolate;
@@ -38,7 +44,6 @@ Global.ReadableStream = isolate.window.ReadableStream;
 Global.WritableStream = isolate.window.WritableStream;
 Global.TransformStream = isolate.window.TransformStream;
 Global.TransformStreamDefaultController = isolate.window.TransformStreamDefaultController;
-// Global.console = isolate.window.console;
 
 // Patching console.log to use the isolate console.log
 // and see stuff in the terminal

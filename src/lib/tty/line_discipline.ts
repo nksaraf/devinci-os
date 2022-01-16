@@ -480,10 +480,12 @@ export class LineDiscipline {
           if (this.history) this.history.rewind();
 
           // Kill the command
-          if (this.commandRunner) {
-            this.commandRunner.kill();
-            this.commandRunner = undefined;
-          }
+          // if (this.commandRunner) {
+          //   this.commandRunner.kill();
+          //   this.commandRunner = undefined;
+          // }
+
+          navigator.process.exit(0);
 
           // If we are prompting, then we want to cancel the current read
           this.resolveActiveRead();

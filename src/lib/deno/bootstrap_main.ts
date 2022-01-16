@@ -1,6 +1,11 @@
-import '../denix/main.ts';
+import '../denix/mod.ts';
 import { DenoIsolate } from './isolate';
 import { Global } from '$lib/global';
+
+// Public API in Main Window
+// navigator.isolate = DenoIsolate instance
+// navigator.process = Denix process instance
+// Deno = Deno Namespace, don't use too many sync APIs, no sync filesystem access
 
 declare global {
   interface Navigator {

@@ -154,7 +154,7 @@ export function arrayBuffer2Buffer(ab: ArrayBuffer | SharedArrayBuffer): Uint8Ar
  * Copies a slice of the given buffer
  * @hidden
  */
-export function copyingSlice(buff: Buffer, start: number = 0, end = buff.length): Uint8Array {
+export function copyingSlice(buff: Uint8Array, start: number = 0, end = buff.length): Uint8Array {
   if (start < 0 || end < 0 || end > buff.length || start > end) {
     throw new TypeError(
       `Invalid slice bounds on buffer of length ${buff.length}: [${start}, ${end}]`,
@@ -164,7 +164,7 @@ export function copyingSlice(buff: Buffer, start: number = 0, end = buff.length)
     // Avoid s0 corner case in ArrayBuffer case.
     return emptyBuffer();
   } else {
-    const u8 = buffer2Uint8array(buff),
+    const u8 = buff,
       s0 = buff[0],
       newS0 = (s0 + 1) % 0xff;
 

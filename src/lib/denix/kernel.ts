@@ -1,5 +1,6 @@
 import type { Remote } from 'comlink';
-import { Resource, type ResourceTable, op_sync, type Op, createResourceTable } from './types';
+import { Resource, op_sync, createResourceTable } from './types';
+import type { Op, ResourceTable } from './types';
 import { fromBase64 } from '$lib/base64';
 import { ApiError, ErrorCodeToName, ERROR_KIND_TO_CODE } from '$lib/error';
 import type { VirtualFileSystem } from '$lib/fs/virtual';
@@ -360,9 +361,10 @@ export class Process extends EventTarget {
       if (e instanceof ApiError) {
         console.debug(e.code);
         let getCode = Object.entries(ERROR_KIND_TO_CODE).find(([k, v]) => v === e.errno);
-        console.debug('error code', getCode);
+        console.error('error code', getCode);
+        console.error(e);
         return {
-          $err_class_name: getCode[0],
+          $err_class_name: getCode[0] ?? 'Error',
           code: ErrorCodeToName[getCode[1]],
           message: ErrorCodeToName[getCode[1]],
           stack: e.stack,

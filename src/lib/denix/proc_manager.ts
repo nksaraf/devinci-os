@@ -14,7 +14,11 @@ export let NEXT_PROCESS_ID = 1;
 
 export class ProcessManager extends EventTarget {
   async waitFor(pid: number): Promise<{ statusCode: number; gotSignal: boolean }> {
-    const process = this.processes.get(pid);
+    let process = this.processes.get(pid);
+    if (!process) {
+      throw new Error('process not found ' + pid);
+    }
+
     const promise = newPromise<{ statusCode: number; gotSignal: boolean }>();
 
     process.onUpdate((data) => {
@@ -232,7 +236,7 @@ export class ProcessManager extends EventTarget {
     // terminate the worker if the process is done
     machine.onUpdate((data) => {
       if (data.isIn('done')) {
-        worker.terminate();
+        // worker.terminate();
         data.send('DISPOSE', worker);
       }
     });

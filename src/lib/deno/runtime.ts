@@ -4,6 +4,7 @@ import { mkdirp } from '$lib/fs/utils/util';
 import type { VirtualFileSystem } from '$lib/fs/virtual';
 import * as path from 'path-browserify';
 import { evalWithContext, getEvalAsyncFunction } from '../eval';
+import { FileIndex } from '../fs/core/file_index';
 import type { Context } from './isolate';
 
 type DenoBootstrapCore = any;
@@ -47,7 +48,7 @@ export async function loadDenoRuntime(core: DenoBootstrapCore, fs: VirtualFileSy
   // core
   await evalBootstrapModule('/lib/deno/core', globalContext);
 
-  // extensions
+  // // extensions
   await evalBootstrapModule('/lib/deno/ext/console', globalContext);
   await evalBootstrapModule('/lib/deno/ext/webidl', globalContext);
   await evalBootstrapModule('/lib/deno/ext/url', globalContext);
@@ -64,9 +65,11 @@ export async function loadDenoRuntime(core: DenoBootstrapCore, fs: VirtualFileSy
   await evalBootstrapModule('/lib/deno/ext/tls', globalContext);
   await evalBootstrapModule('/lib/deno/ext/webgpu', globalContext);
 
-  // Deno runtime + Web globals (lot of them are coming from utilities)
+  // // Deno runtime + Web globals (lot of them are coming from utilities)
   await evalBootstrapModule('/lib/deno/runtime/js', globalContext);
 
+  // const { loadRuntime } = await import(`./deno_runtime.js`);
+  // loadRuntime(globalContext);
   return globalContext as Context;
 }
 function getGlobalThis(core: any) {
@@ -140,21 +143,19 @@ function getGlobalThis(core: any) {
 }
 
 export async function mountDenoLib(fs: VirtualFileSystem) {
+  console.time('mounted /lib/deno');
   let testFS = await HTTPRequest.Create({
-    baseUrl: 'http://localhost:8999/',
-    index: 'http://localhost:8999/index.json',
+    baseUrl: 'https://raw.githubusercontent.com/denoland/deno/main/',
+    index: '/deno_index.json',
     preferXHR: true,
   });
-  console.debug('heree');
 
   if (!(await fs.exists('/lib'))) {
     await mkdirp('/lib', 0x644, fs);
   }
-  console.debug('heree');
 
   await fs.mount('/lib/deno', testFS);
-
-  console.debug('heree done', await fs.readdir('/lib/deno'));
+  console.timeEnd('mounted /lib/deno');
 }
 
 export function getModuleFn(

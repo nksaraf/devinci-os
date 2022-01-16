@@ -4,13 +4,13 @@ import replace from '@rollup/plugin-replace';
 import Unocss from 'unocss/vite';
 import { presetUno, presetAttributify } from 'unocss';
 import presetIcons from '@unocss/preset-icons';
-import { dynamicImport } from 'vite-plugin-dynamic-import';
 import UnpluginIcons from 'unplugin-icons/vite';
 import path from 'path';
 import resolve from '@rollup/plugin-node-resolve';
 let basePath = path.resolve(__dirname);
 console.log(basePath);
 import { asc } from './build/rollup-plugin-asc';
+import Inspect from 'vite-plugin-inspect';
 
 const replacePlugin = () => {
   console.log(`process.env.VITE_LOCAL_BUILD=${process.env.VITE_LOCAL_BUILD === 'true'}`);
@@ -27,7 +27,7 @@ const responseHeaders = () => {
     name: 'configure-response-headers',
     configureServer: (server) => {
       server.middlewares.use((_req, res, next) => {
-        res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+        res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
         res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
         // res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
         next();
@@ -54,7 +54,7 @@ export default defineConfig({
     responseHeaders(),
     UnpluginIcons({ autoInstall: true, compiler: 'svelte' }),
     // dynamicImport(),
-
+    Inspect(),
     svelte(),
     // prefetch(),
     replace({ ...replacePlugin() }),
@@ -104,7 +104,14 @@ export default defineConfig({
   },
   assetsInclude: ['packages/macos-ui/public/**/*'],
   build: {
-    minify: 'terser',
+    lib: {
+      entry: './src/lib/vite.ts',
+      formats: ['es'],
+    },
+  },
+
+  esbuild: {
+    target: 'esnext',
   },
   optimizeDeps: {
     include: [
