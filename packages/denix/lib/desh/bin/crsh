@@ -1,0 +1,2 @@
+#!/bin/bash
+$HOME/.deno/bin/deno run --allow-run --allow-read --allow-write --allow-net --allow-env --unstable $HOME/.crsh/src/crsh.js

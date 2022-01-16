@@ -1,0 +1,11 @@
+{
+  "imports": {
+    "$lib/": "./lib/",
+    "buffer": "https://esm.sh/buffer",
+    "path-browserify": "https://esm.sh/path-browserify",
+    "msw": "https://esm.sh/msw",
+    "state-designer": "https://esm.sh/@state-designer/core",
+    "state-designer/": "https://esm.sh/@state-designer/core/",
+    "xterm": "https://esm.sh/xterm"
+  }
+}
