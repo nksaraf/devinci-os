@@ -145,7 +145,7 @@ function getGlobalThis(core: any) {
 export async function mountDenoLib(fs: VirtualFileSystem) {
   console.time('mounted /lib/deno');
   let testFS = await HTTPRequest.Create({
-    baseUrl: 'https://raw.githubusercontent.com/denoland/deno/main/',
+    baseUrl: 'https://raw.githubusercontent.com/denoland/deno/69ad5f0e7879e9555f949c9b5eb48440cd9e9fdc/',
     index: '/deno_index.json',
     preferXHR: true,
   });
