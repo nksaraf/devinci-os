@@ -3,9 +3,9 @@ import { repl } from './repl.ts';
 import { importScripts } from '../src/lib/eval.ts';
 
 // globalThis.document = true;
-globalThis.importScripts = importScripts;
+globalThis.importScripts = importScripts();
 
-importScripts('https://cdn.jsdelivr.net/pyodide/v0.18.1/full/pyodide.js');
+globalThis.importScripts('https://cdn.jsdelivr.net/pyodide/v0.18.0/full/pyodide.js');
 
 let pyodide;
 declare function loadPyodide(arg0: { indexURL: string }): any;
@@ -13,9 +13,9 @@ declare function loadPyodide(arg0: { indexURL: string }): any;
 async function main() {
   async function loadPyodideAndPackages() {
     pyodide = await loadPyodide({
-      indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.18.1/full/',
+      indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.18.0/full/',
     });
-    await pyodide.loadPackage(['numpy', 'pytz', 'requests', 'base64', 'pillow', 'matplotlib']);
+    await pyodide.loadPackage(['numpy', 'pytz', 'base64', 'pillow', 'matplotlib']);
     return pyodide;
   }
 
@@ -28,9 +28,8 @@ async function main() {
     from pyodide import to_js
     from pyodide.console import PyodideConsole, repr_shorten, BANNER
     import base64
-    import requests, io
+    import io
     from PIL import Image
-    import matplotlib.pyplot as plt
     import __main__
     BANNER = "Welcome to the Pyodide terminal emulator 🐍\\n" + BANNER
     pyconsole = PyodideConsole(__main__.__dict__)
@@ -56,12 +55,14 @@ async function main() {
       graphbytes = graph.encode("ascii")
       base64_bytes = base64.b64encode(graphbytes)
       base64_string = base64_bytes.decode("ascii")
-      img = Image.open(io.BytesIO(requests.get('https://mermaid.ink/img/' + base64_string).content))
-      plt.imshow(img)
+      img = Image.open(io.BytesIO(pyodide.open_url('https://mermaid.ink/img/' + base64_string)))
       print(img)
 `,
     namespace,
   );
+
+      // plt.imshow(img)
+
   let repr_shorten = namespace.get('repr_shorten');
   let banner = namespace.get('BANNER');
   let await_fut = namespace.get('await_fut');
@@ -97,7 +98,11 @@ async function main() {
       try {
         let [value] = await wrapped;
         if (value !== undefined) {
+          if (value.toJs) {
           console.debug(value.toJs());
+          } else {
+            console.debug(value)
+          }
           console.log(
             repr_shorten.callKwargs(value, {
               separator: '\n[[;orange;]<long output truncated>]\n',
